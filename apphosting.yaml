@@ -1,0 +1,37 @@
+runConfig:
+  cpu: 1
+  memoryMiB: 512
+  concurrency: 80
+  maxInstances: 10
+  minInstances: 0
+
+env:
+  - variable: ANTHROPIC_API_KEY
+    secret: ANTHROPIC_API_KEY
+
+  - variable: GROQ_API_KEY
+    secret: GROQ_API_KEY
+
+  - variable: PEXELS_API_KEY
+    secret: PEXELS_API_KEY
+
+  - variable: NEXT_PUBLIC_PEXELS_API_KEY
+    value: your_actual_pexels_key
+
+  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+    value: your_actual_firebase_api_key
+
+  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    value: aibusiness-ibm.firebaseapp.com
+
+  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    value: aibusiness-ibm
+
+  - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    value: aibusiness-ibm.appspot.com
+
+  - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+    value: your_actual_sender_id
+
+  - variable: NEXT_PUBLIC_FIREBASE_APP_ID
+    value: your_actual_app_id
