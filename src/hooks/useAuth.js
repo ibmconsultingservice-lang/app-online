@@ -3,7 +3,8 @@ import { createContext, useContext, useEffect, useState } from 'react'
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   GoogleAuthProvider,
   signOut,
   onAuthStateChanged,
@@ -19,9 +20,23 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    getRedirectResult(auth).then(async (result) => {
+      if (!result) return
+      const u = result.user
+      const snap = await getDoc(doc(db, 'users', u.uid))
+      if (!snap.exists()) {
+        await setDoc(doc(db, 'users', u.uid), {
+          uid:       u.uid,
+          name:      u.displayName,
+          email:     u.email,
+          credits:   10,
+          createdAt: serverTimestamp(),
+        })
+      }
+    }).catch(console.error)
+
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        // Fetch extra data from Firestore (credits, name, etc.)
         const snap = await getDoc(doc(db, 'users', firebaseUser.uid))
         setUser({ ...firebaseUser, ...snap.data() })
       } else {
@@ -32,12 +47,9 @@ export function AuthProvider({ children }) {
     return () => unsub()
   }, [])
 
-  // ── Register ──────────────────────────────────
   const register = async (email, password, name) => {
     const cred = await createUserWithEmailAndPassword(auth, email, password)
     await updateProfile(cred.user, { displayName: name })
-
-    // Save user to Firestore with 10 free credits
     await setDoc(doc(db, 'users', cred.user.uid), {
       uid:       cred.user.uid,
       name:      name,
@@ -48,32 +60,16 @@ export function AuthProvider({ children }) {
     return cred.user
   }
 
-  // ── Login ─────────────────────────────────────
   const login = async (email, password) => {
     const cred = await signInWithEmailAndPassword(auth, email, password)
     return cred.user
   }
 
-  // ── Google ────────────────────────────────────
   const loginGoogle = async () => {
     const provider = new GoogleAuthProvider()
-    const cred     = await signInWithPopup(auth, provider)
-
-    // Create Firestore doc only if first time
-    const snap = await getDoc(doc(db, 'users', cred.user.uid))
-    if (!snap.exists()) {
-      await setDoc(doc(db, 'users', cred.user.uid), {
-        uid:       cred.user.uid,
-        name:      cred.user.displayName,
-        email:     cred.user.email,
-        credits:   10,
-        createdAt: serverTimestamp(),
-      })
-    }
-    return cred.user
+    await signInWithRedirect(auth, provider)
   }
 
-  // ── Logout ────────────────────────────────────
   const logout = async () => {
     await signOut(auth)
     setUser(null)
