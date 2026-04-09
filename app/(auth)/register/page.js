@@ -32,15 +32,16 @@ export default function RegisterPage() {
     setLoading(false)
   }
 
+  // register/page.js - handleGoogle
   const handleGoogle = async () => {
     setLoading(true)
     try {
       await loginGoogle()
-      router.push('/dashboard')
+      // ← NO router.push here — redirect handles it
     } catch (err) {
       setError('Erreur connexion Google')
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   return (
