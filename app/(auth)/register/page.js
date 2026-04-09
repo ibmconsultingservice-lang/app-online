@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { useAuth } from '@/hooks/useAuth'
+import { useAuth } from '/hooks/useAuth'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Zap, ArrowRight } from 'lucide-react'
