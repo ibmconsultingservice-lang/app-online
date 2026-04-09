@@ -1,91 +1,83 @@
 'use client'
-import { createContext, useContext, useEffect, useState } from 'react'
+import { useState, useEffect, createContext, useContext } from 'react'
 import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signInWithRedirect,
-  getRedirectResult,
-  GoogleAuthProvider,
-  signOut,
   onAuthStateChanged,
-  updateProfile,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
+  GoogleAuthProvider,
+  signInWithPopup,
 } from 'firebase/auth'
-import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore'
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { auth, db } from '@/lib/firebase'
 
 const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
   const [user, setUser]       = useState(null)
+  const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // ── Handle Google redirect return ──────────
-    getRedirectResult(auth).then(async (result) => {
-      if (!result) return
-      const u = result.user
-      const snap = await getDoc(doc(db, 'users', u.uid))
-      if (!snap.exists()) {
-        await setDoc(doc(db, 'users', u.uid), {
-          uid:       u.uid,
-          name:      u.displayName,
-          email:     u.email,
-          credits:   10,
-          createdAt: serverTimestamp(),
-        })
-      }
-    }).catch(console.error)
-
-    // ── Auth state listener ────────────────────
-    const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        const snap = await getDoc(doc(db, 'users', firebaseUser.uid))
-        setUser({ ...firebaseUser, ...snap.data() })
+    return onAuthStateChanged(auth, async (u) => {
+      setUser(u)
+      if (u) {
+        const ref  = doc(db, 'users', u.uid)
+        const snap = await getDoc(ref)
+        if (snap.exists()) {
+          setProfile(snap.data())
+        } else {
+          const newProfile = {
+            name:      u.displayName || '',
+            email:     u.email,
+            plan:      'free',
+            credits:   10,
+            createdAt: serverTimestamp(),
+          }
+          await setDoc(ref, newProfile)
+          setProfile(newProfile)
+        }
       } else {
-        setUser(null)
+        setProfile(null)
       }
       setLoading(false)
     })
-    return () => unsub()
   }, [])
 
   const register = async (email, password, name) => {
     const cred = await createUserWithEmailAndPassword(auth, email, password)
-    await updateProfile(cred.user, { displayName: name })
-    await setDoc(doc(db, 'users', cred.user.uid), {
-      uid:       cred.user.uid,
-      name:      name,
-      email:     email,
-      credits:   10,
+    const newProfile = {
+      name, email,
+      plan: 'free', credits: 10,
       createdAt: serverTimestamp(),
-    })
-    return cred.user
+    }
+    await setDoc(doc(db, 'users', cred.user.uid), newProfile)
+    setProfile(newProfile)
+    return cred
   }
 
-  const login = async (email, password) => {
-    const cred = await signInWithEmailAndPassword(auth, email, password)
-    return cred.user
-  }
+  const login = (email, password) =>
+    signInWithEmailAndPassword(auth, email, password)
 
-  const loginGoogle = async () => {
-    const provider = new GoogleAuthProvider()
-    await signInWithRedirect(auth, provider)
-    // Page redirects to Google then comes back automatically
-    // getRedirectResult above handles the rest
-  }
+  const loginGoogle = () =>
+    signInWithPopup(auth, new GoogleAuthProvider())
 
-  const logout = async () => {
-    await signOut(auth)
-    setUser(null)
+  const logout = () => signOut(auth)
+
+  const refreshProfile = async () => {
+    if (!user) return
+    const snap = await getDoc(doc(db, 'users', user.uid))
+    if (snap.exists()) setProfile(snap.data())
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, register, login, loginGoogle, logout }}>
-      {!loading && children}
+    <AuthContext.Provider value={{
+      user, profile, loading,
+      register, login, loginGoogle, logout, refreshProfile,
+    }}>
+      {children}
     </AuthContext.Provider>
   )
 }
 
-export function useAuth() {
-  return useContext(AuthContext)
-}
+export const useAuth = () => useContext(AuthContext)

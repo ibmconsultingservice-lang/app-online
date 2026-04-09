@@ -30,11 +30,11 @@ export default function LoginPage() {
     setError('')
     try {
       await loginGoogle()
-      // ← NO router.push here — redirect handles it
+      router.push('/dashboard')
     } catch (err) {
       setError('Erreur connexion Google')
-      setLoading(false)
     }
+    setLoading(false)
   }
 
   return (
