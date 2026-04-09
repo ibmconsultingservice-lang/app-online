@@ -4,7 +4,7 @@ const nextConfig = {
     return [
       {
         source: '/__/auth/:path*',
-        destination: `https://aibusiness-ibm.firebaseapp.com/__/auth/:path*`,
+        destination: 'https://aibusiness-ibm.firebaseapp.com/__/auth/:path*',
       },
     ]
   },
