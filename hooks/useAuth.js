@@ -3,7 +3,8 @@ import { createContext, useContext, useEffect, useState } from 'react'
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   GoogleAuthProvider,
   signOut,
   onAuthStateChanged,
@@ -16,19 +17,35 @@ const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
   const [user, setUser]       = useState(null)
-  const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // Handle Google redirect return
+    getRedirectResult(auth)
+      .then(async (result) => {
+        if (!result) return
+        const u = result.user
+        const snap = await getDoc(doc(db, 'users', u.uid))
+        if (!snap.exists()) {
+          await setDoc(doc(db, 'users', u.uid), {
+            uid:       u.uid,
+            name:      u.displayName,
+            email:     u.email,
+            credits:   10,
+            plan:      'free',
+            createdAt: serverTimestamp(),
+          })
+        }
+      })
+      .catch(console.error)
+
+    // Auth state listener
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         const snap = await getDoc(doc(db, 'users', firebaseUser.uid))
-        const data = snap.exists() ? snap.data() : {}
-        setUser(firebaseUser)
-        setProfile(data)
+        setUser({ ...firebaseUser, ...snap.data() })
       } else {
         setUser(null)
-        setProfile(null)
       }
       setLoading(false)
     })
@@ -43,6 +60,7 @@ export function AuthProvider({ children }) {
       name:      name,
       email:     email,
       credits:   10,
+      plan:      'free',
       createdAt: serverTimestamp(),
     })
     return cred.user
@@ -55,28 +73,16 @@ export function AuthProvider({ children }) {
 
   const loginGoogle = async () => {
     const provider = new GoogleAuthProvider()
-    const cred = await signInWithPopup(auth, provider)
-    const snap = await getDoc(doc(db, 'users', cred.user.uid))
-    if (!snap.exists()) {
-      await setDoc(doc(db, 'users', cred.user.uid), {
-        uid:       cred.user.uid,
-        name:      cred.user.displayName,
-        email:     cred.user.email,
-        credits:   10,
-        createdAt: serverTimestamp(),
-      })
-    }
-    return cred.user
+    await signInWithRedirect(auth, provider)
   }
 
   const logout = async () => {
     await signOut(auth)
     setUser(null)
-    setProfile(null)
   }
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, register, login, loginGoogle, logout }}>
+    <AuthContext.Provider value={{ user, loading, register, login, loginGoogle, logout }}>
       {!loading && children}
     </AuthContext.Provider>
   )

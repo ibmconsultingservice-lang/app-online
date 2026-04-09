@@ -1,48 +1,37 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { doc, updateDoc, increment, getDoc } from 'firebase/firestore'
+import { doc, onSnapshot, updateDoc, increment } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
-import { useAuth } from './useAuth'
+import { useAuth } from '@/hooks/useAuth'
 
 export function useCredits() {
-  const { user } = useAuth()
+  const { user }     = useAuth()
   const [credits, setCredits] = useState(0)
-  const [plan, setPlan]       = useState('starter')
-  const [loading, setLoading] = useState(true)
+  const [plan, setPlan]       = useState('free')
 
   useEffect(() => {
-    if (!user) {
-      setCredits(0)
-      setPlan('starter')
-      setLoading(false)
-      return
-    }
-    const fetchData = async () => {
-      const snap = await getDoc(doc(db, 'users', user.uid))
-      if (snap.exists()) {
-        const data = snap.data()
-        setCredits(data.credits ?? 0)
-        setPlan(data.plan ?? 'starter')
-      }
-      setLoading(false)
-    }
-    fetchData()
-  }, [user])
+    if (!user?.uid) return
+    const unsub = onSnapshot(doc(db, 'users', user.uid), (snap) => {
+      const data = snap.data()
+      setCredits(data?.credits ?? 0)
+      setPlan(data?.plan ?? 'free')
+    })
+    return () => unsub()
+  }, [user?.uid])
 
   const deductCredit = async (amount = 1) => {
-    if (!user) throw new Error('Non connecté')
-    if (credits < amount) throw new Error('Crédits insuffisants')
+    if (!user?.uid) return
     await updateDoc(doc(db, 'users', user.uid), {
       credits: increment(-amount)
     })
-    setCredits(prev => prev - amount)
   }
 
-  const getCredits = async () => {
-    if (!user) return 0
-    const snap = await getDoc(doc(db, 'users', user.uid))
-    return snap.exists() ? snap.data().credits : 0
+  const addCredits = async (amount) => {
+    if (!user?.uid) return
+    await updateDoc(doc(db, 'users', user.uid), {
+      credits: increment(amount)
+    })
   }
 
-  return { credits, plan, loading, deductCredit, getCredits }
+  return { credits, plan, deductCredit, addCredits }
 }

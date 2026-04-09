@@ -1,7 +1,10 @@
 import './globals.css'
 import { AuthProvider } from '@/hooks/useAuth'
 
-export const metadata = { title: 'AppOnline', description: 'AI Tools' }
+export const metadata = {
+  title: 'IA Business',
+  description: 'Outils IA pour professionnels',
+}
 
 export default function RootLayout({ children }) {
   return (
