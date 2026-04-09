@@ -1,9 +1,9 @@
-import './globals.css'
 import { AuthProvider } from '@/hooks/useAuth'
+import './globals.css'
 
 export const metadata = {
-  title: 'IA Business',
-  description: 'Outils IA pour professionnels',
+  title: 'AIBusiness — Suite IA Business',
+  description: 'Business plan, marketing, rapports propulsés par IA',
 }
 
 export default function RootLayout({ children }) {
