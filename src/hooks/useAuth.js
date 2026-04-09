@@ -1,14 +1,15 @@
 'use client'
-import { useState, useEffect, createContext, useContext } from 'react'
+import { createContext, useContext, useEffect, useState } from 'react'
 import {
-  onAuthStateChanged,
-  signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
-  signOut,
-  GoogleAuthProvider,
+  signInWithEmailAndPassword,
   signInWithPopup,
+  GoogleAuthProvider,
+  signOut,
+  onAuthStateChanged,
+  updateProfile,
 } from 'firebase/auth'
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
+import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore'
 import { auth, db } from '@/lib/firebase'
 
 const AuthContext = createContext(null)
@@ -19,65 +20,68 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    return onAuthStateChanged(auth, async (u) => {
-      setUser(u)
-      if (u) {
-        const ref  = doc(db, 'users', u.uid)
-        const snap = await getDoc(ref)
-        if (snap.exists()) {
-          setProfile(snap.data())
-        } else {
-          const newProfile = {
-            name:      u.displayName || '',
-            email:     u.email,
-            plan:      'free',
-            credits:   10,
-            createdAt: serverTimestamp(),
-          }
-          await setDoc(ref, newProfile)
-          setProfile(newProfile)
-        }
+    const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        const snap = await getDoc(doc(db, 'users', firebaseUser.uid))
+        const data = snap.exists() ? snap.data() : {}
+        setUser(firebaseUser)
+        setProfile(data)
       } else {
+        setUser(null)
         setProfile(null)
       }
       setLoading(false)
     })
+    return () => unsub()
   }, [])
 
   const register = async (email, password, name) => {
     const cred = await createUserWithEmailAndPassword(auth, email, password)
-    const newProfile = {
-      name, email,
-      plan: 'free', credits: 10,
+    await updateProfile(cred.user, { displayName: name })
+    await setDoc(doc(db, 'users', cred.user.uid), {
+      uid:       cred.user.uid,
+      name:      name,
+      email:     email,
+      credits:   10,
       createdAt: serverTimestamp(),
-    }
-    await setDoc(doc(db, 'users', cred.user.uid), newProfile)
-    setProfile(newProfile)
-    return cred
+    })
+    return cred.user
   }
 
-  const login = (email, password) =>
-    signInWithEmailAndPassword(auth, email, password)
+  const login = async (email, password) => {
+    const cred = await signInWithEmailAndPassword(auth, email, password)
+    return cred.user
+  }
 
-  const loginGoogle = () =>
-    signInWithPopup(auth, new GoogleAuthProvider())
+  const loginGoogle = async () => {
+    const provider = new GoogleAuthProvider()
+    const cred = await signInWithPopup(auth, provider)
+    const snap = await getDoc(doc(db, 'users', cred.user.uid))
+    if (!snap.exists()) {
+      await setDoc(doc(db, 'users', cred.user.uid), {
+        uid:       cred.user.uid,
+        name:      cred.user.displayName,
+        email:     cred.user.email,
+        credits:   10,
+        createdAt: serverTimestamp(),
+      })
+    }
+    return cred.user
+  }
 
-  const logout = () => signOut(auth)
-
-  const refreshProfile = async () => {
-    if (!user) return
-    const snap = await getDoc(doc(db, 'users', user.uid))
-    if (snap.exists()) setProfile(snap.data())
+  const logout = async () => {
+    await signOut(auth)
+    setUser(null)
+    setProfile(null)
   }
 
   return (
-    <AuthContext.Provider value={{
-      user, profile, loading,
-      register, login, loginGoogle, logout, refreshProfile,
-    }}>
-      {children}
+    <AuthContext.Provider value={{ user, profile, loading, register, login, loginGoogle, logout }}>
+      {!loading && children}
     </AuthContext.Provider>
   )
 }
 
-export const useAuth = () => useContext(AuthContext)
+export function useAuth() {
+  return useContext(AuthContext)
+}
