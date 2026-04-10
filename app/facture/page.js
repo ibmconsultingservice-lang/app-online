@@ -29,7 +29,7 @@ export default function FactureHome() {
 
           <div className="flex flex-col sm:flex-row items-center gap-5 pt-4">
             <Link 
-              href="/Facture/facture"
+              href="/facture/facture"
               className="group bg-indigo-600 text-white px-10 py-4 rounded-2xl text-md font-bold hover:bg-indigo-700 transition-all shadow-2xl hover:shadow-indigo-200 active:scale-95 text-center flex items-center gap-3"
             >
               Créer une facture

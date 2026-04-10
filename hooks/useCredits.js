@@ -1,37 +1,26 @@
 'use client'
-import { useState, useEffect } from 'react'
-import { doc, onSnapshot, updateDoc, increment } from 'firebase/firestore'
+import { useAuth } from './useAuth'
+import { doc, updateDoc, increment } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
-import { useAuth } from '@/hooks/useAuth'
 
 export function useCredits() {
-  const { user }     = useAuth()
-  const [credits, setCredits] = useState(0)
-  const [plan, setPlan]       = useState('free')
+  const { user, profile, refreshProfile } = useAuth()
 
-  useEffect(() => {
-    if (!user?.uid) return
-    const unsub = onSnapshot(doc(db, 'users', user.uid), (snap) => {
-      const data = snap.data()
-      setCredits(data?.credits ?? 0)
-      setPlan(data?.plan ?? 'free')
-    })
-    return () => unsub()
-  }, [user?.uid])
+  const hasCredits = (cost = 1) => (profile?.credits || 0) >= cost
 
-  const deductCredit = async (amount = 1) => {
-    if (!user?.uid) return
+  const deductCredits = async (cost = 1) => {
+    if (!user || !hasCredits(cost)) return false
     await updateDoc(doc(db, 'users', user.uid), {
-      credits: increment(-amount)
+      credits: increment(-cost),
     })
+    await refreshProfile()
+    return true
   }
 
-  const addCredits = async (amount) => {
-    if (!user?.uid) return
-    await updateDoc(doc(db, 'users', user.uid), {
-      credits: increment(amount)
-    })
+  return {
+    credits:      profile?.credits || 0,
+    plan:         profile?.plan    || 'free',
+    hasCredits,
+    deductCredits,
   }
-
-  return { credits, plan, deductCredit, addCredits }
 }
