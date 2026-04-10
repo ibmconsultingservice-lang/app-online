@@ -11,6 +11,7 @@ const TOOLS = [
   { icon: '🖥️', name: 'PPTX Genius',  desc: 'Présentations PowerPoint IA',       path: '/pptxgenius' },
   { icon: '🧾', name: 'Facture',       desc: 'Génération de factures pro',        path: '/facture' },
   { icon: '📊', name: 'Business Plan', desc: 'Plan d\'affaires complet',          path: '/Businessplan' },
+  { icon: '🔧', name: 'Doc Repairer',  desc: 'Correction & réparation de docs',   path: '/docrepairer' },
 ]
 
 export default function HomePage() {

@@ -18,7 +18,7 @@ export default function DocRepairer() {
     if (manualText) formData.append('manualText', manualText);
 
     try {
-      const res = await fetch('/docrepairer/generate', { method: 'POST', body: formData });
+      const res = await fetch('/api/generer-docrepairer', { method: 'POST', body: formData });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       setResult({ content: data.content, format: data.detectedFormat });
