@@ -10,21 +10,22 @@ const PLAN_LEVELS = { free: 0, starter: 1, pro: 2, premium: 3 }
 
 const TOOLS = [
   // ── Gratuit ──────────────────────────────────
-  { icon: '🖼️', name: 'Remove BG',     desc: 'Suppression de fond IA',       path: '/Removebg',     cost: 0, plan: 'free' },
-  { icon: '📎', name: 'PDF Merger',    desc: 'Fusionner vos PDF',             path: '/pdfmerger',    cost: 0, plan: 'free' },
-  { icon: '📤', name: 'Office to PDF', desc: 'Word/Excel → PDF',             path: '/office2pdf',   cost: 0, plan: 'free' },
+  { icon: '🖼️', name: 'Remove BG',     desc: 'Suppression de fond IA',        path: '/Removebg',     cost: 0, plan: 'free' },
+  { icon: '📎', name: 'PDF Merger',    desc: 'Fusionner vos PDF',              path: '/pdfmerger',    cost: 0, plan: 'free' },
+  { icon: '📤', name: 'Office to PDF', desc: 'Word/Excel → PDF',              path: '/office2pdf',   cost: 0, plan: 'free' },
   // ── Starter ──────────────────────────────────
-  { icon: '📄', name: 'CV Builder',    desc: 'CV professionnel PDF',          path: '/cv',           cost: 2, plan: 'starter' },
-  { icon: '🧾', name: 'Facture',       desc: 'Génération de factures',        path: '/facture',      cost: 1, plan: 'starter' },
-  { icon: '🎙️', name: 'Audio Trans',   desc: 'Transcription audio',           path: '/AudioTrans',   cost: 1, plan: 'starter' },
-  { icon: '🔧', name: 'Doc Repairer',  desc: 'Correction de documents',       path: '/docrepairer',  cost: 2, plan: 'starter' },
+  { icon: '📄', name: 'CV Builder',    desc: 'CV professionnel PDF',           path: '/cv',           cost: 2, plan: 'starter' },
+  { icon: '🧾', name: 'Facture',       desc: 'Génération de factures',         path: '/facture',      cost: 1, plan: 'starter' },
+  { icon: '🎙️', name: 'Audio Trans',   desc: 'Transcription audio',            path: '/AudioTrans',   cost: 1, plan: 'starter' },
+  { icon: '🔧', name: 'Doc Repairer',  desc: 'Correction de documents',        path: '/docrepairer',  cost: 2, plan: 'starter' },
+  { icon: '🔍', name: 'OCR Vision',    desc: 'Extraction de texte depuis image', path: '/ocr-vision', cost: 1, plan: 'starter' },
   // ── Pro ──────────────────────────────────────
-  { icon: '🧠', name: 'Business IA',   desc: 'Stratégie & négociation',       path: '/business-ia',  cost: 3, plan: 'pro' },
-  { icon: '🖥️', name: 'PPTX Genius',  desc: 'Présentations IA',              path: '/pptxgenius',   cost: 3, plan: 'pro' },
-  { icon: '📊', name: 'Business Plan', desc: "Plan d'affaires complet",       path: '/Businessplan', cost: 4, plan: 'pro' },
+  { icon: '🧠', name: 'Business IA',   desc: 'Stratégie & négociation',        path: '/business-ia',  cost: 3, plan: 'pro' },
+  { icon: '🖥️', name: 'PPTX Genius',  desc: 'Présentations IA',               path: '/pptxgenius',   cost: 3, plan: 'pro' },
+  { icon: '📊', name: 'Business Plan', desc: "Plan d'affaires complet",        path: '/Businessplan', cost: 4, plan: 'pro' },
   // ── Premium ───────────────────────────────────
-  { icon: '📚', name: 'Templates',     desc: 'Word, Excel, PowerBI',          path: '/templates',    cost: 0, plan: 'premium' },
-  { icon: '🎓', name: 'Cours en ligne',desc: 'Formation & certification',     path: '/courses',      cost: 0, plan: 'premium' },
+  { icon: '📚', name: 'Templates',     desc: 'Word, Excel, PowerBI',           path: '/templates',    cost: 0, plan: 'premium' },
+  { icon: '🎓', name: 'Cours en ligne',desc: 'Formation & certification',      path: '/courses',      cost: 0, plan: 'premium' },
 ]
 
 const PLAN_LABELS = {
