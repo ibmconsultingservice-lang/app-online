@@ -3,127 +3,229 @@ import { useAuth } from '@/hooks/useAuth'
 import { useCredits } from '@/hooks/useCredits'
 import AuthGuard from '@/components/AuthGuard'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { Zap, LogOut, ArrowRight, Lock } from 'lucide-react'
+
+const PLAN_LEVELS = { free: 0, starter: 1, pro: 2, premium: 3 }
 
 const TOOLS = [
-  { id:'business-plan',  icon:'📋', name:'Business Plan',     cost:5, desc:'Plan complet en minutes' },
-  { id:'marketing',      icon:'📣', name:'Marketing IA',      cost:3, desc:'Stratégie & contenu' },
-  { id:'rapport',        icon:'📊', name:'Rapport / Report',  cost:4, desc:'Rapports professionnels' },
-  { id:'planner',        icon:'📅', name:'Planificateur',     cost:2, desc:'Gantt & planning' },
-  { id:'cv-generator',   icon:'📄', name:'Générateur CV',     cost:2, desc:'CV moderne en PDF' },
-  { id:'presentation',   icon:'🖥️', name:'Présentation',      cost:4, desc:'Slides PowerPoint IA' },
-  { id:'word-doc',       icon:'📝', name:'Document Word',     cost:3, desc:'Documents formatés' },
-  { id:'chat',           icon:'💬', name:'Chat Business',     cost:1, desc:'Assistant 24h/24' },
+  // ── Gratuit ──────────────────────────────────
+  { icon: '🖼️', name: 'Remove BG',     desc: 'Suppression de fond IA',       path: '/Removebg',     cost: 0, plan: 'free' },
+  { icon: '📎', name: 'PDF Merger',    desc: 'Fusionner vos PDF',             path: '/pdfmerger',    cost: 0, plan: 'free' },
+  { icon: '📤', name: 'Office to PDF', desc: 'Word/Excel → PDF',             path: '/office2pdf',   cost: 0, plan: 'free' },
+  // ── Starter ──────────────────────────────────
+  { icon: '📄', name: 'CV Builder',    desc: 'CV professionnel PDF',          path: '/cv',           cost: 2, plan: 'starter' },
+  { icon: '🧾', name: 'Facture',       desc: 'Génération de factures',        path: '/facture',      cost: 1, plan: 'starter' },
+  { icon: '🎙️', name: 'Audio Trans',   desc: 'Transcription audio',           path: '/AudioTrans',   cost: 1, plan: 'starter' },
+  { icon: '🔧', name: 'Doc Repairer',  desc: 'Correction de documents',       path: '/docrepairer',  cost: 2, plan: 'starter' },
+  // ── Pro ──────────────────────────────────────
+  { icon: '🧠', name: 'Business IA',   desc: 'Stratégie & négociation',       path: '/business-ia',  cost: 3, plan: 'pro' },
+  { icon: '🖥️', name: 'PPTX Genius',  desc: 'Présentations IA',              path: '/pptxgenius',   cost: 3, plan: 'pro' },
+  { icon: '📊', name: 'Business Plan', desc: "Plan d'affaires complet",       path: '/Businessplan', cost: 4, plan: 'pro' },
+  // ── Premium ───────────────────────────────────
+  { icon: '📚', name: 'Templates',     desc: 'Word, Excel, PowerBI',          path: '/templates',    cost: 0, plan: 'premium' },
+  { icon: '🎓', name: 'Cours en ligne',desc: 'Formation & certification',     path: '/courses',      cost: 0, plan: 'premium' },
 ]
 
+const PLAN_LABELS = {
+  free:    { label: 'Gratuit', color: 'bg-slate-100 text-slate-500' },
+  starter: { label: 'Starter', color: 'bg-indigo-50 text-indigo-600' },
+  pro:     { label: 'Pro',     color: 'bg-violet-50 text-violet-600' },
+  premium: { label: 'Premium', color: 'bg-amber-50 text-amber-600' },
+}
+
 export default function DashboardPage() {
-  const { profile, logout } = useAuth()
-  const { credits, plan }   = useCredits()
+  const { user, logout } = useAuth()
+  const { credits, plan } = useCredits()
   const router = useRouter()
+
+  const userPlanLevel = PLAN_LEVELS[plan] ?? 0
+
+  const handleLogout = async () => {
+    await logout()
+    router.push('/login')
+  }
+
+  const handleToolClick = (tool) => {
+    if (PLAN_LEVELS[tool.plan] > userPlanLevel) {
+      router.push('/pricing')
+    } else {
+      router.push(tool.path)
+    }
+  }
+
+  const sections = [
+    { label: '✅ Gratuit', plan: 'free' },
+    { label: '⚡ Starter', plan: 'starter' },
+    { label: '🚀 Pro',     plan: 'pro' },
+    { label: '👑 Premium', plan: 'premium' },
+  ]
 
   return (
     <AuthGuard>
-      <div style={{ minHeight:'100vh', background:'#f8fafc', fontFamily:'Inter,-apple-system,sans-serif' }}>
+      <div className="min-h-screen bg-[#f8fafc] font-sans">
 
         {/* Header */}
-        <header style={{
-          background:'#fff', borderBottom:'1px solid #e2e8f0',
-          padding:'0 24px', height:60,
-          display:'flex', alignItems:'center', justifyContent:'space-between'
-        }}>
-          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-            <div style={{ width:32, height:32, background:'#534AB7', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', fontSize:16 }}>⚡</div>
-            <span style={{ fontWeight:800, fontSize:16, color:'#0f172a' }}>AIBusiness</span>
-          </div>
-          <div style={{ display:'flex', alignItems:'center', gap:16 }}>
-            {/* Crédits */}
-            <div style={{
-              background:'#f1f5f9', borderRadius:20,
-              padding:'6px 14px', display:'flex', alignItems:'center', gap:6
-            }}>
-              <span style={{ fontSize:14 }}>⚡</span>
-              <span style={{ fontSize:13, fontWeight:700, color:'#534AB7' }}>{credits} crédits</span>
+        <header className="bg-white border-b border-slate-200 px-6 md:px-10 h-16 flex items-center justify-between sticky top-0 z-50">
+          <Link href="/" className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-slate-900 text-white rounded-lg flex items-center justify-center">
+              <Zap size={16} fill="currentColor" />
             </div>
+            <span className="text-base font-black tracking-tighter uppercase italic">
+              IA<span className="text-indigo-600">.BUSINESS</span>
+            </span>
+          </Link>
+
+          <div className="flex items-center gap-3">
+            {/* Credits */}
+            <div className="flex items-center gap-1.5 bg-indigo-50 border border-indigo-100 rounded-full px-3 py-1.5">
+              <Zap size={12} className="text-indigo-600" fill="currentColor"/>
+              <span className="text-xs font-bold text-indigo-700">{credits ?? 0} crédits</span>
+            </div>
+
             {/* Plan badge */}
-            <span style={{
-              background: plan === 'premium' ? '#534AB7' : '#e2e8f0',
-              color: plan === 'premium' ? 'white' : '#64748b',
-              padding:'4px 12px', borderRadius:20, fontSize:11, fontWeight:700, textTransform:'uppercase'
-            }}>{plan}</span>
+            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+              PLAN_LABELS[plan]?.color || 'bg-slate-100 text-slate-500'
+            }`}>
+              {PLAN_LABELS[plan]?.label || 'Free'}
+            </span>
+
+            {/* Upgrade button if not premium */}
+            {plan !== 'premium' && (
+              <button
+                onClick={() => router.push('/pricing')}
+                className="h-9 px-4 bg-indigo-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all hidden md:flex items-center gap-1">
+                Upgrader ↑
+              </button>
+            )}
+
             <button
-              onClick={() => { logout(); router.push('/login') }}
-              style={{ background:'none', border:'1px solid #e2e8f0', borderRadius:8, padding:'6px 14px', fontSize:12, cursor:'pointer', color:'#64748b' }}
-            >Déconnexion</button>
+              onClick={handleLogout}
+              className="h-9 w-9 flex items-center justify-center rounded-lg border border-slate-200 hover:bg-red-50 hover:border-red-200 hover:text-red-500 transition-all">
+              <LogOut size={14} />
+            </button>
           </div>
         </header>
 
         {/* Content */}
-        <div style={{ maxWidth:1000, margin:'0 auto', padding:32 }}>
+        <div className="max-w-5xl mx-auto px-6 py-10">
 
           {/* Welcome */}
-          <div style={{ marginBottom:32 }}>
-            <h1 style={{ fontSize:24, fontWeight:800, color:'#0f172a', marginBottom:6 }}>
-              Bonjour {profile?.name?.split(' ')[0] || 'là'} 👋
+          <div className="mb-8">
+            <h1 className="text-2xl font-black text-slate-900 mb-1">
+              Bonjour {user?.displayName?.split(' ')[0] || user?.name?.split(' ')[0] || 'là'} 👋
             </h1>
-            <p style={{ color:'#64748b', fontSize:14 }}>
-              Vous avez <strong>{credits} crédits</strong> disponibles · Plan <strong>{plan}</strong>
+            <p className="text-slate-500 text-sm">
+              Plan <span className="font-bold text-indigo-600 capitalize">{PLAN_LABELS[plan]?.label || 'Free'}</span>
+              {' · '}
+              <span className="font-bold text-indigo-600">{credits ?? 0} crédits</span> disponibles
             </p>
           </div>
 
-          {/* Credits alert */}
-          {credits < 3 && (
-            <div style={{
-              background:'#fff7ed', border:'1px solid #fed7aa',
-              borderRadius:12, padding:'14px 18px', marginBottom:24,
-              display:'flex', alignItems:'center', justifyContent:'space-between'
-            }}>
-              <span style={{ fontSize:14, color:'#9a3412' }}>⚠️ Crédits faibles — rechargez pour continuer</span>
+          {/* Low credits alert */}
+          {credits !== null && credits < 3 && plan !== 'free' && (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4 mb-8 flex items-center justify-between gap-4">
+              <span className="text-sm text-amber-700 font-medium">
+                ⚠️ Crédits faibles — rechargez pour continuer
+              </span>
               <button
                 onClick={() => router.push('/pricing')}
-                style={{ background:'#f97316', color:'white', border:'none', borderRadius:8, padding:'7px 16px', fontSize:12, fontWeight:700, cursor:'pointer' }}
-              >Recharger</button>
+                className="bg-amber-500 text-white text-xs font-black uppercase tracking-widest px-4 py-2 rounded-lg hover:bg-amber-600 transition-all whitespace-nowrap">
+                Recharger
+              </button>
             </div>
           )}
 
-          {/* Tools Grid */}
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))', gap:16 }}>
-            {TOOLS.map(tool => (
-              <div
-                key={tool.id}
-                onClick={() => router.push(`/tools/${tool.id}`)}
-                style={{
-                  background:'#fff', border:'1px solid #e2e8f0', borderRadius:16,
-                  padding:20, cursor:'pointer', transition:'all 0.15s',
-                  position:'relative', overflow:'hidden'
-                }}
-                onMouseEnter={e => e.currentTarget.style.boxShadow='0 8px 25px rgba(83,74,183,0.12)'}
-                onMouseLeave={e => e.currentTarget.style.boxShadow='none'}
-              >
-                <div style={{ fontSize:32, marginBottom:12 }}>{tool.icon}</div>
-                <h3 style={{ fontSize:14, fontWeight:700, color:'#0f172a', marginBottom:4 }}>{tool.name}</h3>
-                <p style={{ fontSize:12, color:'#64748b', marginBottom:12 }}>{tool.desc}</p>
-                <span style={{
-                  background:'#ede9fe', color:'#534AB7',
-                  padding:'3px 10px', borderRadius:20, fontSize:11, fontWeight:700
-                }}>⚡ {tool.cost} crédit{tool.cost > 1 ? 's' : ''}</span>
+          {/* Tools by section */}
+          {sections.map((section) => {
+            const sectionTools = TOOLS.filter(t => t.plan === section.plan)
+            const sectionLocked = PLAN_LEVELS[section.plan] > userPlanLevel
+
+            return (
+              <div key={section.plan} className="mb-10">
+                <div className="flex items-center gap-3 mb-4">
+                  <h2 className="text-xs font-black uppercase tracking-widest text-slate-400">
+                    {section.label}
+                  </h2>
+                  {sectionLocked && (
+                    <span className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-amber-500 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                      <Lock size={9}/> Nécessite {section.plan}
+                    </span>
+                  )}
+                  <div className="flex-1 h-px bg-slate-100"/>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {sectionTools.map((tool) => {
+                    const locked = PLAN_LEVELS[tool.plan] > userPlanLevel
+                    return (
+                      <div
+                        key={tool.path}
+                        onClick={() => handleToolClick(tool)}
+                        className={`bg-white border rounded-2xl p-5 transition-all duration-200 group relative overflow-hidden ${
+                          locked
+                            ? 'border-slate-100 opacity-60 cursor-not-allowed'
+                            : 'border-slate-200 cursor-pointer hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-200'
+                        }`}>
+
+                        {locked && (
+                          <div className="absolute top-3 right-3">
+                            <div className="w-6 h-6 bg-slate-100 rounded-full flex items-center justify-center">
+                              <Lock size={11} className="text-slate-400"/>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="text-2xl mb-3">{tool.icon}</div>
+                        <h3 className="text-sm font-black text-slate-900 mb-1">{tool.name}</h3>
+                        <p className="text-xs text-slate-500 mb-3">{tool.desc}</p>
+
+                        <div className="flex items-center justify-between">
+                          {tool.cost > 0 ? (
+                            <span className="bg-indigo-50 text-indigo-600 text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-full">
+                              ⚡ {tool.cost} crédit{tool.cost > 1 ? 's' : ''}
+                            </span>
+                          ) : (
+                            <span className="bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-full">
+                              ✅ Gratuit
+                            </span>
+                          )}
+                          {!locked && (
+                            <ArrowRight size={14} className="text-slate-300 group-hover:text-indigo-600 group-hover:translate-x-1 transition-all"/>
+                          )}
+                          {locked && (
+                            <span
+                              onClick={(e) => { e.stopPropagation(); router.push('/pricing') }}
+                              className="text-[10px] font-black text-indigo-600 hover:underline cursor-pointer">
+                              Débloquer →
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
               </div>
-            ))}
-          </div>
+            )
+          })}
 
           {/* Upgrade banner */}
           {plan !== 'premium' && (
-            <div style={{
-              marginTop:32, background:'linear-gradient(135deg,#534AB7,#7C3AED)',
-              borderRadius:20, padding:28, color:'white',
-              display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:16
-            }}>
-              <div>
-                <h3 style={{ fontSize:18, fontWeight:800, marginBottom:6 }}>🚀 Passez au Premium</h3>
-                <p style={{ fontSize:14, opacity:0.9 }}>200 crédits · Téléchargements PPTX, Word, Gantt · Support prioritaire</p>
+            <div className="mt-4 bg-slate-900 rounded-2xl p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-[40%] h-full bg-indigo-600/10 blur-[60px] rounded-full pointer-events-none"/>
+              <div className="relative z-10">
+                <h3 className="text-lg font-black text-white mb-2">🚀 Passez au niveau supérieur</h3>
+                <p className="text-slate-400 text-sm">
+                  {plan === 'free' && 'Débloquez CV, Facture, Audio Trans et plus encore.'}
+                  {plan === 'starter' && 'Débloquez Business IA, PPTX Genius et Business Plan.'}
+                  {plan === 'pro' && 'Débloquez les templates Word/Excel et les cours en ligne.'}
+                </p>
               </div>
               <button
                 onClick={() => router.push('/pricing')}
-                style={{ background:'white', color:'#534AB7', border:'none', borderRadius:12, padding:'12px 24px', fontSize:14, fontWeight:800, cursor:'pointer' }}
-              >Voir les plans →</button>
+                className="relative z-10 bg-white text-slate-900 font-black text-xs uppercase tracking-widest px-6 py-3 rounded-xl hover:bg-indigo-600 hover:text-white transition-all whitespace-nowrap shadow-lg">
+                Voir les forfaits →
+              </button>
             </div>
           )}
         </div>
