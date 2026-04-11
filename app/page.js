@@ -12,6 +12,7 @@ const TOOLS = [
   { icon: '🧾', name: 'Facture',       desc: 'Génération de factures pro',      path: '/facture' },
   { icon: '📊', name: 'Business Plan', desc: "Plan d'affaires complet",         path: '/Businessplan' },
   { icon: '🔧', name: 'Doc Repairer',  desc: 'Correction & réparation de docs', path: '/docrepairer' },
+  { icon: '🔍', name: 'OCR Vision',    desc: 'Extraction de texte depuis image', path: '/ocr-vision' }, // ← ajouté
   { icon: '🖼️', name: 'Remove BG',     desc: 'Suppression de fond IA',          path: '/Removebg' },
   { icon: '📎', name: 'PDF Merger',    desc: 'Fusionner vos fichiers PDF',      path: '/pdfmerger' },
   { icon: '📤', name: 'Office to PDF', desc: 'Convertir Word/Excel en PDF',     path: '/office2pdf' },
