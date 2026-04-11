@@ -1,8 +1,11 @@
 'use client'
 
 import React, { useState } from 'react';
+import { usePlanGuard } from '@/hooks/usePlanGuard';
 
 export default function AudioTransHome() {
+  usePlanGuard('starter');
+
   const [selectedFile, setSelectedFile] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSummarizing, setIsSummarizing] = useState(false);
@@ -13,7 +16,6 @@ export default function AudioTransHome() {
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    
     setSelectedFile(file);
     setAudioUrl(URL.createObjectURL(file));
     setTranscription("");
@@ -74,7 +76,7 @@ export default function AudioTransHome() {
         
         <div className="flex-1 space-y-8 z-10 text-center md:text-left">
           <div className="inline-block px-4 py-1.5 bg-blue-100 text-blue-700 rounded-full text-xs font-bold uppercase tracking-widest mb-2 shadow-sm">
-              AI Audio Intelligence
+            AI Audio Intelligence
           </div>
           
           <h1 className="text-5xl md:text-6xl font-extrabold text-slate-900 tracking-tight leading-[1.05]">
@@ -101,15 +103,11 @@ export default function AudioTransHome() {
             {audioUrl && (
               <div className="bg-white rounded-2xl shadow-md p-4 border border-slate-200">
                 <p className="text-sm font-semibold text-slate-600 mb-2">🎧 Lecture de l'audio</p>
-                
                 <audio controls className="w-full rounded-lg">
                   <source src={audioUrl} />
                   Votre navigateur ne supporte pas l'audio.
                 </audio>
-
-                <p className="text-xs text-slate-400 mt-2 truncate">
-                  {selectedFile?.name}
-                </p>
+                <p className="text-xs text-slate-400 mt-2 truncate">{selectedFile?.name}</p>
               </div>
             )}
 
@@ -117,14 +115,16 @@ export default function AudioTransHome() {
               <button
                 onClick={handleStartTranscription}
                 disabled={isProcessing}
-                className="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg flex items-center justify-center gap-3 disabled:opacity-50"
-              >
+                className="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg flex items-center justify-center gap-3 disabled:opacity-50">
                 {isProcessing ? "Transcription..." : "✨ Lancer la transcription"}
               </button>
             )}
 
             {transcription && (
-              <button onClick={handleGenerateSummary} disabled={isSummarizing} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-4 rounded-2xl font-bold shadow-lg flex items-center justify-center gap-3 transition-all">
+              <button
+                onClick={handleGenerateSummary}
+                disabled={isSummarizing}
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-4 rounded-2xl font-bold shadow-lg flex items-center justify-center gap-3 transition-all">
                 {isSummarizing ? "Génération du résumé..." : "📝 Résumer la réunion"}
               </button>
             )}
@@ -138,19 +138,29 @@ export default function AudioTransHome() {
             {/* Zone Transcription */}
             <div className="flex-1 flex flex-col min-h-[250px]">
               <div className="flex items-center justify-between mb-4 border-b border-slate-50 pb-2">
-                 <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Transcription</h3>
-                 {transcription && <button onClick={() => copyText(transcription)} className="text-xs font-bold text-blue-600">Copier</button>}
+                <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Transcription</h3>
+                {transcription && (
+                  <button onClick={() => copyText(transcription)} className="text-xs font-bold text-blue-600">
+                    Copier
+                  </button>
+                )}
               </div>
               <div className="overflow-y-auto max-h-[200px] text-slate-700 text-sm leading-relaxed">
-                {isProcessing ? <p className="animate-pulse">Analyse audio...</p> : transcription || "En attente d'audio..."}
+                {isProcessing
+                  ? <p className="animate-pulse">Analyse audio...</p>
+                  : transcription || "En attente d'audio..."}
               </div>
             </div>
 
-            {/* Zone Résumé (S'affiche si généré) */}
+            {/* Zone Résumé */}
             <div className={`flex-1 flex flex-col border-t pt-4 transition-all ${summary || isSummarizing ? 'opacity-100' : 'opacity-30'}`}>
               <div className="flex items-center justify-between mb-4">
-                 <h3 className="text-sm font-bold text-indigo-500 uppercase tracking-wider italic">Résumé Stratégique</h3>
-                 {summary && <button onClick={() => copyText(summary)} className="text-xs font-bold text-indigo-600">Copier le résumé</button>}
+                <h3 className="text-sm font-bold text-indigo-500 uppercase tracking-wider italic">Résumé Stratégique</h3>
+                {summary && (
+                  <button onClick={() => copyText(summary)} className="text-xs font-bold text-indigo-600">
+                    Copier le résumé
+                  </button>
+                )}
               </div>
               <div className="overflow-y-auto text-slate-800 text-sm leading-relaxed bg-indigo-50/30 p-4 rounded-2xl border border-indigo-100">
                 {isSummarizing ? (
@@ -165,7 +175,6 @@ export default function AudioTransHome() {
                 )}
               </div>
             </div>
-
           </div>
         </div>
       </div>
