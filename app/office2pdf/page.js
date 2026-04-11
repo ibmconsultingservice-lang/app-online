@@ -1,0 +1,181 @@
+'use client'
+
+import React, { useState } from 'react';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import mammoth from 'mammoth';
+import * as XLSX from 'xlsx';
+
+export default function OfficeToPdf() {
+  const [files, setFiles] = useState([]); // Changement pour gérer un tableau de fichiers
+  const [manualText, setManualText] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  // Fonction utilitaire pour ajouter du texte sur plusieurs pages (DOCX ou Manuel)
+  const addTextToDoc = (doc, text) => {
+    const margin = 15;
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const maxLineWidth = pageWidth - (margin * 2);
+    const lineHeight = 7;
+    
+    doc.setFontSize(10);
+    const lines = doc.splitTextToSize(text, maxLineWidth);
+    let cursorY = 20;
+
+    lines.forEach((line) => {
+      if (cursorY > pageHeight - margin) {
+        doc.addPage();
+        cursorY = margin;
+      }
+      doc.text(line, margin, cursorY);
+      cursorY += lineHeight;
+    });
+  };
+
+  const convertToPdf = async () => {
+    if (files.length === 0 && !manualText.trim()) return;
+    setLoading(true);
+
+    try {
+      const doc = new jsPDF();
+
+      // --- CAS 1 : TEXTE MANUEL ---
+      if (manualText.trim() && files.length === 0) {
+        addTextToDoc(doc, manualText);
+        doc.save(`Note_${Date.now()}.pdf`);
+      } 
+      // --- CAS 2 : UN OU PLUSIEURS FICHIERS ---
+      else if (files.length > 0) {
+        for (let i = 0; i < files.length; i++) {
+          const currentFile = files[i];
+          const fileName = currentFile.name.toLowerCase();
+
+          // On ajoute une nouvelle page si ce n'est pas le premier fichier
+          if (i > 0) doc.addPage();
+
+          // Lecture du fichier (Promesse pour attendre la fin de lecture)
+          const fileData = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target.result);
+            reader.onerror = reject;
+            if (currentFile.type.startsWith('image/')) {
+              reader.readAsDataURL(currentFile);
+            } else {
+              reader.readAsArrayBuffer(currentFile);
+            }
+          });
+
+          // LOGIQUE IMAGE
+          if (currentFile.type.startsWith('image/')) {
+            await new Promise((resolve) => {
+              const img = new Image();
+              img.src = fileData;
+              img.onload = () => {
+                const pdfWidth = doc.internal.pageSize.getWidth();
+                const imgProps = doc.getImageProperties(fileData);
+                const ratio = imgProps.width / imgProps.height;
+                const width = pdfWidth - 30;
+                const height = width / ratio;
+                doc.addImage(fileData, 'JPEG', 15, 20, width, height);
+                resolve();
+              };
+            });
+          } 
+          // LOGIQUE DOCX
+          else if (fileName.endsWith('.docx')) {
+            const result = await mammoth.extractRawText({ arrayBuffer: fileData });
+            addTextToDoc(doc, result.value);
+          } 
+          // LOGIQUE EXCEL / CSV
+          else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls') || fileName.endsWith('.csv')) {
+            const workbook = XLSX.read(new Uint8Array(fileData), { type: 'array' });
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+            const data = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+
+            autoTable(doc, {
+              head: [data[0]],
+              body: data.slice(1),
+              styles: { fontSize: 8 },
+              margin: { top: 20 },
+              startY: i === 0 ? 20 : 15, // Gérer la position si nouvelle page
+            });
+          }
+        }
+        
+        // Sauvegarde finale après la boucle
+        const outputName = files.length > 1 ? "Combined_Documents" : files[0].name.split('.')[0];
+        doc.save(`${outputName}.pdf`);
+      }
+    } catch (err) {
+      alert("Erreur lors de la conversion : " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <main className="min-h-screen bg-[#f1f5f9] flex items-center justify-center p-6 font-sans">
+      <div className="max-w-3xl w-full bg-white/90 backdrop-blur-3xl p-10 md:p-14 rounded-[3.5rem] shadow-2xl border border-white text-center space-y-10">
+        
+        <header>
+          <div className="w-20 h-20 bg-red-50 text-red-600 rounded-[2rem] flex items-center justify-center mx-auto mb-6 shadow-xl shadow-red-100/50">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+            </svg>
+          </div>
+          <h1 className="text-4xl font-[950] tracking-tighter italic text-slate-900">Office<span className="text-red-600">2PDF</span></h1>
+          <p className="text-slate-400 text-xs font-black mt-2 uppercase tracking-[0.3em]">IBM Consulting Edition</p>
+        </header>
+
+        <div className="space-y-8">
+          <label className="group relative block cursor-pointer">
+            <div className={`border-2 border-dashed rounded-[2.5rem] p-8 transition-all duration-500 hover:scale-[1.01] ${files.length > 0 ? 'border-red-400 bg-red-50/30' : 'border-slate-200 hover:border-red-300 bg-slate-50/50'}`}>
+              <span className="text-sm font-black text-slate-600 block truncate">
+                {files.length > 0 
+                  ? `${files.length} fichier(s) sélectionné(s)` 
+                  : "Word, Excel ou plusieurs Images"}
+              </span>
+              <input 
+                type="file" 
+                accept=".docx,.xlsx,.xls,.csv,image/*" 
+                multiple 
+                onChange={(e) => {
+                  setFiles(Array.from(e.target.files)); 
+                  setManualText("");
+                }} 
+                className="hidden" 
+              />
+            </div>
+          </label>
+
+          <div className="relative flex items-center justify-center">
+            <span className="absolute bg-white px-4 text-[10px] font-black text-slate-300 uppercase tracking-widest">Ou texte libre</span>
+            <div className="w-full h-px bg-slate-100"></div>
+          </div>
+
+          <textarea 
+            value={manualText}
+            onChange={(e) => {setManualText(e.target.value); setFiles([]);}}
+            placeholder="Saisissez du texte ici..."
+            className="w-full h-48 p-6 rounded-[2rem] bg-slate-50 border-none focus:ring-4 focus:ring-red-500/5 text-sm text-slate-700 resize-none transition-all placeholder:text-slate-300 font-medium"
+          />
+
+          <button 
+            onClick={convertToPdf} 
+            disabled={(files.length === 0 && !manualText.trim()) || loading}
+            className="w-full bg-slate-900 text-white py-6 rounded-2xl font-black text-xs uppercase tracking-[0.25em] shadow-2xl hover:bg-red-600 transition-all active:scale-95 disabled:opacity-30 hover:shadow-red-500/20"
+          >
+            {loading ? "Génération en cours..." : "Générer le PDF combiné"}
+          </button>
+        </div>
+
+        <footer className="pt-6 border-t border-slate-50">
+          <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest opacity-60">
+            Processing Local & Sécurisé • {new Date().getFullYear()}
+          </p>
+        </footer>
+      </div>
+    </main>
+  );
+}
