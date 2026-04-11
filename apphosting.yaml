@@ -32,3 +32,6 @@ env:
 
   - variable: PEXELS_API_KEY
     secret: PEXELS_API_KEY
+
+  - variable: PYTHON_API_URL
+    value: "https://removebg-api-production.up.railway.app"
