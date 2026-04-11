@@ -1,163 +1,288 @@
 'use client'
-import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { Zap, Check, ArrowRight, LogOut } from 'lucide-react'
+
+// ── Taux de conversion (à mettre à jour manuellement ou via API) ──
+const USD_TO_CFA = 620  // 1 USD = 620 FCFA (taux approximatif)
+const EUR_TO_CFA = 655  // 1 EUR = 655 FCFA
 
 const PLANS = [
   {
-    key: 'starter',
+    id: 'starter',
     name: 'Starter',
-    price: '9 900',
-    eur: '15',
+    emoji: '⚡',
+    priceUSD: 9,
     credits: 50,
-    color: '#64748b',
+    color: 'indigo',
+    popular: false,
     features: [
+      'CV Builder',
+      'Générateur de Factures',
+      'Audio Transcription',
+      'Doc Repairer',
       '50 crédits / mois',
-      'Accès aux 17 outils IA',
-      'Chat business (50 req/jour)',
-      'Business plan basique',
-      'Support email 48h',
+      'Support email',
     ],
-    notIncluded: [
-      'Téléchargement PPTX/Word/Gantt',
-      'Rapports avancés',
-      'Support prioritaire',
+    locked: [
+      'Business IA',
+      'PPTX Genius',
+      'Téléchargements Word/Excel',
+      'Cours en ligne',
     ]
   },
   {
-    key: 'premium',
-    name: 'Premium',
-    price: '29 900',
-    eur: '45',
-    credits: 200,
-    color: '#534AB7',
+    id: 'pro',
+    name: 'Pro',
+    emoji: '🚀',
+    priceUSD: 19,
+    credits: 150,
+    color: 'violet',
     popular: true,
     features: [
-      '200 crédits / mois',
-      'Accès aux 17 outils IA',
-      'Chat business illimité 24h/24',
-      'Business plan complet + export',
-      '📥 Téléchargement PPTX, Word, Gantt',
-      'Rapports & Marketing avancés',
-      'Support WhatsApp prioritaire',
+      'Tout Starter inclus',
+      'Business IA',
+      'PPTX Genius',
+      'Business Plan',
+      '150 crédits / mois',
+      'Support prioritaire',
     ],
-    notIncluded: []
+    locked: [
+      'Téléchargements Word/Excel',
+      'Cours en ligne',
+    ]
+  },
+  {
+    id: 'premium',
+    name: 'Premium',
+    emoji: '👑',
+    priceUSD: 39,
+    credits: 500,
+    color: 'amber',
+    popular: false,
+    features: [
+      'Tout Pro inclus',
+      'Téléchargements Word/Excel/PowerBI',
+      'Templates professionnels',
+      'Cours en ligne',
+      '500 crédits / mois',
+      'Support WhatsApp dédié',
+    ],
+    locked: []
   },
 ]
 
-export default function PricingPage() {
-  const { user } = useAuth()
-  const router = useRouter()
+const WHATSAPP_NUMBER = '221XXXXXXXXX' // ← remplace par ton numéro
+
+function PlanCard({ plan, onContact }) {
+  const priceCFA = Math.round(plan.priceUSD * USD_TO_CFA / 100) * 100
 
   return (
-    <main style={{ minHeight:'100vh', background:'#f8fafc', fontFamily:'Inter,-apple-system,sans-serif' }}>
-      
+    <div className={`relative bg-white border-2 ${
+      plan.popular ? 'border-violet-500 shadow-2xl shadow-violet-500/20' : 'border-slate-200'
+    } rounded-3xl p-8 flex flex-col`}>
+
+      {plan.popular && (
+        <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-violet-600 text-white text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full">
+          Le plus populaire
+        </div>
+      )}
+
+      {/* Header */}
+      <div className="mb-6">
+        <div className="text-3xl mb-3">{plan.emoji}</div>
+        <h3 className="text-xl font-black text-slate-900 mb-1">
+          Niveau {plan.name}
+        </h3>
+        <div className="mt-4">
+          <div className="flex items-baseline gap-1">
+            <span className="text-4xl font-black text-slate-900">
+              {priceCFA.toLocaleString('fr-FR')}
+            </span>
+            <span className="text-slate-500 font-bold">FCFA</span>
+            <span className="text-slate-400 text-sm">/mois</span>
+          </div>
+          <div className="flex gap-3 mt-1">
+            <span className="text-xs text-slate-400">${plan.priceUSD} USD</span>
+            <span className="text-xs text-slate-400">
+              {Math.round(plan.priceUSD * EUR_TO_CFA / 100) * 100} EUR
+            </span>
+          </div>
+        </div>
+        <div className="mt-3 inline-flex items-center gap-1.5 bg-indigo-50 text-indigo-700 text-xs font-bold px-3 py-1 rounded-full">
+          <Zap size={12} fill="currentColor"/> {plan.credits} crédits/mois
+        </div>
+      </div>
+
+      {/* Features */}
+      <div className="flex-1 space-y-3 mb-8">
+        {plan.features.map(f => (
+          <div key={f} className="flex items-start gap-2.5">
+            <div className="w-4 h-4 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <Check size={10} className="text-emerald-600" strokeWidth={3}/>
+            </div>
+            <span className="text-sm text-slate-700 font-medium">{f}</span>
+          </div>
+        ))}
+        {plan.locked.map(f => (
+          <div key={f} className="flex items-start gap-2.5 opacity-35">
+            <div className="w-4 h-4 rounded-full bg-slate-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <span className="text-[8px]">🔒</span>
+            </div>
+            <span className="text-sm text-slate-400 font-medium line-through">{f}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* CTA */}
+      <button
+        onClick={() => onContact(plan)}
+        className={`w-full py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${
+          plan.popular
+            ? 'bg-violet-600 hover:bg-violet-700 text-white shadow-lg shadow-violet-500/25'
+            : plan.id === 'premium'
+            ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/25'
+            : 'bg-slate-900 hover:bg-indigo-600 text-white'
+        }`}
+      >
+        <span>📱</span> Souscrire via WhatsApp
+      </button>
+    </div>
+  )
+}
+
+export default function PricingPage() {
+  const { user, logout } = useAuth()
+  const router = useRouter()
+
+  const handleContact = (plan) => {
+    const priceCFA = Math.round(plan.priceUSD * USD_TO_CFA / 100) * 100
+    const userEmail = user?.email || 'non connecté'
+
+    const message = encodeURIComponent(
+      `Bonjour ! Je souhaite souscrire au forfait *${plan.name}* sur IA.Business.\n\n` +
+      `📧 Mon email : ${userEmail}\n` +
+      `💰 Montant : ${priceCFA.toLocaleString('fr-FR')} FCFA/mois\n` +
+      `⚡ Crédits : ${plan.credits} crédits\n\n` +
+      `Merci de me confirmer les modalités de paiement (Wave, Orange Money, etc.)`
+    )
+
+    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${message}`, '_blank')
+  }
+
+  return (
+    <main className="min-h-screen bg-[#f8fafc] font-sans text-slate-900">
+
+      {/* Background */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute -top-[10%] -left-[5%] w-[40%] h-[40%] bg-indigo-100/50 blur-[120px] rounded-full"/>
+        <div className="absolute -bottom-[10%] -right-[5%] w-[40%] h-[40%] bg-violet-100/50 blur-[120px] rounded-full"/>
+      </div>
+
       {/* Nav */}
-      <nav style={{ padding:'20px 32px', borderBottom:'1px solid #e2e8f0', background:'#fff', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-        <Link href="/" style={{ display:'flex', alignItems:'center', gap:8, textDecoration:'none' }}>
-          <div style={{ width:32, height:32, background:'#0f172a', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', color:'white', fontSize:14 }}>⚡</div>
-          <span style={{ fontWeight:900, fontSize:15, color:'#0f172a' }}>IA<span style={{color:'#4f46e5'}}>.BUSINESS</span></span>
+      <nav className="relative z-50 max-w-7xl mx-auto px-6 md:px-12 py-6 flex justify-between items-center border-b border-slate-200/60">
+        <Link href="/" className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-slate-900 text-white rounded-xl flex items-center justify-center">
+            <Zap size={20} fill="currentColor"/>
+          </div>
+          <span className="text-xl font-black tracking-tighter uppercase italic">
+            IA<span className="text-indigo-600">.BUSINESS</span>
+          </span>
         </Link>
-        {user ? (
-          <Link href="/dashboard" style={{ background:'#534AB7', color:'white', padding:'8px 18px', borderRadius:8, fontSize:12, fontWeight:700, textDecoration:'none' }}>
-            Dashboard
-          </Link>
-        ) : (
-          <Link href="/login" style={{ background:'#0f172a', color:'white', padding:'8px 18px', borderRadius:8, fontSize:12, fontWeight:700, textDecoration:'none' }}>
-            Connexion
-          </Link>
-        )}
+        <div className="flex items-center gap-3">
+          {user ? (
+            <>
+              <Link href="/dashboard"
+                className="h-10 px-5 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all flex items-center shadow-md">
+                Dashboard
+              </Link>
+              <button onClick={() => { logout(); router.push('/') }}
+                className="h-10 w-10 flex items-center justify-center rounded-xl border border-slate-200 hover:bg-red-50 hover:text-red-500 transition-all">
+                <LogOut size={15}/>
+              </button>
+            </>
+          ) : (
+            <Link href="/register"
+              className="h-10 px-6 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 transition-all flex items-center shadow-md">
+              Commencer →
+            </Link>
+          )}
+        </div>
       </nav>
 
-      <div style={{ maxWidth:860, margin:'0 auto', padding:'60px 20px' }}>
-        
-        {/* Header */}
-        <div style={{ textAlign:'center', marginBottom:52 }}>
-          <h1 style={{ fontSize:36, fontWeight:900, color:'#0f172a', marginBottom:10 }}>
-            Choisissez votre plan
-          </h1>
-          <p style={{ color:'#64748b', fontSize:16 }}>
-            Paiement par <strong>Carte</strong>, <strong>Orange Money</strong> ou <strong>Wave</strong>
-          </p>
+      {/* Header */}
+      <section className="relative z-10 max-w-4xl mx-auto px-6 pt-20 pb-12 text-center">
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white border border-slate-200 text-slate-500 text-[9px] font-bold uppercase tracking-[0.2em] mb-8 shadow-sm">
+          <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"/>
+          Paiement sécurisé via Wave · Orange Money · WhatsApp
         </div>
+        <h1 className="text-4xl md:text-6xl font-black tracking-tight leading-[0.95] mb-6">
+          Choisissez votre <br/>
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-violet-500">
+            niveau d'accès
+          </span>
+        </h1>
+        <p className="text-slate-500 text-lg font-medium max-w-xl mx-auto">
+          Prix en FCFA · Paiement par Wave, Orange Money ou virement.
+          Activation manuelle sous 24h.
+        </p>
 
-        {/* Cards */}
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:24 }}>
+        {/* Taux de conversion */}
+        <div className="mt-6 inline-flex items-center gap-4 bg-white border border-slate-200 rounded-2xl px-6 py-3 shadow-sm">
+          <span className="text-xs text-slate-400 font-bold uppercase tracking-widest">Taux du jour</span>
+          <span className="text-xs font-black text-slate-700">1 USD = {USD_TO_CFA} FCFA</span>
+          <span className="text-xs font-black text-slate-700">1 EUR = {EUR_TO_CFA} FCFA</span>
+        </div>
+      </section>
+
+      {/* Plans */}
+      <section className="relative z-10 max-w-6xl mx-auto px-6 md:px-12 pb-24">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
           {PLANS.map(plan => (
-            <div key={plan.key} style={{
-              background:'#fff',
-              borderRadius:20,
-              padding:32,
-              border: plan.popular ? `2px solid ${plan.color}` : '1px solid #e2e8f0',
-              position:'relative',
-              boxShadow: plan.popular ? '0 8px 30px rgba(83,74,183,0.15)' : 'none'
-            }}>
-              {plan.popular && (
-                <div style={{
-                  position:'absolute', top:-14, left:'50%', transform:'translateX(-50%)',
-                  background:'#534AB7', color:'white', padding:'4px 20px',
-                  borderRadius:20, fontSize:11, fontWeight:800, whiteSpace:'nowrap'
-                }}>
-                  ⭐ POPULAIRE
-                </div>
-              )}
-
-              <h2 style={{ fontSize:22, fontWeight:800, color:'#0f172a', marginBottom:6 }}>{plan.name}</h2>
-              
-              <div style={{ marginBottom:24 }}>
-                <span style={{ fontSize:32, fontWeight:900, color:plan.color }}>{plan.price} FCFA</span>
-                <span style={{ fontSize:13, color:'#94a3b8' }}> / mois</span>
-                <div style={{ fontSize:12, color:'#94a3b8', marginTop:2 }}>≈ {plan.eur}€ · {plan.credits} crédits inclus</div>
-              </div>
-
-              {/* Features */}
-              <div style={{ marginBottom:24 }}>
-                {plan.features.map(f => (
-                  <div key={f} style={{ display:'flex', alignItems:'flex-start', gap:8, marginBottom:8, fontSize:13, color:'#334155' }}>
-                    <span style={{ color:'#22c55e', flexShrink:0 }}>✓</span> {f}
-                  </div>
-                ))}
-                {plan.notIncluded.map(f => (
-                  <div key={f} style={{ display:'flex', alignItems:'flex-start', gap:8, marginBottom:8, fontSize:13, color:'#94a3b8' }}>
-                    <span style={{ flexShrink:0 }}>✗</span> {f}
-                  </div>
-                ))}
-              </div>
-
-              {/* Buttons */}
-              <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-                {/* Carte */}
-                <button
-                  onClick={() => user ? alert('Stripe bientôt disponible') : router.push('/login')}
-                  style={{ background:'#0f172a', color:'white', border:'none', borderRadius:10, padding:'11px 0', fontSize:13, fontWeight:700, cursor:'pointer' }}
-                >
-                  💳 Payer par carte
-                </button>
-
-                {/* Orange Money */}
-                <button
-                  onClick={() => user ? router.push('/payment-contact?plan='+plan.name+'&method=orange') : router.push('/login')}
-                  style={{ background:'#f97316', color:'white', border:'none', borderRadius:10, padding:'11px 0', fontSize:13, fontWeight:700, cursor:'pointer' }}
-                >
-                  🟠 Orange Money
-                </button>
-
-                {/* Wave */}
-                <button
-                  onClick={() => user ? router.push('/payment-contact?plan='+plan.name+'&method=wave') : router.push('/login')}
-                  style={{ background:'#06b6d4', color:'white', border:'none', borderRadius:10, padding:'11px 0', fontSize:13, fontWeight:700, cursor:'pointer' }}
-                >
-                  🔵 Wave
-                </button>
-              </div>
-            </div>
+            <PlanCard key={plan.id} plan={plan} onContact={handleContact}/>
           ))}
         </div>
 
-        <p style={{ textAlign:'center', marginTop:28, fontSize:12, color:'#94a3b8' }}>
-          🔒 Paiements sécurisés · Activation sous 2h pour Orange Money & Wave
-        </p>
-      </div>
+        {/* Free tools */}
+        <div className="mt-16 bg-white border border-slate-200 rounded-3xl p-8">
+          <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-6">
+            ✅ Toujours gratuit — sans inscription requise
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {[
+              { icon: '🖼️', name: 'Remove Background', desc: 'Suppression de fond instantanée' },
+              { icon: '📎', name: 'PDF Merger', desc: 'Fusionner vos fichiers PDF' },
+              { icon: '📤', name: 'Office to PDF', desc: 'Convertir Word/Excel en PDF' },
+            ].map(tool => (
+              <div key={tool.name} className="flex items-start gap-3 p-4 bg-slate-50 rounded-2xl">
+                <span className="text-2xl">{tool.icon}</span>
+                <div>
+                  <p className="text-sm font-black text-slate-900">{tool.name}</p>
+                  <p className="text-xs text-slate-500">{tool.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Contact email */}
+        <div className="mt-8 text-center">
+          <p className="text-sm text-slate-500">
+            Une question ?{' '}
+            <a href="mailto:contact@iabusinessevo.com"
+              className="text-indigo-600 font-bold hover:underline">
+              contact@iabusinessevo.com
+            </a>
+            {' '}·{' '}
+            <a href={`https://wa.me/${+221786044910}`}
+              target="_blank"
+              className="text-emerald-600 font-bold hover:underline">
+              WhatsApp direct
+            </a>
+          </p>
+        </div>
+      </section>
     </main>
   )
 }

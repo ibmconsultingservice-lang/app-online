@@ -2,16 +2,19 @@
 import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
 import { useRouter } from 'next/navigation'
-import { Zap, ArrowRight, Shield, Users, Star, Mic, FileText, BarChart, PenTool, LogOut } from 'lucide-react'
+import { Zap, ArrowRight, Shield, Users, Star, LogOut } from 'lucide-react'
 
 const TOOLS = [
-  { icon: '🧠', name: 'Business IA',   desc: 'Stratégie & négociation IA',       path: '/business-ia' },
-  { icon: '📄', name: 'CV Builder',    desc: 'CV professionnel en PDF',           path: '/cv' },
-  { icon: '🎙️', name: 'Audio Trans',   desc: 'Transcription audio précise',       path: '/AudioTrans' },
-  { icon: '🖥️', name: 'PPTX Genius',  desc: 'Présentations PowerPoint IA',       path: '/pptxgenius' },
-  { icon: '🧾', name: 'Facture',       desc: 'Génération de factures pro',        path: '/facture' },
-  { icon: '📊', name: 'Business Plan', desc: 'Plan d\'affaires complet',          path: '/Businessplan' },
-  { icon: '🔧', name: 'Doc Repairer',  desc: 'Correction & réparation de docs',   path: '/docrepairer' },
+  { icon: '🧠', name: 'Business IA',   desc: 'Stratégie & négociation IA',     path: '/business-ia' },
+  { icon: '📄', name: 'CV Builder',    desc: 'CV professionnel en PDF',         path: '/cv' },
+  { icon: '🎙️', name: 'Audio Trans',   desc: 'Transcription audio précise',     path: '/AudioTrans' },
+  { icon: '🖥️', name: 'PPTX Genius',  desc: 'Présentations PowerPoint IA',     path: '/pptxgenius' },
+  { icon: '🧾', name: 'Facture',       desc: 'Génération de factures pro',      path: '/facture' },
+  { icon: '📊', name: 'Business Plan', desc: "Plan d'affaires complet",         path: '/Businessplan' },
+  { icon: '🔧', name: 'Doc Repairer',  desc: 'Correction & réparation de docs', path: '/docrepairer' },
+  { icon: '🖼️', name: 'Remove BG',     desc: 'Suppression de fond IA',          path: '/Removebg' },
+  { icon: '📎', name: 'PDF Merger',    desc: 'Fusionner vos fichiers PDF',      path: '/pdfmerger' },
+  { icon: '📤', name: 'Office to PDF', desc: 'Convertir Word/Excel en PDF',     path: '/office2pdf' },
 ]
 
 export default function HomePage() {
@@ -44,6 +47,12 @@ export default function HomePage() {
         </div>
 
         <div className="flex items-center gap-3">
+          {/* ← Pricing link always visible */}
+          <Link href="/pricing"
+            className="h-10 px-5 border border-slate-200 text-slate-700 rounded-xl text-[10px] font-black uppercase tracking-widest hover:border-indigo-300 hover:text-indigo-600 transition-all hidden md:flex items-center">
+            Tarifs
+          </Link>
+
           {user ? (
             <>
               <Link href="/dashboard"
@@ -107,6 +116,20 @@ export default function HomePage() {
         )}
       </section>
 
+      {/* Free tools banner */}
+      <section className="relative z-10 max-w-7xl mx-auto px-6 md:px-12 pb-6">
+        <div className="bg-emerald-50 border border-emerald-200 rounded-2xl px-6 py-4 flex items-center justify-between flex-wrap gap-3">
+          <div className="flex items-center gap-2">
+            <span className="text-emerald-600 font-black text-sm">✅ Gratuit sans inscription :</span>
+            <span className="text-emerald-700 text-xs font-medium">Remove BG · PDF Merger · Office to PDF</span>
+          </div>
+          <Link href="/pricing"
+            className="text-[10px] font-black uppercase tracking-widest text-emerald-700 hover:text-emerald-900 flex items-center gap-1">
+            Voir tous les forfaits <ArrowRight size={10}/>
+          </Link>
+        </div>
+      </section>
+
       {/* Tools Grid */}
       <section className="relative z-10 max-w-7xl mx-auto px-6 md:px-12 pb-24">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -150,11 +173,15 @@ export default function HomePage() {
           © 2026 IA Business Ecosystem
         </p>
         <div className="flex justify-center gap-6 text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-          <a href="#" className="hover:text-slate-900 transition-colors">Support</a>
+          <a href="mailto:contact@iabusinessevo.com"
+            className="hover:text-slate-900 transition-colors">
+            Contact
+          </a>
+          <Link href="/pricing" className="hover:text-slate-900 transition-colors">Tarifs</Link>
           <Link href="/login" className="hover:text-slate-900 transition-colors">Connexion</Link>
           <Link href="/register" className="hover:text-slate-900 transition-colors">S'inscrire</Link>
         </div>
       </footer>
     </main>
   )
-}
+} 
