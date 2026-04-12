@@ -1,8 +1,16 @@
 'use client'
 
 import { useState, useRef, useCallback } from 'react'
+import { useCredits } from '@/hooks/useCredits'
+import { usePlanGuard } from '@/hooks/usePlanGuard'
+import { useRouter } from 'next/navigation'
+import { Zap } from 'lucide-react'
 
 export default function CVPage() {
+  const allowed = usePlanGuard('starter')
+  const { deductCredits, hasCredits, credits } = useCredits()
+  const router = useRouter()
+
   const [mode, setMode] = useState('formulaire')
   const [formData, setFormData] = useState({
     nom: '', localisation: '', education: '', experience: '', competences: '', loisirs: '',
@@ -19,23 +27,24 @@ export default function CVPage() {
     { name: 'Océan',    dark: '#0c4a6e', sidebar: '#075985', accent: '#06b6d4', textLight: '#cffafe', sectionBg: '#ecfeff', headingColor: '#0c4a6e' },
   ]
 
-  // ✅ currentTheme dans un REF — ne déclenche AUCUN re-render
   const currentThemeRef = useRef(themes[0])
-  // Séparé : juste pour mettre à jour les boutons de la palette UI
   const [selectedThemeName, setSelectedThemeName] = useState(themes[0].name)
-
   const [prompt, setPrompt] = useState('')
   const [cvGenere, setCvGenere] = useState('')
   const [loading, setLoading] = useState(false)
   const [showModel, setShowModel] = useState(false)
-
   const iframeRef = useRef(null)
-  // ✅ Le HTML du CV est stocké ici UNE SEULE FOIS — jamais recalculé après
   const srcDocRef = useRef('')
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value })
 
   const handleSubmit = async () => {
+    // ── Credit check ──────────────────────────
+    if (!hasCredits(2)) {
+      router.push('/pricing')
+      return
+    }
+
     setLoading(true)
     setCvGenere('')
     setShowModel(false)
@@ -74,6 +83,8 @@ export default function CVPage() {
       }
 
       const data = await response.json()
+      // ── Deduct after success ──────────────
+      await deductCredits(2)
       setCvGenere(data.result)
 
     } catch (err) {
@@ -84,7 +95,6 @@ export default function CVPage() {
     }
   }
 
-  // ✅ Injecte les couleurs directement dans le DOM de l'iframe — zéro re-render
   const applyThemeToIframe = useCallback((theme) => {
     const doc = iframeRef.current?.contentDocument
     if (!doc) return
@@ -98,18 +108,17 @@ export default function CVPage() {
   }, [])
 
   const handleThemeChange = (theme) => {
-    currentThemeRef.current = theme        // mise à jour silencieuse
-    setSelectedThemeName(theme.name)       // re-render UNIQUEMENT pour les boutons palette
-    applyThemeToIframe(theme)              // couleurs injectées dans le DOM iframe
+    currentThemeRef.current = theme
+    setSelectedThemeName(theme.name)
+    applyThemeToIframe(theme)
   }
 
   const downloadPDF = () => {
     iframeRef.current?.contentWindow?.print()
   }
 
-  // ✅ Construit le HTML SEULEMENT si pas encore fait (première fois qu'on affiche le CV)
   const getOrBuildSrcDoc = useCallback((cvText, formValues) => {
-    if (srcDocRef.current) return srcDocRef.current // déjà construit → ne pas reconstruire
+    if (srcDocRef.current) return srcDocRef.current
 
     const theme = currentThemeRef.current
 
@@ -123,17 +132,17 @@ export default function CVPage() {
       return match[1].trim().replace(/\n[-•*]\s*/g, '<br>• ').replace(/\n/g, '<br>')
     }
 
-    const profil     = extractSection("PROFIL PROFESSIONNEL|PROFIL", cvText)
-    const experiences= extractSection("EXPÉRIENCES PROFESSIONNELLES|EXPÉRIENCE PROFESSIONNELLE|EXPÉRIENCES|EXPÉRIENCE|EXPERIENCES PROFESSIONNELLES|EXPERIENCE", cvText)
-    const formation  = extractSection("FORMATION|ÉTUDES|ETUDES|PARCOURS", cvText)
-    const compTech   = extractSection("COMPÉTENCES TECHNIQUES|COMPETENCES TECHNIQUES|COMPÉTENCES|COMPETENCES", cvText)
-    const compTrans  = extractSection("COMPÉTENCES TRANSVERSALES|QUALITÉS PROFESSIONNELLES|ATOUTS|SAVOIR-ÊTRE", cvText)
-    const loisirs    = extractSection("LOISIRS|CENTRES D'INTÉRÊT|HOBBIES", cvText)
+    const profil      = extractSection("PROFIL PROFESSIONNEL|PROFIL", cvText)
+    const experiences = extractSection("EXPÉRIENCES PROFESSIONNELLES|EXPÉRIENCE PROFESSIONNELLE|EXPÉRIENCES|EXPÉRIENCE|EXPERIENCES PROFESSIONNELLES|EXPERIENCE", cvText)
+    const formation   = extractSection("FORMATION|ÉTUDES|ETUDES|PARCOURS", cvText)
+    const compTech    = extractSection("COMPÉTENCES TECHNIQUES|COMPETENCES TECHNIQUES|COMPÉTENCES|COMPETENCES", cvText)
+    const compTrans   = extractSection("COMPÉTENCES TRANSVERSALES|QUALITÉS PROFESSIONNELLES|ATOUTS|SAVOIR-ÊTRE", cvText)
+    const loisirs     = extractSection("LOISIRS|CENTRES D'INTÉRÊT|HOBBIES", cvText)
 
-    const topText     = cvText.split(/PROFIL|EXP/i)[0]
-    const emailMatch  = topText.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/)
-    const telMatch    = topText.match(/(?:\+?\d[\d\s-]{7,})/)
-    const nomAffiche  = formValues.nom || topText.split('\n')[0].trim()
+    const topText    = cvText.split(/PROFIL|EXP/i)[0]
+    const emailMatch = topText.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/)
+    const telMatch   = topText.match(/(?:\+?\d[\d\s-]{7,})/)
+    const nomAffiche = formValues.nom || topText.split('\n')[0].trim()
 
     const html = `<!DOCTYPE html>
 <html lang="fr">
@@ -251,18 +260,37 @@ export default function CVPage() {
 </body>
 </html>`
 
-    srcDocRef.current = html  // ✅ mémorisé — ne sera plus jamais recalculé
+    srcDocRef.current = html
     return html
   }, [])
 
-  const activeTab = { backgroundColor: '#2563eb', color: 'white', padding: '8px 20px', borderRadius: '8px', border: 'none', cursor: 'pointer' }
+  const activeTab   = { backgroundColor: '#2563eb', color: 'white', padding: '8px 20px', borderRadius: '8px', border: 'none', cursor: 'pointer' }
   const inactiveTab = { backgroundColor: 'white', color: '#6b7280', padding: '8px 20px', borderRadius: '8px', border: '1px solid #e5e7eb', cursor: 'pointer' }
-  const inputStyle = { width: '100%', border: '1px solid #d1d5db', borderRadius: '8px', padding: '8px 12px', marginBottom: '10px' }
+  const inputStyle  = { width: '100%', border: '1px solid #d1d5db', borderRadius: '8px', padding: '8px 12px', marginBottom: '10px' }
+
+  // ── Loading screen while plan is verified ──
+  if (!allowed) return (
+    <div style={{ minHeight: '100vh', background: '#f9fafb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16 }}>
+      <div style={{ width: 44, height: 44, background: '#0f172a', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Zap size={20} color="white" fill="white"/>
+      </div>
+      <div style={{ width: 24, height: 24, border: '2px solid #e2e8f0', borderTop: '2px solid #2563eb', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }}/>
+      <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+    </div>
+  )
 
   return (
     <main style={{ minHeight: '100vh', background: '#f9fafb', padding: '48px 16px' }}>
       <div style={{ maxWidth: '850px', margin: '0 auto' }}>
-        <h1 style={{ fontSize: '26px', fontWeight: '700', marginBottom: '20px' }}>Mon Générateur de CV</h1>
+
+        {/* Header with credits */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <h1 style={{ fontSize: '26px', fontWeight: '700' }}>Mon Générateur de CV</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#eef2ff', border: '1px solid #c7d2fe', borderRadius: 20, padding: '6px 14px' }}>
+            <Zap size={13} color="#4f46e5" fill="#4f46e5"/>
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#4338ca' }}>{credits} crédits</span>
+          </div>
+        </div>
 
         <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
           <button onClick={() => setMode('formulaire')} style={mode === 'formulaire' ? activeTab : inactiveTab}>Formulaire</button>
@@ -280,8 +308,21 @@ export default function CVPage() {
           <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} style={{ ...inputStyle, height: '150px' }} placeholder="Décris ton parcours..." />
         )}
 
-        <button onClick={handleSubmit} style={{ width: '100%', background: '#2563eb', color: 'white', padding: '12px', borderRadius: '12px', border: 'none', cursor: 'pointer', fontWeight: 'bold' }} disabled={loading}>
-          {loading ? 'Génération...' : '1. Générer le texte'}
+        {/* Low credits warning */}
+        {credits < 2 && (
+          <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: '10px 14px', marginBottom: 12, fontSize: 13, color: '#92400e' }}>
+            ⚠️ Crédits insuffisants (2 requis) —{' '}
+            <button onClick={() => router.push('/pricing')} style={{ background: 'none', border: 'none', color: '#d97706', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}>
+              Recharger
+            </button>
+          </div>
+        )}
+
+        <button
+          onClick={handleSubmit}
+          style={{ width: '100%', background: hasCredits(2) ? '#2563eb' : '#94a3b8', color: 'white', padding: '12px', borderRadius: '12px', border: 'none', cursor: hasCredits(2) ? 'pointer' : 'not-allowed', fontWeight: 'bold' }}
+          disabled={loading || !hasCredits(2)}>
+          {loading ? 'Génération...' : '1. Générer le texte · ⚡2'}
         </button>
 
         {cvGenere && (
@@ -294,7 +335,6 @@ export default function CVPage() {
               <div style={{ background: '#fff', border: '1px solid #ddd', borderRadius: '12px', overflow: 'hidden' }}>
                 <div style={{ padding: '15px', background: '#f3f4f6', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
                   <button onClick={() => setShowModel(false)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontWeight: '600' }}>← Retour</button>
-
                   <div style={{ display: 'flex', gap: '6px', alignItems: 'center', background: 'white', padding: '6px 12px', borderRadius: '20px', border: '1px solid #e5e7eb' }}>
                     <span style={{ fontSize: '10px', fontWeight: '700', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '1px' }}>Thème</span>
                     {themes.map((t) => (
@@ -312,13 +352,10 @@ export default function CVPage() {
                       />
                     ))}
                   </div>
-
                   <button onClick={downloadPDF} style={{ background: '#0f172a', color: 'white', padding: '6px 16px', borderRadius: '6px', border: 'none', cursor: 'pointer', fontWeight: '600' }}>
                     📥 PDF
                   </button>
                 </div>
-
-                {/* ✅ srcDoc figé — ne change jamais après la première construction */}
                 <iframe
                   key="cv-iframe-stable"
                   ref={iframeRef}
