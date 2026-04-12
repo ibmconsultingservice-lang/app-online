@@ -1,8 +1,16 @@
 'use client'
 
 import React, { useState, useRef } from 'react';
+import { usePlanGuard } from '@/hooks/usePlanGuard';
+import { useCredits } from '@/hooks/useCredits';
+import { useRouter } from 'next/navigation';
+import { Zap } from 'lucide-react';
 
 export default function OCRVision() {
+  const allowed = usePlanGuard('starter')
+  const { deductCredits, hasCredits, credits } = useCredits()
+  const router = useRouter()
+
   const [image, setImage] = useState(null);
   const [text, setText] = useState("");
   const [progress, setProgress] = useState(0);
@@ -20,8 +28,9 @@ export default function OCRVision() {
 
   const runOCR = async () => {
     if (!image) return;
-    setLoading(true);
+    if (!hasCredits(1)) { router.push('/pricing'); return; }
 
+    setLoading(true);
     try {
       const Tesseract = await import('tesseract.js');
       const { data: { text: extracted } } = await Tesseract.recognize(image, 'fra+eng', {
@@ -29,6 +38,7 @@ export default function OCRVision() {
           if (m.status === 'recognizing text') setProgress(Math.round(m.progress * 100));
         }
       });
+      await deductCredits(1)
       setText(extracted);
     } catch (err) {
       console.error(err);
@@ -52,14 +62,22 @@ export default function OCRVision() {
       const { Document, Packer, Paragraph, TextRun } = await import('docx');
       const { saveAs } = await import('file-saver');
       const doc = new Document({
-        sections: [{
-          children: text.split('\n').map(l => new Paragraph({ children: [new TextRun(l)] }))
-        }]
+        sections: [{ children: text.split('\n').map(l => new Paragraph({ children: [new TextRun(l)] })) }]
       });
       const blob = await Packer.toBlob(doc);
       saveAs(blob, `${fileName}.docx`);
     }
   };
+
+  if (!allowed) return (
+    <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center flex-col gap-4">
+      <div className="w-11 h-11 bg-slate-900 rounded-2xl flex items-center justify-center">
+        <Zap size={20} color="white" fill="white"/>
+      </div>
+      <div className="w-6 h-6 border-2 border-slate-200 border-t-blue-600 rounded-full animate-spin"/>
+      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Vérification du plan...</p>
+    </div>
+  )
 
   return (
     <main className="min-h-screen bg-[#f8fafc] py-12 px-6 font-sans antialiased text-slate-900">
@@ -73,16 +91,29 @@ export default function OCRVision() {
             </h1>
             <p className="text-slate-500 mt-2 font-medium">Extraction intelligente de texte à partir d'images.</p>
           </div>
-          <div className="flex gap-4">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1.5 bg-indigo-50 border border-indigo-100 rounded-full px-3 py-1.5">
+              <Zap size={12} className="text-indigo-600" fill="currentColor"/>
+              <span className="text-xs font-bold text-indigo-700">{credits} crédits</span>
+            </div>
             <span className="bg-blue-50 text-blue-600 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-blue-100 italic">
               Privacy First
             </span>
           </div>
         </header>
 
+        {credits < 1 && (
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4 flex items-center justify-between gap-4">
+            <span className="text-sm text-amber-700 font-medium">⚠️ Crédits insuffisants (1 requis)</span>
+            <button onClick={() => router.push('/pricing')}
+              className="bg-amber-500 text-white text-xs font-black uppercase tracking-widest px-4 py-2 rounded-lg hover:bg-amber-600 transition-all">
+              Recharger
+            </button>
+          </div>
+        )}
+
         <div className="grid lg:grid-cols-2 gap-10">
 
-          {/* Section Source */}
           <section className="bg-white/80 backdrop-blur-md p-8 rounded-[3.5rem] shadow-2xl border border-white flex flex-col gap-8">
             <div
               onClick={() => fileInputRef.current.click()}
@@ -116,13 +147,12 @@ export default function OCRVision() {
 
             <button
               onClick={runOCR}
-              disabled={!image || loading}
+              disabled={!image || loading || !hasCredits(1)}
               className="w-full bg-slate-900 text-white py-6 rounded-2xl font-black text-xs uppercase tracking-[0.3em] shadow-xl hover:bg-blue-600 transition-all active:scale-95 disabled:opacity-20">
-              {loading ? 'NUMÉRISATION...' : 'EXTRAIRE LE TEXTE'}
+              {loading ? 'NUMÉRISATION...' : 'EXTRAIRE LE TEXTE · ⚡1'}
             </button>
           </section>
 
-          {/* Section Résultat */}
           <section className="bg-white p-2 rounded-[3.5rem] shadow-2xl border border-white flex flex-col min-h-[600px] overflow-hidden">
             <div className="bg-slate-900 m-2 p-8 rounded-[2.5rem] flex flex-col gap-6">
               <div className="flex justify-between items-center">
@@ -132,13 +162,11 @@ export default function OCRVision() {
                 </div>
                 {text && (
                   <div className="flex gap-3">
-                    <button
-                      onClick={() => exportDoc('pdf')}
+                    <button onClick={() => exportDoc('pdf')}
                       className="bg-white text-slate-900 text-[10px] font-black px-6 py-3 rounded-full hover:bg-blue-600 hover:text-white transition-all shadow-lg uppercase">
                       PDF
                     </button>
-                    <button
-                      onClick={() => exportDoc('word')}
+                    <button onClick={() => exportDoc('word')}
                       className="bg-blue-600 text-white text-[10px] font-black px-6 py-3 rounded-full hover:bg-white hover:text-slate-900 transition-all shadow-lg uppercase">
                       Word
                     </button>
