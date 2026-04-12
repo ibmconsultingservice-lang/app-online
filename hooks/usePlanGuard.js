@@ -3,29 +3,36 @@ import { useEffect } from 'react'
 import { useCredits } from '@/hooks/useCredits'
 import { useAuth } from '@/hooks/useAuth'
 import { useRouter } from 'next/navigation'
+import { Zap } from 'lucide-react'
 
 const PLAN_LEVELS = { free: 0, starter: 1, pro: 2, premium: 3 }
 
 export function usePlanGuard(requiredPlan) {
-  const { plan, credits } = useCredits()
-  const { user, loading } = useAuth()
+  const { plan } = useCredits()
+  const { user, loading: authLoading } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
-    // ← Wait for auth AND plan to be loaded before checking
-    if (loading) return
+    // ← Still loading auth — do nothing
+    if (authLoading) return
+
+    // ← Auth loaded but no user → login
     if (!user) {
       router.push('/login')
       return
     }
-    // ← Wait for plan to be initialized (not undefined/null)
-    if (!plan) return
 
+    // ← Plan not yet loaded from Firestore → wait
+    if (plan === null) return
+
+    // ← Plan loaded → check access
     if (PLAN_LEVELS[plan] < PLAN_LEVELS[requiredPlan]) {
       router.push('/pricing')
     }
-  }, [plan, user, loading, requiredPlan])
+  }, [plan, user, authLoading, requiredPlan])
 
-  // Returns true if access is allowed
-  return !loading && !!user && PLAN_LEVELS[plan] >= PLAN_LEVELS[requiredPlan]
+  // Still loading — return false to show loading state
+  if (authLoading || !user || plan === null) return false
+
+  return PLAN_LEVELS[plan] >= PLAN_LEVELS[requiredPlan]
 }

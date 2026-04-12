@@ -6,31 +6,29 @@ import { useAuth } from '@/hooks/useAuth'
 
 export function useCredits() {
   const { user }              = useAuth()
-  const [credits, setCredits] = useState(0)
-  const [plan, setPlan]       = useState('free')
+  const [credits, setCredits] = useState(null)
+  const [plan, setPlan]       = useState(null) // ← null means "not loaded yet"
 
-  // ── Real-time listener on Firestore ──────────
   useEffect(() => {
     if (!user?.uid) return
     const unsub = onSnapshot(doc(db, 'users', user.uid), (snap) => {
       if (snap.exists()) {
         const data = snap.data()
         setCredits(data?.credits ?? 0)
-        setPlan(data?.plan ?? 'free')
+        setPlan(data?.plan ?? 'free')  // ← only set after Firestore responds
       }
     })
     return () => unsub()
   }, [user?.uid])
 
-  const hasCredits = (cost = 1) => credits >= cost
+  const hasCredits = (cost = 1) => (credits ?? 0) >= cost
 
   const deductCredits = async (cost = 1) => {
     if (!user?.uid) return false
-    if (credits < cost) return false
+    if ((credits ?? 0) < cost) return false
     await updateDoc(doc(db, 'users', user.uid), {
       credits: increment(-cost)
     })
-    // No need to manually update state — onSnapshot handles it automatically ✅
     return true
   }
 
@@ -41,5 +39,5 @@ export function useCredits() {
     })
   }
 
-  return { credits, plan, hasCredits, deductCredits, addCredits }
+  return { credits: credits ?? 0, plan, hasCredits, deductCredits, addCredits }
 }

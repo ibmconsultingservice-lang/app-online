@@ -1,13 +1,13 @@
 'use client'
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Copy, Check, Send, Sparkles, RefreshCw, BarChart3, ShieldAlert, Target, Zap, Cpu } from 'lucide-react';
+import { Copy, Check, Sparkles, RefreshCw, BarChart3, ShieldAlert, Target, Zap, Cpu } from 'lucide-react';
 import { useCredits } from '@/hooks/useCredits';
 import { usePlanGuard } from '@/hooks/usePlanGuard';
 import { useRouter } from 'next/navigation';
 
 export default function BusinessIA() {
-  usePlanGuard('pro');
+  const allowed = usePlanGuard('pro');
 
   const { deductCredits, hasCredits, credits } = useCredits();
   const router = useRouter();
@@ -18,7 +18,7 @@ export default function BusinessIA() {
   const [chatHistory, setChatHistory] = useState([]);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
-  
+
   const scrollRef = useRef(null);
 
   useEffect(() => {
@@ -28,33 +28,31 @@ export default function BusinessIA() {
   }, [chatHistory]);
 
   const generateResponse = async (isFollowUp = false) => {
-    // ── Credit check ──────────────────────────────
     if (!hasCredits(3)) {
       router.push('/pricing')
       return
     }
 
-    const userContent = isFollowUp 
+    const userContent = isFollowUp
       ? `RÉPONSE / MISE À JOUR : "${replyReceived}". Analyse cette étape et propose la suite.`
       : `DOSSIER BUSINESS : ${context}`;
 
     const newHistory = [...chatHistory, { role: "user", content: userContent }];
-    
+
     setLoading(true);
     try {
       const response = await fetch('/api/generer-business-ai/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          history: newHistory, 
+        body: JSON.stringify({
+          history: newHistory,
           platform: "Général Business",
-          tone 
+          tone
         }),
       });
 
       const data = await response.json();
       if (data.text) {
-        // ── Deduct credits after success ──────────
         await deductCredits(3)
         setChatHistory([...newHistory, { role: "assistant", content: data.text }]);
         setReplyReceived("");
@@ -72,32 +70,46 @@ export default function BusinessIA() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // ── Loading screen while plan is being verified ──
+  if (!allowed) return (
+    <div className="min-h-screen bg-[#e2e8f0] bg-gradient-to-br from-[#cbd5e1] via-[#f1f5f9] to-[#94a3b8] flex items-center justify-center">
+      <div className="flex flex-col items-center gap-4">
+        <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center shadow-xl">
+          <Zap size={20} color="white" fill="white"/>
+        </div>
+        <div className="w-6 h-6 border-2 border-slate-300 border-t-indigo-600 rounded-full animate-spin"/>
+        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+          Vérification du plan...
+        </p>
+      </div>
+    </div>
+  )
+
   return (
     <main className="min-h-screen bg-[#e2e8f0] bg-gradient-to-br from-[#cbd5e1] via-[#f1f5f9] to-[#94a3b8] text-slate-800 p-4 md:p-8 font-sans selection:bg-indigo-500/30">
       <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
-        
+
         {/* SIDEBAR */}
         <div className="lg:col-span-4 space-y-6">
           <div className="bg-white/40 border border-white/60 p-8 rounded-[2.5rem] backdrop-blur-2xl shadow-[0_20px_50px_rgba(0,0,0,0.1)] relative overflow-hidden">
-            <div className="absolute -top-24 -left-24 w-48 h-48 bg-white/20 rotate-45 blur-3xl pointer-events-none"></div>
-            
+            <div className="absolute -top-24 -left-24 w-48 h-48 bg-white/20 rotate-45 blur-3xl pointer-events-none"/>
+
             <header className="mb-10 relative">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-3">
                   <div className="p-2.5 bg-slate-900 rounded-2xl shadow-2xl shadow-indigo-500/20">
-                    <Cpu className="text-indigo-400" size={22} />
+                    <Cpu className="text-indigo-400" size={22}/>
                   </div>
                   <h1 className="text-2xl font-[1000] tracking-[-0.05em] uppercase italic text-slate-900">
                     CORE<span className="text-indigo-600">.AX</span>
                   </h1>
                 </div>
-                {/* ── Credits badge ── */}
                 <div className="flex items-center gap-1 bg-indigo-50 border border-indigo-100 rounded-full px-3 py-1">
                   <Zap size={11} className="text-indigo-600" fill="currentColor"/>
                   <span className="text-[10px] font-black text-indigo-700">{credits}</span>
                 </div>
               </div>
-              <div className="h-[2px] w-12 bg-indigo-600 rounded-full"></div>
+              <div className="h-[2px] w-12 bg-indigo-600 rounded-full"/>
               <p className="text-[9px] text-slate-500 font-black tracking-[0.4em] uppercase mt-4">High-End Business Logic</p>
             </header>
 
@@ -106,7 +118,7 @@ export default function BusinessIA() {
                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
                   <Target size={12} className="text-indigo-600"/> Input Contextuel
                 </label>
-                <textarea 
+                <textarea
                   value={context}
                   onChange={(e) => setContext(e.target.value)}
                   placeholder="Paramétrez les variables du dossier ici..."
@@ -118,9 +130,9 @@ export default function BusinessIA() {
                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
                   <BarChart3 size={12} className="text-indigo-600"/> Stratégie de ton
                 </label>
-                <select 
-                  value={tone} 
-                  onChange={(e) => setTone(e.target.value)} 
+                <select
+                  value={tone}
+                  onChange={(e) => setTone(e.target.value)}
                   className="w-full p-4 bg-white/50 border border-white/80 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-indigo-500/10 outline-none appearance-none cursor-pointer shadow-sm hover:bg-white transition-colors"
                 >
                   <option value="persuasive">Impact / Vente</option>
@@ -130,62 +142,58 @@ export default function BusinessIA() {
                 </select>
               </div>
 
-              {/* ── Low credits warning ── */}
               {credits < 3 && (
                 <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 text-xs text-amber-700 font-medium">
                   ⚠️ Crédits insuffisants (3 requis) —{' '}
-                  <button
-                    onClick={() => router.push('/pricing')}
-                    className="font-black underline">
+                  <button onClick={() => router.push('/pricing')} className="font-black underline">
                     Recharger
                   </button>
                 </div>
               )}
 
-              <button 
+              <button
                 onClick={() => generateResponse(false)}
                 disabled={loading || !context || !hasCredits(3)}
                 className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all hover:bg-indigo-600 hover:shadow-2xl active:scale-95 disabled:opacity-20 shadow-lg"
               >
-                {loading ? "Calcul en cours..." : `Générer la Solution · ⚡3`}
+                {loading ? "Calcul en cours..." : "Générer la Solution · ⚡3"}
               </button>
             </div>
           </div>
 
-          {/* MODULE D'ITÉRATION */}
           {chatHistory.length > 0 && (
             <div className="bg-gradient-to-br from-indigo-700 to-indigo-900 p-8 rounded-[2.5rem] shadow-2xl space-y-5 animate-in slide-in-from-left-4 duration-500 relative overflow-hidden">
               <div className="absolute top-0 right-0 p-4 opacity-10">
-                <ShieldAlert size={60} />
+                <ShieldAlert size={60}/>
               </div>
               <div className="flex items-center gap-2 text-indigo-100">
                 <h3 className="text-[10px] font-black uppercase tracking-[0.2em] italic">Mise à jour Dossier</h3>
               </div>
-              <textarea 
+              <textarea
                 value={replyReceived}
                 onChange={(e) => setReplyReceived(e.target.value)}
                 placeholder="Nouvelle réponse ou obstacle ?"
                 className="w-full h-24 p-4 rounded-2xl bg-black/20 border border-white/10 text-white text-sm placeholder:text-indigo-300/50 resize-none focus:ring-2 focus:ring-white/20 outline-none"
               />
-              <button 
+              <button
                 onClick={() => generateResponse(true)}
                 disabled={loading || !replyReceived || !hasCredits(3)}
                 className="w-full bg-white text-indigo-900 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-50 transition-all flex items-center justify-center gap-2 shadow-xl disabled:opacity-30"
               >
-                <RefreshCw size={14} className={loading ? "animate-spin" : ""} /> Recalculer · ⚡3
+                <RefreshCw size={14} className={loading ? "animate-spin" : ""}/> Recalculer · ⚡3
               </button>
             </div>
           )}
         </div>
 
-        {/* TERMINAL DE SORTIE */}
+        {/* TERMINAL */}
         <div className="lg:col-span-8 bg-white/60 border border-white rounded-[3rem] flex flex-col h-[85vh] overflow-hidden backdrop-blur-md shadow-[0_30px_60px_rgba(0,0,0,0.05)]">
           <div className="p-6 border-b border-white/80 flex justify-between items-center bg-white/20">
             <div className="flex items-center gap-4">
               <div className="flex gap-2">
-                <div className="w-3 h-3 rounded-full bg-slate-300 border border-white"></div>
-                <div className="w-3 h-3 rounded-full bg-slate-300 border border-white"></div>
-                <div className="w-3 h-3 rounded-full bg-slate-300 border border-white"></div>
+                <div className="w-3 h-3 rounded-full bg-slate-300 border border-white"/>
+                <div className="w-3 h-3 rounded-full bg-slate-300 border border-white"/>
+                <div className="w-3 h-3 rounded-full bg-slate-300 border border-white"/>
               </div>
               <span className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.5em]">Titanium_Output_Node</span>
             </div>
@@ -198,8 +206,8 @@ export default function BusinessIA() {
             {chatHistory.length === 0 && (
               <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-8">
                 <div className="relative group">
-                  <div className="absolute inset-0 bg-indigo-500/10 blur-3xl rounded-full group-hover:bg-indigo-500/20 transition-all duration-700"></div>
-                  <Sparkles size={64} className="relative opacity-20 text-slate-900" />
+                  <div className="absolute inset-0 bg-indigo-500/10 blur-3xl rounded-full group-hover:bg-indigo-500/20 transition-all duration-700"/>
+                  <Sparkles size={64} className="relative opacity-20 text-slate-900"/>
                 </div>
                 <div className="text-center space-y-2">
                   <p className="text-[11px] font-black uppercase tracking-[0.4em] text-slate-500 leading-loose">
@@ -217,21 +225,20 @@ export default function BusinessIA() {
                 <div className="flex items-center justify-between mb-8">
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-slate-900 rounded-xl">
-                      <Zap size={12} className="text-indigo-400" />
+                      <Zap size={12} className="text-indigo-400"/>
                     </div>
                     <span className="text-[10px] font-black text-slate-900 uppercase tracking-[0.3em]">
-                      Strategy_Module_0{Math.ceil((i+1)/2)}
+                      Strategy_Module_0{Math.ceil((i + 1) / 2)}
                     </span>
                   </div>
-                  <button 
-                    onClick={() => copyToClipboard(msg.content)} 
+                  <button
+                    onClick={() => copyToClipboard(msg.content)}
                     className="p-3 bg-white hover:bg-slate-900 hover:text-white rounded-2xl transition-all shadow-sm border border-white hover:border-slate-900 active:scale-90"
                   >
-                    {copied ? <Check size={16} /> : <Copy size={16} />}
+                    {copied ? <Check size={16}/> : <Copy size={16}/>}
                   </button>
                 </div>
-                
-                <div className="bg-white/40 p-8 rounded-[2rem] border border-white/60 shadow-sm group-hover:shadow-md transition-shadow relative">
+                <div className="bg-white/40 p-8 rounded-[2rem] border border-white/60 shadow-sm group-hover:shadow-md transition-shadow">
                   <div className="text-slate-800 leading-relaxed text-[17px] whitespace-pre-wrap font-medium">
                     {msg.content}
                   </div>
@@ -242,9 +249,9 @@ export default function BusinessIA() {
             {loading && (
               <div className="flex items-center gap-6 pl-4 font-black text-[10px] tracking-[0.4em] text-indigo-600 animate-pulse uppercase">
                 <div className="flex gap-2">
-                  <div className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-bounce"></div>
-                  <div className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-bounce [animation-delay:-.3s]"></div>
-                  <div className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-bounce [animation-delay:-.5s]"></div>
+                  <div className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-bounce"/>
+                  <div className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-bounce [animation-delay:-.3s]"/>
+                  <div className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-bounce [animation-delay:-.5s]"/>
                 </div>
                 Synchronizing_Intelligence
               </div>
@@ -253,9 +260,9 @@ export default function BusinessIA() {
 
           <div className="p-6 bg-white/40 border-t border-white flex justify-center items-center">
             <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.5em] flex items-center gap-2">
-              <span className="w-2 h-[1px] bg-slate-300"></span>
+              <span className="w-2 h-[1px] bg-slate-300"/>
               Core.AX v4.0 Titanium • 2026
-              <span className="w-2 h-[1px] bg-slate-300"></span>
+              <span className="w-2 h-[1px] bg-slate-300"/>
             </p>
           </div>
         </div>
