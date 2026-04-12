@@ -2,8 +2,16 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Copy, Check, Send, Sparkles, RefreshCw, BarChart3, ShieldAlert, Target, Zap, Cpu } from 'lucide-react';
+import { useCredits } from '@/hooks/useCredits';
+import { usePlanGuard } from '@/hooks/usePlanGuard';
+import { useRouter } from 'next/navigation';
 
 export default function BusinessIA() {
+  usePlanGuard('pro');
+
+  const { deductCredits, hasCredits, credits } = useCredits();
+  const router = useRouter();
+
   const [context, setContext] = useState("");
   const [replyReceived, setReplyReceived] = useState("");
   const [tone, setTone] = useState("persuasive");
@@ -20,6 +28,12 @@ export default function BusinessIA() {
   }, [chatHistory]);
 
   const generateResponse = async (isFollowUp = false) => {
+    // ── Credit check ──────────────────────────────
+    if (!hasCredits(3)) {
+      router.push('/pricing')
+      return
+    }
+
     const userContent = isFollowUp 
       ? `RÉPONSE / MISE À JOUR : "${replyReceived}". Analyse cette étape et propose la suite.`
       : `DOSSIER BUSINESS : ${context}`;
@@ -40,6 +54,8 @@ export default function BusinessIA() {
 
       const data = await response.json();
       if (data.text) {
+        // ── Deduct credits after success ──────────
+        await deductCredits(3)
         setChatHistory([...newHistory, { role: "assistant", content: data.text }]);
         setReplyReceived("");
       }
@@ -60,20 +76,26 @@ export default function BusinessIA() {
     <main className="min-h-screen bg-[#e2e8f0] bg-gradient-to-br from-[#cbd5e1] via-[#f1f5f9] to-[#94a3b8] text-slate-800 p-4 md:p-8 font-sans selection:bg-indigo-500/30">
       <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
         
-        {/* SIDEBAR METALLIQUE */}
+        {/* SIDEBAR */}
         <div className="lg:col-span-4 space-y-6">
           <div className="bg-white/40 border border-white/60 p-8 rounded-[2.5rem] backdrop-blur-2xl shadow-[0_20px_50px_rgba(0,0,0,0.1)] relative overflow-hidden">
-            {/* Effet de reflet métallique */}
             <div className="absolute -top-24 -left-24 w-48 h-48 bg-white/20 rotate-45 blur-3xl pointer-events-none"></div>
             
             <header className="mb-10 relative">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="p-2.5 bg-slate-900 rounded-2xl shadow-2xl shadow-indigo-500/20">
-                  <Cpu className="text-indigo-400" size={22} />
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-slate-900 rounded-2xl shadow-2xl shadow-indigo-500/20">
+                    <Cpu className="text-indigo-400" size={22} />
+                  </div>
+                  <h1 className="text-2xl font-[1000] tracking-[-0.05em] uppercase italic text-slate-900">
+                    CORE<span className="text-indigo-600">.AX</span>
+                  </h1>
                 </div>
-                <h1 className="text-2xl font-[1000] tracking-[ -0.05em] uppercase italic text-slate-900">
-                  CORE<span className="text-indigo-600">.AX</span>
-                </h1>
+                {/* ── Credits badge ── */}
+                <div className="flex items-center gap-1 bg-indigo-50 border border-indigo-100 rounded-full px-3 py-1">
+                  <Zap size={11} className="text-indigo-600" fill="currentColor"/>
+                  <span className="text-[10px] font-black text-indigo-700">{credits}</span>
+                </div>
               </div>
               <div className="h-[2px] w-12 bg-indigo-600 rounded-full"></div>
               <p className="text-[9px] text-slate-500 font-black tracking-[0.4em] uppercase mt-4">High-End Business Logic</p>
@@ -108,17 +130,29 @@ export default function BusinessIA() {
                 </select>
               </div>
 
+              {/* ── Low credits warning ── */}
+              {credits < 3 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 text-xs text-amber-700 font-medium">
+                  ⚠️ Crédits insuffisants (3 requis) —{' '}
+                  <button
+                    onClick={() => router.push('/pricing')}
+                    className="font-black underline">
+                    Recharger
+                  </button>
+                </div>
+              )}
+
               <button 
                 onClick={() => generateResponse(false)}
-                disabled={loading || !context}
+                disabled={loading || !context || !hasCredits(3)}
                 className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all hover:bg-indigo-600 hover:shadow-2xl active:scale-95 disabled:opacity-20 shadow-lg"
               >
-                {loading ? "Calcul en cours..." : "Générer la Solution"}
+                {loading ? "Calcul en cours..." : `Générer la Solution · ⚡3`}
               </button>
             </div>
           </div>
 
-          {/* MODULE D'ITÉRATION - STYLE METAL BROSSÉ */}
+          {/* MODULE D'ITÉRATION */}
           {chatHistory.length > 0 && (
             <div className="bg-gradient-to-br from-indigo-700 to-indigo-900 p-8 rounded-[2.5rem] shadow-2xl space-y-5 animate-in slide-in-from-left-4 duration-500 relative overflow-hidden">
               <div className="absolute top-0 right-0 p-4 opacity-10">
@@ -135,16 +169,16 @@ export default function BusinessIA() {
               />
               <button 
                 onClick={() => generateResponse(true)}
-                disabled={loading || !replyReceived}
-                className="w-full bg-white text-indigo-900 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-50 transition-all flex items-center justify-center gap-2 shadow-xl"
+                disabled={loading || !replyReceived || !hasCredits(3)}
+                className="w-full bg-white text-indigo-900 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-50 transition-all flex items-center justify-center gap-2 shadow-xl disabled:opacity-30"
               >
-                <RefreshCw size={14} className={loading ? "animate-spin" : ""} /> Recalculer l'Approche
+                <RefreshCw size={14} className={loading ? "animate-spin" : ""} /> Recalculer · ⚡3
               </button>
             </div>
           )}
         </div>
 
-        {/* TERMINAL DE SORTIE - STYLE MODERN GLASS */}
+        {/* TERMINAL DE SORTIE */}
         <div className="lg:col-span-8 bg-white/60 border border-white rounded-[3rem] flex flex-col h-[85vh] overflow-hidden backdrop-blur-md shadow-[0_30px_60px_rgba(0,0,0,0.05)]">
           <div className="p-6 border-b border-white/80 flex justify-between items-center bg-white/20">
             <div className="flex items-center gap-4">
@@ -168,10 +202,12 @@ export default function BusinessIA() {
                   <Sparkles size={64} className="relative opacity-20 text-slate-900" />
                 </div>
                 <div className="text-center space-y-2">
-                   <p className="text-[11px] font-black uppercase tracking-[0.4em] text-slate-500 leading-loose">
+                  <p className="text-[11px] font-black uppercase tracking-[0.4em] text-slate-500 leading-loose">
                     Prêt pour l'initialisation stratégique
                   </p>
-                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Insérez vos données dans le panneau latéral</p>
+                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                    Insérez vos données dans le panneau latéral
+                  </p>
                 </div>
               </div>
             )}
@@ -181,9 +217,11 @@ export default function BusinessIA() {
                 <div className="flex items-center justify-between mb-8">
                   <div className="flex items-center gap-3">
                     <div className="p-2 bg-slate-900 rounded-xl">
-                       <Zap size={12} className="text-indigo-400" />
+                      <Zap size={12} className="text-indigo-400" />
                     </div>
-                    <span className="text-[10px] font-black text-slate-900 uppercase tracking-[0.3em]">Strategy_Module_0{Math.ceil((i+1)/2)}</span>
+                    <span className="text-[10px] font-black text-slate-900 uppercase tracking-[0.3em]">
+                      Strategy_Module_0{Math.ceil((i+1)/2)}
+                    </span>
                   </div>
                   <button 
                     onClick={() => copyToClipboard(msg.content)} 
@@ -204,9 +242,9 @@ export default function BusinessIA() {
             {loading && (
               <div className="flex items-center gap-6 pl-4 font-black text-[10px] tracking-[0.4em] text-indigo-600 animate-pulse uppercase">
                 <div className="flex gap-2">
-                   <div className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-bounce"></div>
-                   <div className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-bounce [animation-delay:-.3s]"></div>
-                   <div className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-bounce [animation-delay:-.5s]"></div>
+                  <div className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-bounce"></div>
+                  <div className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-bounce [animation-delay:-.3s]"></div>
+                  <div className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-bounce [animation-delay:-.5s]"></div>
                 </div>
                 Synchronizing_Intelligence
               </div>
@@ -221,7 +259,6 @@ export default function BusinessIA() {
             </p>
           </div>
         </div>
-
       </div>
     </main>
   );

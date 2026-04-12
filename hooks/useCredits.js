@@ -1,26 +1,45 @@
 'use client'
-import { useAuth } from './useAuth'
-import { doc, updateDoc, increment } from 'firebase/firestore'
+import { useState, useEffect } from 'react'
+import { doc, onSnapshot, updateDoc, increment } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
+import { useAuth } from '@/hooks/useAuth'
 
 export function useCredits() {
-  const { user, profile, refreshProfile } = useAuth()
+  const { user }              = useAuth()
+  const [credits, setCredits] = useState(0)
+  const [plan, setPlan]       = useState('free')
 
-  const hasCredits = (cost = 1) => (profile?.credits || 0) >= cost
+  // ── Real-time listener on Firestore ──────────
+  useEffect(() => {
+    if (!user?.uid) return
+    const unsub = onSnapshot(doc(db, 'users', user.uid), (snap) => {
+      if (snap.exists()) {
+        const data = snap.data()
+        setCredits(data?.credits ?? 0)
+        setPlan(data?.plan ?? 'free')
+      }
+    })
+    return () => unsub()
+  }, [user?.uid])
+
+  const hasCredits = (cost = 1) => credits >= cost
 
   const deductCredits = async (cost = 1) => {
-    if (!user || !hasCredits(cost)) return false
+    if (!user?.uid) return false
+    if (credits < cost) return false
     await updateDoc(doc(db, 'users', user.uid), {
-      credits: increment(-cost),
+      credits: increment(-cost)
     })
-    await refreshProfile()
+    // No need to manually update state — onSnapshot handles it automatically ✅
     return true
   }
 
-  return {
-    credits:      profile?.credits || 0,
-    plan:         profile?.plan    || 'free',
-    hasCredits,
-    deductCredits,
+  const addCredits = async (amount) => {
+    if (!user?.uid) return
+    await updateDoc(doc(db, 'users', user.uid), {
+      credits: increment(amount)
+    })
   }
+
+  return { credits, plan, hasCredits, deductCredits, addCredits }
 }
