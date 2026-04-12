@@ -40,7 +40,7 @@ export default function CVPage() {
 
   const handleSubmit = async () => {
     // ── Credit check ──────────────────────────
-    if (!hasCredits(2)) {
+    if (!hasCredits(5)) {
       router.push('/pricing')
       return
     }
@@ -84,7 +84,7 @@ export default function CVPage() {
 
       const data = await response.json()
       // ── Deduct after success ──────────────
-      await deductCredits(2)
+      await deductCredits(5)
       setCvGenere(data.result)
 
     } catch (err) {
