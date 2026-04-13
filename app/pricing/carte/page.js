@@ -2,14 +2,10 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
-import { Zap, Lock, CheckCircle } from 'lucide-react'
+import { Zap, Lock, XCircle } from 'lucide-react'
 import Link from 'next/link'
 
 const PLAN_NAMES   = { starter: 'Starter', pro: 'Pro', premium: 'Premium' }
-const PLAN_CREDITS = { starter: 50, pro: 150, premium: 500 }
-
-// ← Your PayPal email where you receive money
-const PAYPAL_EMAIL = 'ibmconsultingservice@gmail.com'
 
 function CarteForm() {
   const searchParams = useSearchParams()
@@ -20,31 +16,53 @@ function CarteForm() {
   const price   = searchParams.get('price')   || '5600'
   const credits = searchParams.get('credits') || '50'
 
+  const [status, setStatus] = useState('idle')
+  const [error, setError]   = useState('')
+
   useEffect(() => {
     if (!user) router.push('/login')
   }, [user])
 
-  const handlePayPal = () => {
-    const priceCFA = parseInt(price)
-    // Convert CFA to USD for PayPal (approximate)
-    const priceUSD = (priceCFA / 620).toFixed(2)
+  // ── PayPal API (automatic, real checkout) ──
+  const handlePayPal = async () => {
+    if (!user) return
+    setStatus('loading')
+    setError('')
 
-    const note = encodeURIComponent(
-      `Plan ${PLAN_NAMES[plan]} - IA.Business - Email: ${user?.email} - Credits: ${credits}`
-    )
+    try {
+      const res = await fetch('/api/payment/paypal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount:    parseInt(price),
+          plan:      plan,
+          credits:   parseInt(credits),
+          userEmail: user.email,
+          userId:    user.uid,
+        })
+      })
 
-    // PayPal.me direct payment link
-    const paypalUrl = `https://www.paypal.com/paypalme/${PAYPAL_EMAIL}/${priceUSD}USD`
-    window.open(paypalUrl, '_blank')
+      const data = await res.json()
+
+      if (data.paymentUrl) {
+        window.location.href = data.paymentUrl
+      } else {
+        throw new Error(data.error || 'Erreur PayPal')
+      }
+    } catch (err) {
+      setStatus('error')
+      setError(err.message)
+    }
   }
 
+  // ── WhatsApp fallback ──
   const handleWhatsApp = () => {
     const message = encodeURIComponent(
-      `Bonjour ! Je viens de payer le forfait *${PLAN_NAMES[plan]}* sur IA.Business via PayPal.\n\n` +
+      `Bonjour ! Je souhaite souscrire au forfait *${PLAN_NAMES[plan]}* sur IA.Business.\n\n` +
       `📧 Mon email : ${user?.email}\n` +
       `💰 Montant : ${parseInt(price).toLocaleString('fr-FR')} FCFA\n` +
       `⚡ Crédits : ${credits}\n\n` +
-      `Merci de confirmer et activer mon compte.`
+      `Merci de me confirmer les modalités de paiement (Wave, Orange Money, etc.)`
     )
     window.open(`https://wa.me/221786044910?text=${message}`, '_blank')
   }
@@ -99,27 +117,45 @@ function CarteForm() {
             <p className="text-xs font-black text-blue-700 uppercase tracking-widest mb-2">📋 Comment ça marche</p>
             <ol className="text-xs text-blue-600 space-y-1 font-medium">
               <li>1. Cliquez "Payer via PayPal" ci-dessous</li>
-              <li>2. Effectuez le paiement avec votre carte Visa</li>
-              <li>3. Envoyez-nous le justificatif via WhatsApp</li>
-              <li>4. Activation de votre plan sous 2h ✅</li>
+              <li>2. Connectez-vous à PayPal ou payez par carte</li>
+              <li>3. Vous êtes redirigé automatiquement</li>
+              <li>4. Votre plan est activé instantanément ✅</li>
             </ol>
           </div>
+
+          {/* Error */}
+          {status === 'error' && (
+            <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3 mb-4 flex items-center gap-3">
+              <XCircle size={16} className="text-red-500 flex-shrink-0"/>
+              <p className="text-xs text-red-600 font-medium">{error}</p>
+            </div>
+          )}
 
           {/* PayPal Button */}
           <button
             onClick={handlePayPal}
-            className="w-full bg-[#0070BA] hover:bg-[#005ea6] text-white rounded-2xl py-4 text-[11px] font-black uppercase tracking-widest transition-all shadow-lg flex items-center justify-center gap-3 mb-3">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
-              <path d="M7.076 21.337H2.47a.641.641 0 0 1-.633-.74L4.944.901C5.026.382 5.474 0 5.998 0h7.46c2.57 0 4.578.543 5.69 1.81 1.01 1.15 1.304 2.42 1.012 4.287-.023.143-.047.288-.077.437-.983 5.05-4.349 6.797-8.647 6.797h-2.19c-.524 0-.968.382-1.05.9l-1.12 7.106zm14.146-14.42a3.35 3.35 0 0 0-.607-.541c-.013.076-.026.175-.041.26-.93 4.778-4.005 7.201-9.138 7.201h-2.19a.563.563 0 0 0-.556.479l-1.187 7.527h-.506l-.24 1.516a.56.56 0 0 0 .554.647h3.882c.46 0 .85-.334.922-.788.06-.26.76-4.852.816-5.09a.932.932 0 0 1 .923-.788h.58c3.76 0 6.705-1.528 7.565-5.946.36-1.847.174-3.388-.777-4.477z"/>
-            </svg>
-            Payer via PayPal · ${(parseInt(price) / 620).toFixed(2)} USD
+            disabled={status === 'loading'}
+            className="w-full bg-[#0070BA] hover:bg-[#005ea6] text-white rounded-2xl py-4 text-[11px] font-black uppercase tracking-widest transition-all shadow-lg flex items-center justify-center gap-3 mb-3 disabled:opacity-50">
+            {status === 'loading' ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>
+                Connexion à PayPal...
+              </>
+            ) : (
+              <>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+                  <path d="M7.076 21.337H2.47a.641.641 0 0 1-.633-.74L4.944.901C5.026.382 5.474 0 5.998 0h7.46c2.57 0 4.578.543 5.69 1.81 1.01 1.15 1.304 2.42 1.012 4.287-.023.143-.047.288-.077.437-.983 5.05-4.349 6.797-8.647 6.797h-2.19c-.524 0-.968.382-1.05.9l-1.12 7.106zm14.146-14.42a3.35 3.35 0 0 0-.607-.541c-.013.076-.026.175-.041.26-.93 4.778-4.005 7.201-9.138 7.201h-2.19a.563.563 0 0 0-.556.479l-1.187 7.527h-.506l-.24 1.516a.56.56 0 0 0 .554.647h3.882c.46 0 .85-.334.922-.788.06-.26.76-4.852.816-5.09a.932.932 0 0 1 .923-.788h.58c3.76 0 6.705-1.528 7.565-5.946.36-1.847.174-3.388-.777-4.477z"/>
+                </svg>
+                Payer via PayPal · ${(parseInt(price) / 620).toFixed(2)} USD
+              </>
+            )}
           </button>
 
-          {/* WhatsApp confirm button */}
+          {/* WhatsApp */}
           <button
             onClick={handleWhatsApp}
             className="w-full bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl py-3.5 text-[11px] font-black uppercase tracking-widest transition-all shadow-lg flex items-center justify-center gap-2">
-            <span>📱</span> Confirmer le paiement via WhatsApp
+            <span>📱</span> Payer via WhatsApp (Wave / Orange Money)
           </button>
 
           {/* Security */}
