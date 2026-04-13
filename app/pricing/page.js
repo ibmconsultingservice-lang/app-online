@@ -2,11 +2,10 @@
 import { useAuth } from '@/hooks/useAuth'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Zap, Check, ArrowRight, LogOut } from 'lucide-react'
+import { Zap, Check, LogOut, CreditCard } from 'lucide-react'
 
-// ── Taux de conversion (à mettre à jour manuellement ou via API) ──
-const USD_TO_CFA = 620  // 1 USD = 620 FCFA (taux approximatif)
-const EUR_TO_CFA = 655  // 1 EUR = 655 FCFA
+const USD_TO_CFA = 620
+const EUR_TO_CFA = 655
 
 const PLANS = [
   {
@@ -15,22 +14,9 @@ const PLANS = [
     emoji: '⚡',
     priceUSD: 9,
     credits: 50,
-    color: 'indigo',
     popular: false,
-    features: [
-      'CV Builder',
-      'Générateur de Factures',
-      'Audio Transcription',
-      'Doc Repairer',
-      '50 crédits / mois',
-      'Support email',
-    ],
-    locked: [
-      'Business IA',
-      'PPTX Genius',
-      'Téléchargements Word/Excel',
-      'Cours en ligne',
-    ]
+    features: ['CV Builder', 'Générateur de Factures', 'Audio Transcription', 'Doc Repairer', '50 crédits / mois', 'Support email'],
+    locked: ['Business IA', 'PPTX Genius', 'Téléchargements Word/Excel', 'Cours en ligne'],
   },
   {
     id: 'pro',
@@ -38,20 +24,9 @@ const PLANS = [
     emoji: '🚀',
     priceUSD: 19,
     credits: 150,
-    color: 'violet',
     popular: true,
-    features: [
-      'Tout Starter inclus',
-      'Business IA',
-      'PPTX Genius',
-      'Business Plan',
-      '150 crédits / mois',
-      'Support prioritaire',
-    ],
-    locked: [
-      'Téléchargements Word/Excel',
-      'Cours en ligne',
-    ]
+    features: ['Tout Starter inclus', 'Business IA', 'PPTX Genius', 'Business Plan', '150 crédits / mois', 'Support prioritaire'],
+    locked: ['Téléchargements Word/Excel', 'Cours en ligne'],
   },
   {
     id: 'premium',
@@ -59,23 +34,15 @@ const PLANS = [
     emoji: '👑',
     priceUSD: 39,
     credits: 500,
-    color: 'amber',
     popular: false,
-    features: [
-      'Tout Pro inclus',
-      'Téléchargements Word/Excel/PowerBI',
-      'Templates professionnels',
-      'Cours en ligne',
-      '500 crédits / mois',
-      'Support WhatsApp dédié',
-    ],
-    locked: []
+    features: ['Tout Pro inclus', 'Téléchargements Word/Excel/PowerBI', 'Templates professionnels', 'Cours en ligne', '500 crédits / mois', 'Support WhatsApp dédié'],
+    locked: [],
   },
 ]
 
-const WHATSAPP_NUMBER = '221XXXXXXXXX' // ← remplace par ton numéro
+const WHATSAPP_NUMBER = '221786044910'
 
-function PlanCard({ plan, onContact }) {
+function PlanCard({ plan, onWhatsApp, onCard }) {
   const priceCFA = Math.round(plan.priceUSD * USD_TO_CFA / 100) * 100
 
   return (
@@ -92,22 +59,16 @@ function PlanCard({ plan, onContact }) {
       {/* Header */}
       <div className="mb-6">
         <div className="text-3xl mb-3">{plan.emoji}</div>
-        <h3 className="text-xl font-black text-slate-900 mb-1">
-          Niveau {plan.name}
-        </h3>
+        <h3 className="text-xl font-black text-slate-900">Niveau {plan.name}</h3>
         <div className="mt-4">
           <div className="flex items-baseline gap-1">
-            <span className="text-4xl font-black text-slate-900">
-              {priceCFA.toLocaleString('fr-FR')}
-            </span>
+            <span className="text-4xl font-black text-slate-900">{priceCFA.toLocaleString('fr-FR')}</span>
             <span className="text-slate-500 font-bold">FCFA</span>
             <span className="text-slate-400 text-sm">/mois</span>
           </div>
           <div className="flex gap-3 mt-1">
             <span className="text-xs text-slate-400">${plan.priceUSD} USD</span>
-            <span className="text-xs text-slate-400">
-              {Math.round(plan.priceUSD * EUR_TO_CFA / 100) * 100} EUR
-            </span>
+            <span className="text-xs text-slate-400">{Math.round(plan.priceUSD * EUR_TO_CFA / 100) * 100} EUR</span>
           </div>
         </div>
         <div className="mt-3 inline-flex items-center gap-1.5 bg-indigo-50 text-indigo-700 text-xs font-bold px-3 py-1 rounded-full">
@@ -135,19 +96,28 @@ function PlanCard({ plan, onContact }) {
         ))}
       </div>
 
-      {/* CTA */}
-      <button
-        onClick={() => onContact(plan)}
-        className={`w-full py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${
-          plan.popular
-            ? 'bg-violet-600 hover:bg-violet-700 text-white shadow-lg shadow-violet-500/25'
-            : plan.id === 'premium'
-            ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/25'
-            : 'bg-slate-900 hover:bg-indigo-600 text-white'
-        }`}
-      >
-        <span>📱</span> Souscrire via WhatsApp
-      </button>
+      {/* ── TWO BUTTONS ── */}
+      <div className="flex flex-col gap-3">
+        {/* Carte Visa — CinetPay */}
+        <button
+          onClick={() => onCard(plan)}
+          className={`w-full py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${
+            plan.popular
+              ? 'bg-violet-600 hover:bg-violet-700 text-white shadow-lg shadow-violet-500/25'
+              : plan.id === 'premium'
+              ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-lg shadow-amber-500/25'
+              : 'bg-slate-900 hover:bg-indigo-600 text-white'
+          }`}>
+          <CreditCard size={14}/> Payer par carte Visa
+        </button>
+
+        {/* WhatsApp */}
+        <button
+          onClick={() => onWhatsApp(plan)}
+          className="w-full py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20">
+          <span>📱</span> Souscrire via WhatsApp
+        </button>
+      </div>
     </div>
   )
 }
@@ -156,10 +126,9 @@ export default function PricingPage() {
   const { user, logout } = useAuth()
   const router = useRouter()
 
-  const handleContact = (plan) => {
+  const handleWhatsApp = (plan) => {
     const priceCFA = Math.round(plan.priceUSD * USD_TO_CFA / 100) * 100
     const userEmail = user?.email || 'non connecté'
-
     const message = encodeURIComponent(
       `Bonjour ! Je souhaite souscrire au forfait *${plan.name}* sur IA.Business.\n\n` +
       `📧 Mon email : ${userEmail}\n` +
@@ -167,20 +136,22 @@ export default function PricingPage() {
       `⚡ Crédits : ${plan.credits} crédits\n\n` +
       `Merci de me confirmer les modalités de paiement (Wave, Orange Money, etc.)`
     )
-
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${message}`, '_blank')
+  }
+
+  const handleCard = (plan) => {
+    // Redirect to card payment page with plan info
+    router.push(`/pricing/carte?plan=${plan.id}&credits=${plan.credits}&price=${Math.round(plan.priceUSD * USD_TO_CFA / 100) * 100}`)
   }
 
   return (
     <main className="min-h-screen bg-[#f8fafc] font-sans text-slate-900">
 
-      {/* Background */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute -top-[10%] -left-[5%] w-[40%] h-[40%] bg-indigo-100/50 blur-[120px] rounded-full"/>
         <div className="absolute -bottom-[10%] -right-[5%] w-[40%] h-[40%] bg-violet-100/50 blur-[120px] rounded-full"/>
       </div>
 
-      {/* Nav */}
       <nav className="relative z-50 max-w-7xl mx-auto px-6 md:px-12 py-6 flex justify-between items-center border-b border-slate-200/60">
         <Link href="/" className="flex items-center gap-3">
           <div className="w-10 h-10 bg-slate-900 text-white rounded-xl flex items-center justify-center">
@@ -193,8 +164,7 @@ export default function PricingPage() {
         <div className="flex items-center gap-3">
           {user ? (
             <>
-              <Link href="/dashboard"
-                className="h-10 px-5 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all flex items-center shadow-md">
+              <Link href="/dashboard" className="h-10 px-5 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all flex items-center shadow-md">
                 Dashboard
               </Link>
               <button onClick={() => { logout(); router.push('/') }}
@@ -203,19 +173,17 @@ export default function PricingPage() {
               </button>
             </>
           ) : (
-            <Link href="/register"
-              className="h-10 px-6 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 transition-all flex items-center shadow-md">
+            <Link href="/register" className="h-10 px-6 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 transition-all flex items-center shadow-md">
               Commencer →
             </Link>
           )}
         </div>
       </nav>
 
-      {/* Header */}
       <section className="relative z-10 max-w-4xl mx-auto px-6 pt-20 pb-12 text-center">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white border border-slate-200 text-slate-500 text-[9px] font-bold uppercase tracking-[0.2em] mb-8 shadow-sm">
           <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"/>
-          Paiement sécurisé via Wave · Orange Money · WhatsApp
+          Paiement sécurisé via Carte Visa · Wave · Orange Money · WhatsApp
         </div>
         <h1 className="text-4xl md:text-6xl font-black tracking-tight leading-[0.95] mb-6">
           Choisissez votre <br/>
@@ -224,11 +192,8 @@ export default function PricingPage() {
           </span>
         </h1>
         <p className="text-slate-500 text-lg font-medium max-w-xl mx-auto">
-          Prix en FCFA · Paiement par Wave, Orange Money ou virement.
-          Activation manuelle sous 24h.
+          Prix en FCFA · Paiement par carte Visa, Wave ou Orange Money. Activation automatique.
         </p>
-
-        {/* Taux de conversion */}
         <div className="mt-6 inline-flex items-center gap-4 bg-white border border-slate-200 rounded-2xl px-6 py-3 shadow-sm">
           <span className="text-xs text-slate-400 font-bold uppercase tracking-widest">Taux du jour</span>
           <span className="text-xs font-black text-slate-700">1 USD = {USD_TO_CFA} FCFA</span>
@@ -236,15 +201,13 @@ export default function PricingPage() {
         </div>
       </section>
 
-      {/* Plans */}
       <section className="relative z-10 max-w-6xl mx-auto px-6 md:px-12 pb-24">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
           {PLANS.map(plan => (
-            <PlanCard key={plan.id} plan={plan} onContact={handleContact}/>
+            <PlanCard key={plan.id} plan={plan} onWhatsApp={handleWhatsApp} onCard={handleCard}/>
           ))}
         </div>
 
-        {/* Free tools */}
         <div className="mt-16 bg-white border border-slate-200 rounded-3xl p-8">
           <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-6">
             ✅ Toujours gratuit — sans inscription requise
@@ -266,18 +229,14 @@ export default function PricingPage() {
           </div>
         </div>
 
-        {/* Contact email */}
         <div className="mt-8 text-center">
           <p className="text-sm text-slate-500">
             Une question ?{' '}
-            <a href="mailto:contact@iabusinessevo.com"
-              className="text-indigo-600 font-bold hover:underline">
+            <a href="mailto:contact@iabusinessevo.com" className="text-indigo-600 font-bold hover:underline">
               contact@iabusinessevo.com
             </a>
-            {' '}·{' '}
-            <a href={`https://wa.me/${+221786044910}`}
-              target="_blank"
-              className="text-emerald-600 font-bold hover:underline">
+            {' · '}
+            <a href={`https://wa.me/${WHATSAPP_NUMBER}`} target="_blank" className="text-emerald-600 font-bold hover:underline">
               WhatsApp direct
             </a>
           </p>

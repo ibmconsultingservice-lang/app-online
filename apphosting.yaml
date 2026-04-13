@@ -35,3 +35,12 @@ env:
 
   - variable: PYTHON_API_URL
     value: "https://removebg-api-production.up.railway.app"
+
+  - variable: NEXT_PUBLIC_PAYPAL_CLIENT_ID
+    value: "AZvIyLOIe8RKOTEU9-VIKXMa-NuzrVMBZ7U-dpX9zepsI-OW_ezYoDftB77c2YOvEk19wNHfjCt2-i5W"
+
+  - variable: PAYPAL_CLIENT_SECRET
+    secret: PAYPAL_CLIENT_SECRET         
+
+  - variable: PAYPAL_MODE
+    value: "sandbox"                     
