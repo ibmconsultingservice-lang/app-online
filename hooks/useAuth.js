@@ -36,11 +36,10 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
-    // In useAuth.js useEffect:
+    // Handle Google redirect result
     getRedirectResult(auth)
       .then(async (result) => {
         if (!result) return
-        
         const u = result.user
         const snap = await getDoc(doc(db, 'users', u.uid))
         if (!snap.exists()) {
@@ -53,9 +52,6 @@ export function AuthProvider({ children }) {
             createdAt: serverTimestamp(),
           })
         }
-        
-        // ✅ Navigate here, not in the button handler
-        window.location.href = '/dashboard'
       })
       .catch(console.error)
 
@@ -97,9 +93,22 @@ export function AuthProvider({ children }) {
 
   const loginGoogle = async () => {
     const provider = new GoogleAuthProvider()
-    await signInWithRedirect(auth, provider)
+    // signInWithPopup instead of signInWithRedirect
+    const result = await signInWithPopup(auth, provider)
+    
+    const u = result.user
+    const snap = await getDoc(doc(db, 'users', u.uid))
+    if (!snap.exists()) {
+      await setDoc(doc(db, 'users', u.uid), {
+        uid:       u.uid,
+        name:      u.displayName,
+        email:     u.email,
+        credits:   10,
+        plan:      'free',
+        createdAt: serverTimestamp(),
+      })
+    }
   }
-
   const logout = async () => {
     await signOut(auth)
     setUser(null)
