@@ -93,22 +93,9 @@ export function AuthProvider({ children }) {
 
   const loginGoogle = async () => {
     const provider = new GoogleAuthProvider()
-    // signInWithPopup instead of signInWithRedirect
-    const result = await signInWithPopup(auth, provider)
-    
-    const u = result.user
-    const snap = await getDoc(doc(db, 'users', u.uid))
-    if (!snap.exists()) {
-      await setDoc(doc(db, 'users', u.uid), {
-        uid:       u.uid,
-        name:      u.displayName,
-        email:     u.email,
-        credits:   10,
-        plan:      'free',
-        createdAt: serverTimestamp(),
-      })
-    }
+    await signInWithRedirect(auth, provider)
   }
+
   const logout = async () => {
     await signOut(auth)
     setUser(null)
