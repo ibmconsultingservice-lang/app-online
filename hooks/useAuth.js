@@ -36,10 +36,11 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
-    // Handle Google redirect result
+    // In useAuth.js useEffect:
     getRedirectResult(auth)
       .then(async (result) => {
         if (!result) return
+        
         const u = result.user
         const snap = await getDoc(doc(db, 'users', u.uid))
         if (!snap.exists()) {
@@ -52,6 +53,9 @@ export function AuthProvider({ children }) {
             createdAt: serverTimestamp(),
           })
         }
+        
+        // ✅ Navigate here, not in the button handler
+        window.location.href = '/dashboard'
       })
       .catch(console.error)
 

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/firebase'
-import { doc, getDoc, updateDoc, increment } from 'firebase/firestore'
+import { doc, updateDoc } from 'firebase/firestore'
 
 const PAYPAL_CLIENT_ID     = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID
 const PAYPAL_CLIENT_SECRET = process.env.PAYPAL_CLIENT_SECRET
@@ -29,30 +29,9 @@ export async function POST(request) {
   try {
     const { orderId, userId, plan } = await request.json()
 
-    if (!orderId || !userId || !plan) {
-      return NextResponse.json({ error: 'Missing parameters' }, { status: 400 })
-    }
-
-    // ── 1. Vérifier si l'ordre n'a pas déjà été traité (idempotence) ──
-    const userRef  = doc(db, 'users', userId)
-    const userSnap = await getDoc(userRef)
-
-    if (userSnap.exists()) {
-      const data = userSnap.data()
-      // Si cet orderId a déjà été traité → renvoie succès sans re-capturer
-      if (data.lastOrderId === orderId) {
-        console.log('⚠️ Ordre déjà traité:', orderId)
-        return NextResponse.json({ success: true, status: 'ALREADY_PROCESSED' })
-      }
-    }
-
-    // ── 2. Récupérer le token PayPal ──
     const accessToken = await getAccessToken()
-    if (!accessToken) {
-      throw new Error('Impossible d\'obtenir le token PayPal')
-    }
 
-    // ── 3. Capturer le paiement ──
+    // Capture the payment
     const res = await fetch(`${BASE_URL}/v2/checkout/orders/${orderId}/capture`, {
       method: 'POST',
       headers: {
@@ -62,29 +41,17 @@ export async function POST(request) {
     })
 
     const capture = await res.json()
-    console.log('PayPal capture response:', JSON.stringify(capture))
 
-    // ── 4. Gérer les cas de succès (COMPLETED ou déjà capturé) ──
-    const alreadyCaptured =
-      capture.details?.[0]?.issue === 'ORDER_ALREADY_CAPTURED' ||
-      capture.status === 'ALREADY_CAPTURED'
-
-    if (capture.status === 'COMPLETED' || alreadyCaptured) {
-      const creditsToAdd = PLAN_CREDITS[plan] || 50
-
-      // ── 5. Mettre à jour Firestore avec increment (pas d'écrasement) ──
-      await updateDoc(userRef, {
-        plan:         plan,
-        credits:      increment(creditsToAdd), // ✅ additionne les crédits existants
-        lastOrderId:  orderId,                 // ✅ idempotence : évite double attribution
-        planActivatedAt: new Date().toISOString(),
+    if (capture.status === 'COMPLETED') {
+      // ── Activate plan in Firestore ──
+      await updateDoc(doc(db, 'users', userId), {
+        plan:    plan,
+        credits: PLAN_CREDITS[plan] || 50,
       })
 
-      console.log(`✅ Plan ${plan} activé pour ${userId} (+${creditsToAdd} crédits)`)
-      return NextResponse.json({ success: true, status: 'COMPLETED', creditsAdded: creditsToAdd })
+      return NextResponse.json({ success: true, status: 'COMPLETED' })
     } else {
-      console.error('❌ PayPal status inattendu:', capture)
-      throw new Error('Paiement non complété: ' + (capture.status || JSON.stringify(capture.details)))
+      throw new Error('Payment not completed: ' + capture.status)
     }
 
   } catch (error) {
