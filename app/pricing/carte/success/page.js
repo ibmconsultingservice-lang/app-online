@@ -20,23 +20,27 @@ function SuccessContent() {
   const userId  = searchParams.get('userId')
 
   useEffect(() => {
-    const orderId = searchParams.get('token') // ← PayPal returns ?token=ORDER_ID
+    const orderId = searchParams.get('token')
     const plan    = searchParams.get('plan')
     const userId  = searchParams.get('userId')
 
     if (orderId && userId && plan) {
-      // Capture payment and activate plan
       fetch('/api/payment/paypal/capture', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ orderId, userId, plan })
-      }).then(r => r.json()).then(data => {
+      })
+      .then(r => r.json())
+      .then(data => {
         if (data.success) {
-          console.log('✅ Plan activated:', plan)
+          console.log('✅ Plan activé:', plan, '| Crédits ajoutés:', data.creditsAdded)
+        } else {
+          console.error('❌ Échec:', data.error)
         }
-      }).catch(console.error)
+      })
+      .catch(console.error)
     }
-  }, [])
+  }, [searchParams]) // ✅ searchParams dans les dépendances
 
   return (
     <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center p-6">
