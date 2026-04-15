@@ -17,10 +17,26 @@ const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
   const [user, setUser]       = useState(null)
+  const [profile, setProfile] = useState(null)  // ← Firestore data
   const [loading, setLoading] = useState(true)
 
+  // ── Load Firestore profile ────────────────────
+  const loadProfile = async (firebaseUser) => {
+    if (!firebaseUser) return null
+    const snap = await getDoc(doc(db, 'users', firebaseUser.uid))
+    return snap.exists() ? snap.data() : null
+  }
+
+  // ── Refresh profile (called after credit deduct) ──
+  const refreshProfile = async () => {
+    if (!user) return
+    const data = await loadProfile(user)
+    setProfile(data)
+    setUser(prev => ({ ...prev, ...data }))
+  }
+
   useEffect(() => {
-    // Handle Google redirect return
+    // Handle Google redirect result
     getRedirectResult(auth)
       .then(async (result) => {
         if (!result) return
@@ -42,10 +58,12 @@ export function AuthProvider({ children }) {
     // Auth state listener
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        const snap = await getDoc(doc(db, 'users', firebaseUser.uid))
-        setUser({ ...firebaseUser, ...snap.data() })
+        const data = await loadProfile(firebaseUser)
+        setProfile(data)
+        setUser({ ...firebaseUser, ...data })
       } else {
         setUser(null)
+        setProfile(null)
       }
       setLoading(false)
     })
@@ -55,14 +73,16 @@ export function AuthProvider({ children }) {
   const register = async (email, password, name) => {
     const cred = await createUserWithEmailAndPassword(auth, email, password)
     await updateProfile(cred.user, { displayName: name })
-    await setDoc(doc(db, 'users', cred.user.uid), {
+    const data = {
       uid:       cred.user.uid,
       name:      name,
       email:     email,
       credits:   10,
       plan:      'free',
       createdAt: serverTimestamp(),
-    })
+    }
+    await setDoc(doc(db, 'users', cred.user.uid), data)
+    setProfile(data)
     return cred.user
   }
 
@@ -79,10 +99,20 @@ export function AuthProvider({ children }) {
   const logout = async () => {
     await signOut(auth)
     setUser(null)
+    setProfile(null)
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, register, login, loginGoogle, logout }}>
+    <AuthContext.Provider value={{
+      user,
+      profile,
+      loading,
+      refreshProfile,
+      register,
+      login,
+      loginGoogle,
+      logout,
+    }}>
       {!loading && children}
     </AuthContext.Provider>
   )
