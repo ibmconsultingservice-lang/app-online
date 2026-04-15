@@ -38,8 +38,14 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     getRedirectResult(auth)
       .then(async (result) => {
-        if (!result) return
+        console.log('getRedirectResult:', result)   // ← add this
+        if (!result) {
+          console.log('No redirect result — normal page load')
+          return
+        }
         const u = result.user
+        console.log('Google user:', u.uid, u.email)  // ← add this
+        
         const snap = await getDoc(doc(db, 'users', u.uid))
         if (!snap.exists()) {
           await setDoc(doc(db, 'users', u.uid), {
@@ -51,10 +57,12 @@ export function AuthProvider({ children }) {
             createdAt: serverTimestamp(),
           })
         }
-        // ← Redirect to dashboard after Google login completes
         window.location.href = '/dashboard'
       })
-      .catch(console.error)
+      .catch((err) => {
+        console.error('getRedirectResult ERROR:', err.code, err.message)  // ← add this
+      })
+  
 
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
