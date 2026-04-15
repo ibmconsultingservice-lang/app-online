@@ -36,7 +36,6 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
-    // Handle Google redirect result
     getRedirectResult(auth)
       .then(async (result) => {
         if (!result) return
@@ -52,15 +51,22 @@ export function AuthProvider({ children }) {
             createdAt: serverTimestamp(),
           })
         }
+        // ← Redirect to dashboard after Google login completes
+        window.location.href = '/dashboard'
       })
       .catch(console.error)
 
-    // Auth state listener
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        const data = await loadProfile(firebaseUser)
-        setProfile(data)
-        setUser({ ...firebaseUser, ...data })
+        try {
+          const data = await loadProfile(firebaseUser)
+          setProfile(data)
+          setUser({ ...firebaseUser, ...data })
+        } catch (err) {
+          console.error('Firestore error:', err)
+          setUser(firebaseUser)
+          setProfile(null)
+        }
       } else {
         setUser(null)
         setProfile(null)

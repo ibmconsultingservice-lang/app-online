@@ -18,11 +18,11 @@ export default function LoginPage() {
     setError('')
     try {
       await login(email, password)
-      router.push('/dashboard')
+      router.push('/dashboard') // ← fine for email login
     } catch (err) {
       setError('Email ou mot de passe incorrect')
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   const handleGoogle = async () => {
@@ -30,11 +30,12 @@ export default function LoginPage() {
     setError('')
     try {
       await loginGoogle()
-      router.push('/dashboard')
+      // ← NO router.push here
+      // useAuth handles redirect via window.location.href after getRedirectResult
     } catch (err) {
       setError('Erreur connexion Google')
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   return (
@@ -48,7 +49,6 @@ export default function LoginPage() {
         width:420, maxWidth:'100%',
         boxShadow:'0 25px 50px rgba(0,0,0,0.15)'
       }}>
-        {/* Logo */}
         <div style={{ textAlign:'center', marginBottom:32 }}>
           <div style={{
             width:56, height:56, background:'#534AB7', borderRadius:16,
@@ -59,7 +59,6 @@ export default function LoginPage() {
           <p style={{ color:'#64748b', fontSize:14, marginTop:4 }}>Connectez-vous à votre compte</p>
         </div>
 
-        {/* Google Button */}
         <button
           onClick={handleGoogle}
           disabled={loading}
@@ -69,7 +68,6 @@ export default function LoginPage() {
             padding:'11px 0', fontSize:14, fontWeight:600,
             cursor:'pointer', display:'flex', alignItems:'center',
             justifyContent:'center', gap:10, marginBottom:20,
-            transition:'background 0.15s'
           }}
         >
           <svg width="18" height="18" viewBox="0 0 24 24">
@@ -78,17 +76,15 @@ export default function LoginPage() {
             <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
             <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
           </svg>
-          Continuer avec Google
+          {loading ? 'Redirection...' : 'Continuer avec Google'}
         </button>
 
-        {/* Divider */}
         <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:20 }}>
           <div style={{ flex:1, height:1, background:'#e2e8f0' }}/>
           <span style={{ fontSize:12, color:'#94a3b8' }}>ou</span>
           <div style={{ flex:1, height:1, background:'#e2e8f0' }}/>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleLogin}>
           <label style={lStyle}>Email</label>
           <input
@@ -119,8 +115,7 @@ export default function LoginPage() {
               width:'100%', background: loading ? '#94a3b8' : '#534AB7',
               color:'white', border:'none', borderRadius:12,
               padding:'13px 0', fontSize:14, fontWeight:700,
-              cursor: loading ? 'not-allowed' : 'pointer',
-              marginTop:4
+              cursor: loading ? 'not-allowed' : 'pointer', marginTop:4
             }}
           >
             {loading ? 'Connexion...' : 'Se connecter'}
