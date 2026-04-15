@@ -7,8 +7,8 @@ import Link from 'next/link'
 export default function RegisterPage() {
   const { register, loginGoogle } = useAuth()
   const router = useRouter()
-  const [form, setForm]       = useState({ name:'', email:'', password:'' })
-  const [error, setError]     = useState('')
+  const [form, setForm]     = useState({ name:'', email:'', password:'' })
+  const [error, setError]   = useState('')
   const [loading, setLoading] = useState(false)
 
   const handleRegister = async (e) => {
@@ -21,27 +21,26 @@ export default function RegisterPage() {
     setError('')
     try {
       await register(form.email, form.password, form.name)
-      router.push('/dashboard') // ← fine for email register
+      router.push('/dashboard')
     } catch (err) {
       if (err.code === 'auth/email-already-in-use') {
         setError('Cet email est déjà utilisé')
       } else {
-        setError("Erreur lors de l'inscription")
+        setError('Erreur lors de l\'inscription')
       }
-      setLoading(false)
     }
+    setLoading(false)
   }
 
   const handleGoogle = async () => {
     setLoading(true)
-    setError('')
     try {
       await loginGoogle()
-      // ← NO router.push here
+      router.push('/dashboard')
     } catch (err) {
       setError('Erreur connexion Google')
-      setLoading(false)
     }
+    setLoading(false)
   }
 
   return (
@@ -55,6 +54,7 @@ export default function RegisterPage() {
         width:420, maxWidth:'100%',
         boxShadow:'0 25px 50px rgba(0,0,0,0.15)'
       }}>
+        {/* Logo */}
         <div style={{ textAlign:'center', marginBottom:32 }}>
           <div style={{
             width:56, height:56, background:'#534AB7', borderRadius:16,
@@ -67,6 +67,7 @@ export default function RegisterPage() {
           </p>
         </div>
 
+        {/* Google */}
         <button
           onClick={handleGoogle} disabled={loading}
           style={{
@@ -83,15 +84,17 @@ export default function RegisterPage() {
             <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
             <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
           </svg>
-          {loading ? 'Redirection...' : "S'inscrire avec Google"}
+          S'inscrire avec Google
         </button>
 
+        {/* Divider */}
         <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:20 }}>
           <div style={{ flex:1, height:1, background:'#e2e8f0' }}/>
           <span style={{ fontSize:12, color:'#94a3b8' }}>ou</span>
           <div style={{ flex:1, height:1, background:'#e2e8f0' }}/>
         </div>
 
+        {/* Form */}
         <form onSubmit={handleRegister}>
           <label style={lStyle}>Nom complet</label>
           <input
@@ -138,6 +141,7 @@ export default function RegisterPage() {
           </button>
         </form>
 
+        {/* Badges */}
         <div style={{ display:'flex', justifyContent:'center', gap:12, marginTop:16 }}>
           {['🔒 Sécurisé', '🎁 10 crédits offerts', '⚡ Instantané'].map(b => (
             <span key={b} style={{ fontSize:11, color:'#94a3b8' }}>{b}</span>

@@ -36,16 +36,11 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
+    // Handle Google redirect result
     getRedirectResult(auth)
       .then(async (result) => {
-        console.log('getRedirectResult:', result)   // ← add this
-        if (!result) {
-          console.log('No redirect result — normal page load')
-          return
-        }
+        if (!result) return
         const u = result.user
-        console.log('Google user:', u.uid, u.email)  // ← add this
-        
         const snap = await getDoc(doc(db, 'users', u.uid))
         if (!snap.exists()) {
           await setDoc(doc(db, 'users', u.uid), {
@@ -57,24 +52,15 @@ export function AuthProvider({ children }) {
             createdAt: serverTimestamp(),
           })
         }
-        window.location.href = '/dashboard'
       })
-      .catch((err) => {
-        console.error('getRedirectResult ERROR:', err.code, err.message)  // ← add this
-      })
-  
+      .catch(console.error)
 
+    // Auth state listener
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        try {
-          const data = await loadProfile(firebaseUser)
-          setProfile(data)
-          setUser({ ...firebaseUser, ...data })
-        } catch (err) {
-          console.error('Firestore error:', err)
-          setUser(firebaseUser)
-          setProfile(null)
-        }
+        const data = await loadProfile(firebaseUser)
+        setProfile(data)
+        setUser({ ...firebaseUser, ...data })
       } else {
         setUser(null)
         setProfile(null)
