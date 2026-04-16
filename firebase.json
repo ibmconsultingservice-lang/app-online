@@ -1,5 +1,6 @@
 {
   "apphosting": {
+    "public": "out",
     "backendId": "app-online",
     "rootDir": "/",
     "ignore": [
