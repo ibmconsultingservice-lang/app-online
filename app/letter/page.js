@@ -1,32 +1,85 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useCredits } from '@/hooks/useCredits'
 import { usePlanGuard } from '@/hooks/usePlanGuard'
 import { useRouter } from 'next/navigation'
-import { Zap, Download, FileText, Printer } from 'lucide-react'
+import { Zap, FileText, Printer, GripVertical, ChevronUp, ChevronDown } from 'lucide-react'
 
 const LETTER_TYPES = [
-  { value: 'professional', label: 'Professionnelle' },
-  { value: 'motivation', label: 'Motivation' },
-  { value: 'resignation', label: 'Démission' },
-  { value: 'complaint', label: 'Réclamation' },
-  { value: 'commercial', label: 'Commerciale' },
+  { value: 'professional',   label: 'Professionnelle' },
+  { value: 'motivation',     label: 'Motivation' },
+  { value: 'resignation',    label: 'Démission' },
+  { value: 'complaint',      label: 'Réclamation' },
+  { value: 'commercial',     label: 'Commerciale' },
   { value: 'administrative', label: 'Administrative' },
 ]
 
 const EMPTY_LETTER = {
-  senderName: '',
-  senderAddress: '',
-  senderCityDate: '',
-  recipientName: '',
-  recipientAddress: '',
-  subject: '',
-  salutation: '',
-  opening: '',
-  body: '',
-  closing: '',
-  signature: '',
+  senderName: '', senderAddress: '', senderCityDate: '',
+  recipientName: '', recipientAddress: '',
+  subject: '', salutation: '', opening: '', body: '', closing: '', signature: '',
+}
+
+const DEFAULT_SECTIONS = [
+  { id: 'sender',     label: 'Expéditeur',      fields: ['senderName', 'senderAddress', 'senderCityDate'] },
+  { id: 'divider',    label: null,               fields: [] },
+  { id: 'recipient',  label: 'Destinataire',     fields: ['recipientName', 'recipientAddress'] },
+  { id: 'subject',    label: 'Objet',            fields: ['subject'] },
+  { id: 'salutation', label: "Formule d'appel",  fields: ['salutation'] },
+  { id: 'opening',    label: 'Introduction',     fields: ['opening'] },
+  { id: 'body',       label: 'Corps',            fields: ['body'] },
+  { id: 'closing',    label: 'Politesse',        fields: ['closing'] },
+  { id: 'signature',  label: 'Signature',        fields: ['signature'] },
+]
+
+const FIELD_CONFIG = {
+  senderName:       { placeholder: 'Votre Nom & Prénom',          cls: 'font-bold text-base text-slate-900',                              multi: false },
+  senderAddress:    { placeholder: 'Votre adresse complète',       cls: 'text-sm text-slate-600',                                         multi: true  },
+  senderCityDate:   { placeholder: 'Dakar, le [date]',             cls: 'text-sm text-slate-600',                                         multi: false },
+  recipientName:    { placeholder: 'Nom du destinataire',          cls: 'font-bold text-base text-slate-900', align: 'right',              multi: false },
+  recipientAddress: { placeholder: 'Adresse du destinataire',      cls: 'text-sm text-slate-600',             align: 'right',              multi: true  },
+  subject:          { placeholder: 'Objet : ...',                  cls: 'font-bold text-sm text-slate-800 underline underline-offset-2',   multi: false },
+  salutation:       { placeholder: 'Madame, Monsieur,',            cls: 'text-sm text-slate-800 font-medium',                             multi: false },
+  opening:          { placeholder: "Paragraphe d'introduction...", cls: 'text-sm text-slate-700 leading-relaxed',                         multi: true  },
+  body:             { placeholder: 'Corps de la lettre...',        cls: 'text-sm text-slate-700 leading-relaxed',                         multi: true  },
+  closing:          { placeholder: 'Formule de politesse...',      cls: 'text-sm text-slate-700 leading-relaxed',                         multi: true  },
+  signature:        { placeholder: 'Signature / Nom',              cls: 'font-bold text-base text-slate-900 italic pt-2',                  multi: false },
+}
+
+// Auto-resize textarea — grows to fit content, never scrolls
+function AutoTextarea({ value, onChange, placeholder, className = '', align = 'left' }) {
+  const ref = useRef(null)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = el.scrollHeight + 'px'
+  }, [value])
+  return (
+    <textarea
+      ref={ref}
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      placeholder={placeholder}
+      rows={1}
+      className={`letter-editable ${className}`}
+      style={{ textAlign: align, overflow: 'hidden', minHeight: '28px' }}
+    />
+  )
+}
+
+function AutoInput({ value, onChange, placeholder, className = '', align = 'left' }) {
+  return (
+    <input
+      type="text"
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      placeholder={placeholder}
+      className={`letter-editable ${className}`}
+      style={{ textAlign: align }}
+    />
+  )
 }
 
 export default function LetterPage() {
@@ -39,13 +92,15 @@ export default function LetterPage() {
   const [loading, setLoading] = useState(false)
   const [letter, setLetter] = useState(EMPTY_LETTER)
   const [generated, setGenerated] = useState(false)
+  const [sections, setSections] = useState(DEFAULT_SECTIONS)
+
+  const dragIndex = useRef(null)
 
   const updateField = (field, value) => setLetter(prev => ({ ...prev, [field]: value }))
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return alert('Veuillez décrire votre lettre.')
     if (!hasCredits(2)) { router.push('/pricing'); return }
-
     setLoading(true)
     try {
       const res = await fetch('/api/generer-letter', {
@@ -58,6 +113,7 @@ export default function LetterPage() {
       if (data.letter) {
         setLetter(data.letter)
         setGenerated(true)
+        setSections(DEFAULT_SECTIONS)
         await deductCredits(2)
       }
     } catch (err) {
@@ -68,30 +124,125 @@ export default function LetterPage() {
     }
   }
 
+  // Arrow button reorder — skips the divider
+  const moveSection = (index, dir) => {
+    if (sections[index].id === 'divider') return
+    const next = [...sections]
+    let target = index + dir
+    if (target < 0 || target >= next.length) return
+    if (next[target].id === 'divider') target += dir
+    if (target < 0 || target >= next.length) return
+    ;[next[index], next[target]] = [next[target], next[index]]
+    setSections(next)
+  }
+
+  // Drag-and-drop reorder
+  const onDragStart = (e, i) => { dragIndex.current = i; e.dataTransfer.effectAllowed = 'move' }
+  const onDragOver  = (e)    => e.preventDefault()
+  const onDrop      = (e, i) => {
+    e.preventDefault()
+    const from = dragIndex.current
+    if (from === null || from === i) return
+    const next = [...sections]
+    const [moved] = next.splice(from, 1)
+    next.splice(i, 0, moved)
+    setSections(next)
+    dragIndex.current = null
+  }
+
   const exportToWord = () => {
     const el = document.getElementById('letter-document')
     const clone = el.cloneNode(true)
     clone.querySelectorAll('.no-print').forEach(e => e.remove())
-
-    const html = `
-      <html xmlns:o='urn:schemas-microsoft-com:office:office'
-            xmlns:w='urn:schemas-microsoft-com:office:word'
-            xmlns='http://www.w3.org/TR/REC-html40'>
+    const html = `<html xmlns:o='urn:schemas-microsoft-com:office:office'
+      xmlns:w='urn:schemas-microsoft-com:office:word'
+      xmlns='http://www.w3.org/TR/REC-html40'>
       <head><meta charset='utf-8'><style>
-        body { font-family: 'Georgia', serif; padding: 40px; color: #1a1a1a; }
-        .letter-field { margin-bottom: 8px; }
-        .letter-body { margin: 24px 0; line-height: 1.8; }
+        body { font-family: Georgia, serif; padding: 40px; color: #1a1a1a; line-height: 1.6; }
       </style></head><body>${clone.innerHTML}</body></html>`
-
-    const blob = new Blob(['\ufeff', html], {
-      type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    })
+    const blob = new Blob(['\ufeff', html], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
-    a.href = url
-    a.download = `Lettre_${Date.now()}.doc`
-    document.body.appendChild(a); a.click()
-    document.body.removeChild(a); URL.revokeObjectURL(url)
+    a.href = url; a.download = `Lettre_${Date.now()}.doc`
+    document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url)
+  }
+
+  const renderSection = (section, index) => {
+    if (section.id === 'divider') {
+      return (
+        <div key="divider" className="py-2">
+          <div className="border-t border-slate-100" />
+        </div>
+      )
+    }
+
+    const isFirst = index === 0
+    const isLast  = index === sections.length - 1
+    const isRight = section.id === 'recipient'
+
+    return (
+      <div
+        key={section.id}
+        draggable
+        onDragStart={e => onDragStart(e, index)}
+        onDragOver={onDragOver}
+        onDrop={e => onDrop(e, index)}
+        className="group relative py-3 -mx-4 px-4 rounded-xl hover:bg-amber-50/40 transition-colors duration-150"
+      >
+        {/* Left controls: drag handle + arrows */}
+        <div className="no-print absolute -left-7 top-1/2 -translate-y-1/2 flex flex-col items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="cursor-grab active:cursor-grabbing text-slate-300 hover:text-amber-500 transition-colors">
+            <GripVertical size={14} />
+          </div>
+          {!isFirst && (
+            <button onClick={() => moveSection(index, -1)} className="text-slate-300 hover:text-amber-500 transition-colors">
+              <ChevronUp size={13} />
+            </button>
+          )}
+          {!isLast && (
+            <button onClick={() => moveSection(index, 1)} className="text-slate-300 hover:text-amber-500 transition-colors">
+              <ChevronDown size={13} />
+            </button>
+          )}
+        </div>
+
+        {/* Section label badge */}
+        {section.label && (
+          <div className="no-print absolute right-0 top-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <span className="text-[8px] font-black uppercase tracking-widest text-amber-500/70 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200/50">
+              {section.label}
+            </span>
+          </div>
+        )}
+
+        {/* Fields */}
+        <div className={`space-y-1 ${isRight ? 'text-right' : ''}`}>
+          {section.fields.map(field => {
+            const cfg = FIELD_CONFIG[field]
+            if (!cfg) return null
+            return cfg.multi ? (
+              <AutoTextarea
+                key={field}
+                value={letter[field]}
+                onChange={v => updateField(field, v)}
+                placeholder={cfg.placeholder}
+                className={cfg.cls}
+                align={cfg.align || 'left'}
+              />
+            ) : (
+              <AutoInput
+                key={field}
+                value={letter[field]}
+                onChange={v => updateField(field, v)}
+                placeholder={cfg.placeholder}
+                className={cfg.cls}
+                align={cfg.align || 'left'}
+              />
+            )
+          })}
+        </div>
+      </div>
+    )
   }
 
   if (!allowed) return (
@@ -107,10 +258,9 @@ export default function LetterPage() {
   return (
     <main className="min-h-screen bg-[#0f1117] font-sans flex flex-col lg:flex-row">
 
-      {/* ── LEFT PANEL: Controls ── */}
+      {/* ── LEFT PANEL ── */}
       <aside className="lg:w-[380px] lg:min-h-screen bg-[#0f1117] border-r border-white/5 flex flex-col p-8 gap-6 shrink-0">
 
-        {/* Logo / Title */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-white text-2xl font-black tracking-tight italic">
@@ -124,7 +274,6 @@ export default function LetterPage() {
           </div>
         </div>
 
-        {/* Low credits */}
         {credits < 2 && (
           <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 flex items-center justify-between">
             <span className="text-amber-300 text-xs font-bold">⚠️ 2 crédits requis</span>
@@ -135,7 +284,6 @@ export default function LetterPage() {
           </div>
         )}
 
-        {/* Letter Type */}
         <div className="space-y-2">
           <label className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30">Type de lettre</label>
           <div className="grid grid-cols-2 gap-2">
@@ -152,18 +300,16 @@ export default function LetterPage() {
           </div>
         </div>
 
-        {/* Prompt */}
         <div className="space-y-2 flex-1">
           <label className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30">Description</label>
           <textarea
             value={prompt}
             onChange={e => setPrompt(e.target.value)}
             placeholder="Ex: Lettre de démission adressée à mon directeur M. Diallo, après 3 ans de service, ton respectueux..."
-            className="w-full h-40 bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white/80 placeholder-white/20 resize-none outline-none focus:border-amber-400/40 focus:bg-white/8 transition-all leading-relaxed"
+            className="w-full h-40 bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white/80 placeholder-white/20 resize-none outline-none focus:border-amber-400/40 transition-all leading-relaxed"
           />
         </div>
 
-        {/* Generate Button */}
         <button
           onClick={handleGenerate}
           disabled={loading || !hasCredits(2)}
@@ -173,19 +319,12 @@ export default function LetterPage() {
               : 'bg-amber-400 text-black hover:bg-amber-300 hover:-translate-y-0.5 shadow-xl shadow-amber-500/20'
           }`}>
           {loading ? (
-            <>
-              <div className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin" />
-              Rédaction en cours...
-            </>
+            <><div className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin" /> Rédaction en cours...</>
           ) : (
-            <>
-              <Zap size={13} fill="currentColor" />
-              Générer la lettre · ⚡2
-            </>
+            <><Zap size={13} fill="currentColor" /> Générer la lettre · ⚡2</>
           )}
         </button>
 
-        {/* Export Buttons */}
         {generated && (
           <div className="flex gap-2">
             <button onClick={exportToWord}
@@ -198,118 +337,25 @@ export default function LetterPage() {
             </button>
           </div>
         )}
+
+        {/* Drag hint */}
+        {generated && (
+          <p className="text-[9px] text-white/20 text-center font-bold uppercase tracking-widest">
+            ↕ Survolez une section pour la déplacer
+          </p>
+        )}
       </aside>
 
-      {/* ── RIGHT PANEL: Letter Preview ── */}
-      <div className="flex-1 bg-[#1a1c23] lg:overflow-y-auto flex items-start justify-center p-6 lg:p-12">
-
-        {/* A4 Letter */}
+      {/* ── RIGHT PANEL: A4 Letter ── */}
+      <div className="flex-1 bg-[#1a1c23] flex items-start justify-center p-6 lg:p-12">
         <div
           id="letter-document"
-          className="w-full max-w-[680px] bg-white rounded-sm shadow-2xl shadow-black/50 p-14 space-y-6"
-          style={{ fontFamily: "'Georgia', 'Times New Roman', serif", minHeight: '900px' }}
+          className="w-full max-w-[680px] bg-white rounded-sm shadow-2xl shadow-black/50 px-14 py-12"
+          style={{ fontFamily: "'Georgia', 'Times New Roman', serif" }}
         >
-
-          {/* Sender */}
-          <div className="space-y-1">
-            <LetterField
-              value={letter.senderName}
-              onChange={v => updateField('senderName', v)}
-              placeholder="Votre Nom & Prénom"
-              className="font-bold text-base text-slate-900"
-            />
-            <LetterField
-              value={letter.senderAddress}
-              onChange={v => updateField('senderAddress', v)}
-              placeholder="Votre adresse complète"
-              className="text-sm text-slate-600"
-              multiline
-            />
-            <LetterField
-              value={letter.senderCityDate}
-              onChange={v => updateField('senderCityDate', v)}
-              placeholder="Dakar, le [date]"
-              className="text-sm text-slate-600"
-            />
-          </div>
-
-          {/* Divider */}
-          <div className="border-t border-slate-100" />
-
-          {/* Recipient */}
-          <div className="space-y-1 text-right">
-            <LetterField
-              value={letter.recipientName}
-              onChange={v => updateField('recipientName', v)}
-              placeholder="Nom du destinataire"
-              className="font-bold text-base text-slate-900 text-right"
-              align="right"
-            />
-            <LetterField
-              value={letter.recipientAddress}
-              onChange={v => updateField('recipientAddress', v)}
-              placeholder="Adresse du destinataire"
-              className="text-sm text-slate-600 text-right"
-              multiline
-              align="right"
-            />
-          </div>
-
-          {/* Subject */}
-          <div className="pt-2">
-            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 no-print">Objet</span>
-            <LetterField
-              value={letter.subject}
-              onChange={v => updateField('subject', v)}
-              placeholder="Objet : ..."
-              className="font-bold text-sm text-slate-800 mt-1 underline underline-offset-2"
-            />
-          </div>
-
-          {/* Salutation */}
-          <LetterField
-            value={letter.salutation}
-            onChange={v => updateField('salutation', v)}
-            placeholder="Madame, Monsieur,"
-            className="text-sm text-slate-800 font-medium"
-          />
-
-          {/* Opening */}
-          <LetterField
-            value={letter.opening}
-            onChange={v => updateField('opening', v)}
-            placeholder="Paragraphe d'introduction..."
-            className="text-sm text-slate-700 leading-relaxed"
-            multiline
-          />
-
-          {/* Body */}
-          <LetterField
-            value={letter.body}
-            onChange={v => updateField('body', v)}
-            placeholder="Corps de la lettre..."
-            className="text-sm text-slate-700 leading-relaxed"
-            multiline
-            tall
-          />
-
-          {/* Closing */}
-          <LetterField
-            value={letter.closing}
-            onChange={v => updateField('closing', v)}
-            placeholder="Formule de politesse..."
-            className="text-sm text-slate-700 leading-relaxed"
-            multiline
-          />
-
-          {/* Signature */}
-          <div className="pt-4">
-            <LetterField
-              value={letter.signature}
-              onChange={v => updateField('signature', v)}
-              placeholder="Signature / Nom"
-              className="font-bold text-base text-slate-900 italic"
-            />
+          {/* Offset left controls outside the white card */}
+          <div className="relative ml-8">
+            {sections.map((section, index) => renderSection(section, index))}
           </div>
         </div>
       </div>
@@ -329,43 +375,21 @@ export default function LetterPage() {
           resize: none;
           font-family: inherit;
           transition: background 0.15s;
-          border-radius: 4px;
+          border-radius: 3px;
           padding: 2px 4px;
           margin: -2px -4px;
+          display: block;
+          line-height: 1.7;
+          overflow: hidden;
         }
-        .letter-editable:hover { background: rgba(251, 191, 36, 0.06); }
-        .letter-editable:focus { background: rgba(251, 191, 36, 0.1); outline: 1px solid rgba(251,191,36,0.3); }
+        .letter-editable:focus {
+          background: rgba(251,191,36,0.08);
+          outline: 1px solid rgba(251,191,36,0.3);
+        }
         .letter-editable::placeholder { color: #cbd5e1; font-style: italic; }
+        [draggable="true"] { cursor: grab; }
+        [draggable="true"]:active { cursor: grabbing; }
       `}</style>
     </main>
-  )
-}
-
-// ── Reusable editable field ──
-function LetterField({ value, onChange, placeholder, className = '', multiline = false, tall = false, align = 'left' }) {
-  const base = `letter-editable ${className}`
-  const style = { textAlign: align }
-
-  if (multiline) {
-    return (
-      <textarea
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        placeholder={placeholder}
-        rows={tall ? 8 : 3}
-        className={base}
-        style={style}
-      />
-    )
-  }
-  return (
-    <input
-      type="text"
-      value={value}
-      onChange={e => onChange(e.target.value)}
-      placeholder={placeholder}
-      className={base}
-      style={style}
-    />
   )
 }
