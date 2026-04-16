@@ -12,6 +12,7 @@ const TOOLS = [
   { icon: '🖥️', name: 'PPTX Genius',  desc: 'Présentations PowerPoint IA',      path: '/pptxgenius',    img: '/images/tools/tool-04-pptx-genius.png'   },
   { icon: '🧾', name: 'Facture',       desc: 'Génération de factures pro',       path: '/facture',       img: '/images/tools/tool-05-facture.png'       },
   { icon: '📊', name: 'Business Plan', desc: "Plan d'affaires complet",          path: '/Businessplan',  img: '/images/tools/tool-06-business-plan.png' },
+  { icon: '📊', name: 'Lettres', desc: "Rédiger votre lettre",          path: '/letter',  img: '/images/tools/tool-01-letter.png' },
   { icon: '🔧', name: 'Doc Repairer',  desc: 'Correction & réparation de docs',  path: '/docrepairer',   img: '/images/tools/tool-07-doc-repairer.png'  },
   { icon: '🔍', name: 'OCR Vision',    desc: 'Extraction de texte depuis image', path: '/ocr-vision',    img: '/images/tools/tool-08-ocr-vision.png'    },
   { icon: '🖼️', name: 'Remove BG',     desc: 'Suppression de fond IA',           path: '/Removebg',      img: '/images/tools/tool-09-remove-bg.png'     },
@@ -85,7 +86,7 @@ export default function HomePage() {
             <Zap size={20} fill="currentColor" />
           </div>
           <span className="text-xl font-black tracking-tighter uppercase italic">
-            IA<span className="text-indigo-600">.BUSINESS</span>
+            sumur<span className="text-indigo-600">.IA</span>
           </span>
         </div>
 
