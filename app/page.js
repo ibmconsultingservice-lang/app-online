@@ -1,6 +1,6 @@
 'use client'
 import Link from 'next/link'
-import Image from 'next/image'
+import { useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { useRouter } from 'next/navigation'
 import { Zap, ArrowRight, Shield, Users, Star, LogOut } from 'lucide-react'
@@ -18,6 +18,47 @@ const TOOLS = [
   { icon: '📎', name: 'PDF Merger',    desc: 'Fusionner vos fichiers PDF',       path: '/pdfmerger',     img: '/images/tools/tool-10-pdf-merger.png'    },
   { icon: '📤', name: 'Office to PDF', desc: 'Convertir Word/Excel en PDF',      path: '/office2pdf',    img: '/images/tools/tool-11-office-to-pdf.png' },
 ]
+
+// Isolated component so each card manages its own image state
+function ToolCard({ tool, onClick }) {
+  const [imgFailed, setImgFailed] = useState(false)
+
+  return (
+    <div
+      onClick={onClick}
+      className="bg-white border border-slate-200 rounded-2xl overflow-hidden cursor-pointer hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-200 transition-all duration-300 group"
+    >
+      {/* Tool Image */}
+      <div className="relative w-full h-44 overflow-hidden">
+        {imgFailed ? (
+          /* Fallback: gradient + large emoji */
+          <div className="w-full h-full bg-gradient-to-br from-indigo-50 to-blue-100 flex items-center justify-center">
+            <span className="text-6xl">{tool.icon}</span>
+          </div>
+        ) : (
+          <img
+            src={tool.img}
+            alt={tool.name}
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            onError={() => setImgFailed(true)}
+          />
+        )}
+      </div>
+
+      {/* Card Content */}
+      <div className="p-6">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-xl">{tool.icon}</span>
+          <h3 className="text-base font-black text-slate-900">{tool.name}</h3>
+        </div>
+        <p className="text-xs text-slate-500 font-medium mb-4">{tool.desc}</p>
+        <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+          Ouvrir <ArrowRight size={10}/>
+        </span>
+      </div>
+    </div>
+  )
+}
 
 export default function HomePage() {
   const { user, logout } = useAuth()
@@ -135,42 +176,11 @@ export default function HomePage() {
       <section className="relative z-10 max-w-7xl mx-auto px-6 md:px-12 pb-24">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {TOOLS.map((tool) => (
-            <div
+            <ToolCard
               key={tool.path}
+              tool={tool}
               onClick={() => router.push(tool.path)}
-              className="bg-white border border-slate-200 rounded-2xl overflow-hidden cursor-pointer hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-200 transition-all duration-300 group"
-            >
-              {/* Tool Image */}
-              <div className="relative w-full h-44 bg-slate-50 overflow-hidden">
-                <Image
-                  src={tool.img}
-                  alt={tool.name}
-                  fill
-                  className="object-cover transition-transform duration-500 group-hover:scale-105"
-                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                  onError={(e) => {
-                    // Fallback: hide broken image, show placeholder gradient
-                    e.currentTarget.style.display = 'none'
-                  }}
-                />
-                {/* Placeholder shown behind the image (visible only on error) */}
-                <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-indigo-50 to-blue-100">
-                  <span className="text-5xl opacity-40">{tool.icon}</span>
-                </div>
-              </div>
-
-              {/* Card Content */}
-              <div className="p-6">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xl">{tool.icon}</span>
-                  <h3 className="text-base font-black text-slate-900">{tool.name}</h3>
-                </div>
-                <p className="text-xs text-slate-500 font-medium mb-4">{tool.desc}</p>
-                <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
-                  Ouvrir <ArrowRight size={10}/>
-                </span>
-              </div>
-            </div>
+            />
           ))}
         </div>
       </section>
