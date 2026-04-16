@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation'
 import { Zap } from 'lucide-react'
 
 export default function BusinessPlanPage() {
-  const allowed = usePlanGuard('starter')
+  const allowed = usePlanGuard('pro')
   const { deductCredits, hasCredits, credits } = useCredits()
   const router = useRouter()
 
@@ -16,7 +16,6 @@ export default function BusinessPlanPage() {
   const [sections, setSections] = useState([])
   const [docTitle, setDocTitle] = useState('MON BUSINESS PLAN')
 
-  // --- LOGIQUE IA ---
   const handleGenerate = async () => {
     if (!prompt) return alert("Veuillez entrer une description.")
 
@@ -27,7 +26,7 @@ export default function BusinessPlanPage() {
 
     setLoading(true)
     try {
-      const response = await fetch('/api/generer-businessplan', {
+      const response = await fetch('/api/generer-business-plan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt }),
@@ -37,8 +36,8 @@ export default function BusinessPlanPage() {
 
       const data = await response.json()
       if (data.sections) {
-        setSections(data.sections)
         await deductCredits(5)
+        setSections(data.sections)
       }
     } catch (err) {
       alert("Erreur de génération. Vérifie ta console.")
@@ -48,7 +47,6 @@ export default function BusinessPlanPage() {
     }
   }
 
-  // --- GESTION DES SECTIONS ---
   const addSection = () => {
     setSections([...sections, {
       id: Date.now(),
@@ -59,24 +57,18 @@ export default function BusinessPlanPage() {
 
   const deleteSection = (id) => setSections(sections.filter(s => s.id !== id))
 
-  // --- GESTION DES BLOCS ---
   const addBlock = (sectionId, type) => {
     let content = 'Nouveau texte...'
     if (type === 'table') content = { headers: ['Titre 1', 'Titre 2'], rows: [['-', '-']] }
     if (type === 'image') content = null
-
     const newBlock = { id: Date.now(), type, content }
     setSections(sections.map(s => s.id === sectionId ? { ...s, blocks: [...s.blocks, newBlock] } : s))
   }
 
   const deleteBlock = (sectionId, blockId) => {
-    setSections(sections.map(s => s.id === sectionId
-      ? { ...s, blocks: s.blocks.filter(b => b.id !== blockId) }
-      : s
-    ))
+    setSections(sections.map(s => s.id === sectionId ? { ...s, blocks: s.blocks.filter(b => b.id !== blockId) } : s))
   }
 
-  // --- TABLEAUX ---
   const addRow = (sectionId, blockId) => {
     setSections(sections.map(s => s.id === sectionId ? {
       ...s,
@@ -100,7 +92,6 @@ export default function BusinessPlanPage() {
     } : s))
   }
 
-  // --- IMAGES ---
   const handleImageUpload = (e, sectionId, blockId) => {
     const file = e.target.files[0]
     if (file) {
@@ -115,14 +106,12 @@ export default function BusinessPlanPage() {
     }
   }
 
-  // --- EXPORT WORD ---
   const exportToWord = () => {
     const originalElement = document.getElementById('business-plan-document')
     const tempClone = originalElement.cloneNode(true)
     const elementsToRemove = tempClone.querySelectorAll('.no-print')
     elementsToRemove.forEach(el => el.remove())
     const cleanContent = tempClone.innerHTML
-
     const header = `
       <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
       <head><meta charset='utf-8'><style>
@@ -137,7 +126,6 @@ export default function BusinessPlanPage() {
       </style></head><body>`
     const footer = "</body></html>"
     const source = header + cleanContent + footer
-
     const blob = new Blob(['\ufeff', source], {
       type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     })
@@ -151,13 +139,13 @@ export default function BusinessPlanPage() {
     URL.revokeObjectURL(url)
   }
 
-  // --- PLAN GUARD LOADING ---
+  // ── Loading screen while plan is verified ──
   if (!allowed) return (
-    <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center flex-col gap-4">
+    <div className="min-h-screen bg-[#f4f7f6] flex items-center justify-center flex-col gap-4">
       <div className="w-11 h-11 bg-slate-900 rounded-2xl flex items-center justify-center">
-        <Zap size={20} color="white" fill="white" />
+        <Zap size={20} color="white" fill="white"/>
       </div>
-      <div className="w-6 h-6 border-2 border-slate-200 border-t-blue-600 rounded-full animate-spin" />
+      <div className="w-6 h-6 border-2 border-slate-200 border-t-orange-500 rounded-full animate-spin"/>
       <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Vérification du plan...</p>
     </div>
   )
@@ -167,23 +155,21 @@ export default function BusinessPlanPage() {
 
       {/* HEADER IA */}
       <div className="no-print" style={{ maxWidth: '1000px', margin: '0 auto 30px', background: 'white', padding: '20px', borderRadius: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
-        
+
         {/* Credits badge */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
           <h2 style={{ fontSize: '18px', color: '#2c3e50', margin: 0 }}>Générateur IA & Éditeur Premium</h2>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#eef2ff', border: '1px solid #c7d2fe', borderRadius: '999px', padding: '6px 14px' }}>
-            <Zap size={13} color="#4f46e5" fill="#4f46e5" />
-            <span style={{ fontSize: '12px', fontWeight: 900, color: '#4338ca' }}>{credits} crédits</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#eef2ff', border: '1px solid #c7d2fe', borderRadius: 20, padding: '6px 14px' }}>
+            <Zap size={13} color="#4f46e5" fill="#4f46e5"/>
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#4338ca' }}>{credits} crédits</span>
           </div>
         </div>
 
         {/* Low credits warning */}
         {credits < 5 && (
-          <div style={{ background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: '10px', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-            <span style={{ fontSize: '13px', color: '#92400e', fontWeight: 500 }}>⚠️ Crédits insuffisants (5 requis pour générer)</span>
-            <button
-              onClick={() => router.push('/pricing')}
-              style={{ background: '#f59e0b', color: 'white', border: 'none', borderRadius: '8px', padding: '6px 14px', fontSize: '11px', fontWeight: 900, cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: '10px 14px', marginBottom: 12, fontSize: 13, color: '#92400e' }}>
+            ⚠️ Crédits insuffisants (5 requis) —{' '}
+            <button onClick={() => router.push('/pricing')} style={{ background: 'none', border: 'none', color: '#d97706', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}>
               Recharger
             </button>
           </div>
@@ -193,17 +179,13 @@ export default function BusinessPlanPage() {
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
           placeholder="Ex: Business plan pour un salon de coiffure moderne aux Almadies..."
-          style={{ width: '100%', height: '80px', padding: '12px', borderRadius: '8px', border: '1px solid #ddd', marginBottom: '10px', boxSizing: 'border-box' }}
+          style={{ width: '100%', height: '80px', padding: '12px', borderRadius: '8px', border: '1px solid #ddd', marginBottom: '10px' }}
         />
         <div style={{ display: 'flex', gap: '10px' }}>
           <button
             onClick={handleGenerate}
             disabled={loading || !hasCredits(5)}
-            style={{
-              flex: 2, padding: '12px', border: 'none', borderRadius: '8px', cursor: loading || !hasCredits(5) ? 'not-allowed' : 'pointer', fontWeight: 'bold',
-              background: loading || !hasCredits(5) ? '#cbd5e1' : '#2c3e50',
-              color: loading || !hasCredits(5) ? '#94a3b8' : 'white'
-            }}>
+            style={{ flex: 2, background: loading || !hasCredits(5) ? '#94a3b8' : '#2c3e50', color: 'white', padding: '12px', border: 'none', borderRadius: '8px', cursor: loading || !hasCredits(5) ? 'not-allowed' : 'pointer', fontWeight: 'bold' }}>
             {loading ? 'Rédaction en cours...' : '🚀 Générer avec Claude · ⚡5'}
           </button>
           <button
@@ -219,7 +201,7 @@ export default function BusinessPlanPage() {
         </div>
       </div>
 
-      {/* DOCUMENT */}
+      {/* DOCUMENT — structure completely unchanged */}
       <div id="business-plan-document" className="container" style={{ maxWidth: '1000px', margin: '0 auto', background: 'white', padding: '60px', borderRadius: '4px', boxShadow: '0 0 20px rgba(0,0,0,0.1)' }}>
 
         <h1 contentEditable suppressContentEditableWarning style={{ color: '#2c3e50', borderBottom: '3px solid #e67e22', textAlign: 'center', marginBottom: '40px' }}>
