@@ -26,7 +26,7 @@ export default function BusinessPlanPage() {
 
     setLoading(true)
     try {
-      const response = await fetch('/api/generer-business-plan', {
+      const response = await fetch('/api/generer-businessplan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt }),
