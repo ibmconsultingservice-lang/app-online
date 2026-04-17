@@ -24,6 +24,7 @@ const TOOLS = [
   { icon: '📎', name: 'PDF Merger',    desc: 'Fusionner vos fichiers PDF',       path: '/pdfmerger',     img: '/images/tools/tool-10-pdf-merger.png'    },
   { icon: '📤', name: 'Office to PDF', desc: 'Convertir Word/Excel en PDF',      path: '/office2pdf',    img: '/images/tools/tool-11-office-to-pdf.png' },
   { icon: '📊', name: 'Pdf Convert', desc: "Convertisseur de pdf en fichier",          path: '/pdfconvert',  img: '/images/tools/tool-01-pdfconvert.png' },
+  { icon: '📊', name: 'Image Generator', desc: "Générateur d'image",          path: '/Imagegen',  img: '/images/tools/tool-01-image.jpg' },
 ]
 
 // Isolated component so each card manages its own image state
