@@ -2,22 +2,61 @@ import { NextResponse } from 'next/server'
 
 const HF_API_KEY = process.env.HF_API_KEY
 
-// Confirmed from model page: FLUX.1-schnell uses Nscale provider
+// Confirmed working from inferenceProviderMapping
 const ENDPOINTS = [
   {
+    url: 'https://router.huggingface.co/fal-ai/fal-ai/flux/schnell',
+    label: 'fal-ai',
+    body: (prompt, w, h) => ({
+      prompt,
+      image_size: { width: w, height: h },
+      num_inference_steps: 4,
+      num_images: 1,
+    }),
+    parseResponse: async (res) => {
+      const json = await res.json()
+      const imageUrl = json?.images?.[0]?.url
+      if (!imageUrl) throw new Error('Pas d\'URL image dans la réponse fal-ai')
+      const imgRes = await fetch(imageUrl)
+      const blob = await imgRes.blob()
+      const buffer = Buffer.from(await blob.arrayBuffer())
+      return `data:${blob.type || 'image/jpeg'};base64,${buffer.toString('base64')}`
+    }
+  },
+  {
     url: 'https://router.huggingface.co/nscale/v1/images/generations',
-    model: 'black-forest-labs/FLUX.1-schnell',
-    label: 'FLUX.1-schnell (nscale)',
+    label: 'nscale',
+    body: (prompt, w, h) => ({
+      model: 'black-forest-labs/FLUX.1-schnell',
+      prompt,
+      n: 1,
+      size: `${w}x${h}`,
+      response_format: 'b64_json',
+    }),
+    parseResponse: async (res) => {
+      const json = await res.json()
+      const b64 = json?.data?.[0]?.b64_json
+      if (!b64) throw new Error('Pas de b64_json dans la réponse nscale')
+      return `data:image/png;base64,${b64}`
+    }
   },
   {
-    url: 'https://router.huggingface.co/fal-ai/v1/images/generations',
-    model: 'black-forest-labs/FLUX.1-schnell',
-    label: 'FLUX.1-schnell (fal-ai)',
-  },
-  {
-    url: 'https://router.huggingface.co/replicate/v1/images/generations',
-    model: 'black-forest-labs/FLUX.1-schnell',
-    label: 'FLUX.1-schnell (replicate)',
+    url: 'https://router.huggingface.co/together/v1/images/generations',
+    label: 'together',
+    body: (prompt, w, h) => ({
+      model: 'black-forest-labs/FLUX.1-schnell',
+      prompt,
+      n: 1,
+      width: w,
+      height: h,
+      response_format: 'b64_json',
+    }),
+    parseResponse: async (res) => {
+      const json = await res.json()
+      const b64 = json?.data?.[0]?.b64_json
+      if (!b64) throw new Error('Pas de b64_json dans la réponse together')
+      return `data:image/png;base64,${b64}`
+    }
   },
 ]
 
@@ -35,22 +74,16 @@ async function generateOne({ prompt, style, width, height }) {
           Authorization: `Bearer ${HF_API_KEY}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          model: endpoint.model,
-          prompt: fullPrompt,
-          n: 1,
-          size: `${Math.min(width, 1024)}x${Math.min(height, 1024)}`,
-          response_format: 'b64_json', // get base64 directly
-        }),
+        body: JSON.stringify(endpoint.body(fullPrompt, width, height)),
       })
 
       console.log(`[${endpoint.label}] status:`, res.status)
 
       if (res.status === 401 || res.status === 403) {
-        throw new Error('Token invalide — vérifiez la permission "Make calls to Inference Providers"')
+        throw new Error('Token invalide ou permission manquante')
       }
       if (res.status === 402) {
-        throw new Error('Crédits épuisés — passez à HuggingFace PRO ($9/mois)')
+        throw new Error('Crédits épuisés — passez à HuggingFace PRO')
       }
       if (res.status === 404 || res.status === 422) {
         lastError = new Error(`${endpoint.label} non disponible`)
@@ -59,40 +92,18 @@ async function generateOne({ prompt, style, width, height }) {
       if (!res.ok) {
         const text = await res.text().catch(() => '')
         let msg = `Erreur HTTP ${res.status}`
-        try { msg = JSON.parse(text)?.error?.message || JSON.parse(text)?.error || msg } catch {}
+        try { msg = JSON.parse(text)?.error || msg } catch {}
         lastError = new Error(msg)
         continue
       }
 
-      const json = await res.json()
-      console.log(`[${endpoint.label}] response keys:`, Object.keys(json))
-
-      // OpenAI-compatible response format
-      const item = json?.data?.[0]
-      if (!item) {
-        lastError = new Error('Réponse vide du serveur')
-        continue
-      }
-
-      // b64_json format
-      if (item.b64_json) {
-        return `data:image/png;base64,${item.b64_json}`
-      }
-
-      // URL format — fetch and convert
-      if (item.url) {
-        const imgRes = await fetch(item.url)
-        const blob = await imgRes.blob()
-        const buffer = Buffer.from(await blob.arrayBuffer())
-        return `data:${blob.type || 'image/png'};base64,${buffer.toString('base64')}`
-      }
-
-      lastError = new Error('Format de réponse inconnu')
-      continue
+      const imageData = await endpoint.parseResponse(res)
+      console.log(`[${endpoint.label}] succès`)
+      return imageData
 
     } catch (err) {
       if (err.message.includes('Token') || err.message.includes('Crédits')) throw err
-      console.error(`[${endpoint.label}] exception:`, err.message)
+      console.error(`[${endpoint.label}] erreur:`, err.message)
       lastError = err
       continue
     }
