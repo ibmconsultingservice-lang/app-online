@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import { Copy, Check, Send, Sparkles } from 'lucide-react'
-import { callClaude } from '@/lib/api'
+
 
 export default function EmailManager() {
   const [context, setContext]           = useState('')
