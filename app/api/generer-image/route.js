@@ -2,11 +2,10 @@ import { NextResponse } from 'next/server'
 
 const HF_API_KEY = process.env.HF_API_KEY
 
-// Updated models using the new HF Inference API format
 const MODELS = [
-  'black-forest-labs/FLUX.1-schnell',  // Best free model, very fast
-  'stabilityai/stable-diffusion-3-medium-diffusers',
-  'stabilityai/stable-diffusion-xl-base-1.0',
+  'stabilityai/sdxl-turbo',
+  'Lykon/dreamshaper-8',
+  'Yntec/RealisticVisionV51',
 ]
 
 async function generateOne({ prompt, style, width, height }) {
@@ -23,30 +22,32 @@ async function generateOne({ prompt, style, width, height }) {
           headers: {
             Authorization: `Bearer ${HF_API_KEY}`,
             'Content-Type': 'application/json',
-            'x-wait-for-model': 'true',  // Wait instead of 503
+            'x-wait-for-model': 'true',
           },
           body: JSON.stringify({
             inputs: fullPrompt,
             parameters: {
-              width,
-              height,
-              num_inference_steps: 4,   // FLUX.1-schnell works best with 4
-              guidance_scale: 0.0,      // FLUX schnell uses 0
+              width: Math.min(width, 512),
+              height: Math.min(height, 512),
+              num_inference_steps: 20,
+              guidance_scale: 7.5,
             },
           }),
         }
       )
 
-      if (res.status === 404) {
-        // Model not available, try next
+      console.log(`[${model}] status:`, res.status)
+
+      if (res.status === 404 || res.status === 403) {
         lastError = new Error(`Modèle ${model} non disponible`)
         continue
       }
 
       if (res.status === 503) {
         const json = await res.json().catch(() => ({}))
-        const wait = json.estimated_time ? Math.ceil(json.estimated_time) : 30
-        throw new Error(`Modèle en cours de chargement, réessayez dans ~${wait}s`)
+        const wait = json.estimated_time ? Math.ceil(json.estimated_time) : 20
+        lastError = new Error(`Modèle en chargement, réessayez dans ~${wait}s`)
+        continue  // try next model instead of throwing
       }
 
       if (!res.ok) {
@@ -54,6 +55,14 @@ async function generateOne({ prompt, style, width, height }) {
         let errMsg = `Erreur HTTP ${res.status}`
         try { errMsg = JSON.parse(text)?.error || errMsg } catch {}
         lastError = new Error(errMsg)
+        continue
+      }
+
+      const contentType = res.headers.get('content-type') || ''
+      if (!contentType.includes('image')) {
+        const text = await res.text()
+        console.error(`[${model}] non-image response:`, text.slice(0, 200))
+        lastError = new Error(`Réponse invalide du modèle`)
         continue
       }
 
@@ -67,11 +76,12 @@ async function generateOne({ prompt, style, width, height }) {
       const base64 = buffer.toString('base64')
       const mimeType = blob.type || 'image/jpeg'
 
+      console.log(`[${model}] success, size: ${buffer.length} bytes`)
       return `data:${mimeType};base64,${base64}`
 
     } catch (err) {
+      console.error(`[${model}] exception:`, err.message)
       lastError = err
-      if (err.message.includes('chargement')) throw err
       continue
     }
   }
@@ -91,10 +101,11 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Clé API HuggingFace non configurée' }, { status: 500 })
     }
 
+    // Cap at 512x512 — larger sizes require Pro/paid tier
     const [widthStr, heightStr] = size.split('x')
-    const width = parseInt(widthStr) || 512
-    const height = parseInt(heightStr) || 512
-    const safeCount = Math.min(Math.max(parseInt(count) || 1, 1), 4)
+    const width = Math.min(parseInt(widthStr) || 512, 512)
+    const height = Math.min(parseInt(heightStr) || 512, 512)
+    const safeCount = Math.min(Math.max(parseInt(count) || 1, 1), 2) // cap at 2 for free tier
 
     const results = await Promise.allSettled(
       Array.from({ length: safeCount }, () =>
