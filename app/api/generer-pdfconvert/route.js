@@ -1,10 +1,6 @@
 import { NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
-// 1. Import createRequire to handle the old pdf-parse library
-import { createRequire } from 'module';
-
-const require = createRequire(import.meta.url);
-const pdfParse = require('pdf-parse');
+import PDFParser from 'pdf2json';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -17,101 +13,52 @@ export async function POST(req) {
     if (!file) return NextResponse.json({ error: 'Fichier manquant' }, { status: 400 });
 
     const buffer = Buffer.from(await file.arrayBuffer());
+
+    // --- PDF extraction logic using pdf2json ---
+    const rawText = await new Promise((resolve, reject) => {
+      const pdfParser = new PDFParser(null, 1); // "1" means extract text only
+      pdfParser.on("pdfParser_dataError", errData => reject(errData.parserError));
+      pdfParser.on("pdfParser_dataReady", pdfData => {
+        resolve(pdfParser.getRawTextContent());
+      });
+      pdfParser.parseBuffer(buffer);
+    });
+
+    if (!rawText) return NextResponse.json({ error: 'Impossible d\'extraire le texte' }, { status: 422 });
+
+    // ── AI Processing ──
+    // (Note: Using the correct model name for Claude 3.5 Sonnet)
+    const modelId = 'claude-sonnet-4-20250514';
     
-    // 2. pdfParse is now correctly loaded via require
-    const parsed = await pdfParse(buffer);
-    const rawText = parsed.text?.trim() || '';
-
-    if (!rawText) return NextResponse.json({ error: 'Impossible d\'extraire le texte du PDF' }, { status: 422 });
-
-    // ── WORD ──
+    let aiPrompt = "";
     if (format === 'word') {
-      const message = await anthropic.messages.create({
-        model: 'claude-3-5-sonnet-20240620', // Note: Updated to a valid model name
-        max_tokens: 4000,
-        messages: [{
-          role: 'user',
-          content: `Tu es un assistant expert en mise en forme de documents. 
-Voici le contenu brut extrait d'un PDF. Restructure-le proprement en texte clair, 
-bien organisé, avec des titres et paragraphes. 
-Retourne UNIQUEMENT le texte restructuré, sans commentaire ni balise Markdown.
-
-CONTENU PDF :
-${rawText.slice(0, 12000)}`
-        }]
-      });
-
-      const text = message.content.map(b => b.text || '').join('');
-      return NextResponse.json({ text });
+      aiPrompt = `Tu es un assistant expert en mise en forme. Restructure ce texte PDF proprement en texte clair avec titres et paragraphes. Retourne UNIQUEMENT le texte.\n\nCONTENU :\n${rawText.slice(0, 15000)}`;
+    } else if (format === 'excel') {
+      aiPrompt = `Extraits les données de ce texte sous forme de tableau JSON (array d'objets). Retourne UNIQUEMENT le JSON.\n\nCONTENU :\n${rawText.slice(0, 15000)}`;
+    } else if (format === 'powerpoint') {
+      aiPrompt = `Génère une structure de présentation (JSON array d'objets avec "title" et "bullets"). Retourne UNIQUEMENT le JSON.\n\nCONTENU :\n${rawText.slice(0, 15000)}`;
     }
 
-    // ── EXCEL ──
-    if (format === 'excel') {
-      const message = await anthropic.messages.create({
-        model: 'claude-3-5-sonnet-20240620',
-        max_tokens: 4000,
-        messages: [{
-          role: 'user',
-          content: `Tu es un expert en extraction de données structurées.
-Analyse ce texte extrait d'un PDF et extrais toutes les données sous forme de tableau JSON.
-Retourne UNIQUEMENT un tableau JSON valide (array d'objets), sans commentaire, sans backticks, sans Markdown.
-Chaque objet doit avoir des clés cohérentes représentant les colonnes.
-Si le contenu n'est pas tabulaire, décompose-le en entrées logiques avec des champs pertinents.
+    const message = await anthropic.messages.create({
+      model: modelId,
+      max_tokens: 4000,
+      messages: [{ role: 'user', content: aiPrompt }]
+    });
 
-CONTENU PDF :
-${rawText.slice(0, 12000)}`
-        }]
-      });
+    const responseContent = message.content.map(b => b.text || '').join('').trim();
 
-      const raw = message.content.map(b => b.text || '').join('').trim();
-      const clean = raw.replace(/```json|```/g, '').trim();
-
-      let data;
+    // Handle JSON parsing for Excel/PPT
+    if (format === 'excel' || format === 'powerpoint') {
+      const cleanJson = responseContent.replace(/```json|```/g, '').trim();
       try {
-        data = JSON.parse(clean);
-        if (!Array.isArray(data)) data = [data];
-      } catch {
-        data = [{ contenu: raw }];
+        const data = JSON.parse(cleanJson);
+        return NextResponse.json(format === 'excel' ? { data } : { slides: data });
+      } catch (e) {
+        return NextResponse.json({ text: responseContent }); // Fallback
       }
-
-      return NextResponse.json({ data });
     }
 
-    // ── POWERPOINT ──
-    if (format === 'powerpoint') {
-      const message = await anthropic.messages.create({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 2000,
-        messages: [{
-          role: 'user',
-          content: `Tu es un expert en création de présentations PowerPoint.
-Analyse ce texte extrait d'un PDF et génère une structure de présentation professionnelle.
-Retourne UNIQUEMENT un tableau JSON valide, sans commentaire, sans backticks, sans Markdown.
-Format attendu : un array d'objets avec exactement ces deux clés :
-- "title" : titre de la slide (string)
-- "bullets" : array de strings (points clés de la slide, max 5 par slide)
-Génère entre 5 et 12 slides selon la densité du contenu.
-
-CONTENU PDF :
-${rawText.slice(0, 12000)}`
-        }]
-      });
-
-      const raw = message.content.map(b => b.text || '').join('').trim();
-      const clean = raw.replace(/```json|```/g, '').trim();
-
-      let slides;
-      try {
-        slides = JSON.parse(clean);
-        if (!Array.isArray(slides)) slides = [{ title: 'Contenu', bullets: [clean] }];
-      } catch {
-        slides = [{ title: 'Contenu extrait', bullets: rawText.slice(0, 500).split('\n').filter(Boolean).slice(0, 5) }];
-      }
-
-      return NextResponse.json({ slides });
-    }
-
-    return NextResponse.json({ error: 'Format non supporté' }, { status: 400 });
+    return NextResponse.json({ text: responseContent });
 
   } catch (err) {
     console.error('[pdfconvert]', err);
