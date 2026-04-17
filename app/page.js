@@ -13,14 +13,17 @@ const TOOLS = [
   { icon: '🧾', name: 'Facture',       desc: 'Génération de factures pro',       path: '/facture',       img: '/images/tools/tool-05-facture.png'       },
   { icon: '📊', name: 'Business Plan', desc: "Plan d'affaires complet",          path: '/Businessplan',  img: '/images/tools/tool-06-business-plan.png' },
   { icon: '📊', name: 'Lettres', desc: "Rédiger votre lettre",          path: '/letter',  img: '/images/tools/tool-01-letter.png' },
+  { icon: '📊', name: 'Email', desc: "Email Writer Professional",          path: '/email',  img: '/images/tools/tool-01-email.png' },
   { icon: '📊', name: 'Project Planner', desc: "Planifier votre projet",          path: '/Planner',  img: '/images/tools/tool-01-planner.png' },
   { icon: '📊', name: 'Modern Card', desc: "Carte de visite moderne",          path: '/CVisite',  img: '/images/tools/tool-01-visite.png' },
+  { icon: '📊', name: 'Document Analyser', desc: "Analyse approfondie de document",          path: '/docanalyser',  img: '/images/tools/tool-01-analyser.png' },
   { icon: '📊', name: 'Contract Generator', desc: "Générer tout type de contrat",          path: '/Contract',  img: '/images/tools/tool-01-contract.png' },
   { icon: '🔧', name: 'Doc Repairer',  desc: 'Correction & réparation de docs',  path: '/docrepairer',   img: '/images/tools/tool-07-doc-repairer.png'  },
   { icon: '🔍', name: 'OCR Vision',    desc: 'Extraction de texte depuis image', path: '/ocr-vision',    img: '/images/tools/tool-08-ocr-vision.png'    },
   { icon: '🖼️', name: 'Remove BG',     desc: 'Suppression de fond IA',           path: '/Removebg',      img: '/images/tools/tool-09-remove-bg.png'     },
   { icon: '📎', name: 'PDF Merger',    desc: 'Fusionner vos fichiers PDF',       path: '/pdfmerger',     img: '/images/tools/tool-10-pdf-merger.png'    },
   { icon: '📤', name: 'Office to PDF', desc: 'Convertir Word/Excel en PDF',      path: '/office2pdf',    img: '/images/tools/tool-11-office-to-pdf.png' },
+  { icon: '📊', name: 'Pdf Convert', desc: "Convertisseur de pdf en fichier",          path: '/pdfconvert',  img: '/images/tools/tool-01-pdfconvert.png' },
 ]
 
 // Isolated component so each card manages its own image state
