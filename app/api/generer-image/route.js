@@ -2,16 +2,15 @@ import { NextResponse } from 'next/server'
 
 const HF_API_KEY = process.env.HF_API_KEY
 
-// Model fallback chain: try SDXL first, fall back to SD 2.1
+// Updated models using the new HF Inference API format
 const MODELS = [
+  'black-forest-labs/FLUX.1-schnell',  // Best free model, very fast
+  'stabilityai/stable-diffusion-3-medium-diffusers',
   'stabilityai/stable-diffusion-xl-base-1.0',
-  'stabilityai/stable-diffusion-2-1',
-  'runwayml/stable-diffusion-v1-5',
 ]
 
 async function generateOne({ prompt, style, width, height }) {
   const fullPrompt = `${prompt}, ${style}, high quality, detailed, professional`
-  const negativePrompt = 'blurry, low quality, watermark, text, distorted, ugly, bad anatomy'
 
   let lastError = null
 
@@ -24,21 +23,26 @@ async function generateOne({ prompt, style, width, height }) {
           headers: {
             Authorization: `Bearer ${HF_API_KEY}`,
             'Content-Type': 'application/json',
+            'x-wait-for-model': 'true',  // Wait instead of 503
           },
           body: JSON.stringify({
             inputs: fullPrompt,
             parameters: {
-              negative_prompt: negativePrompt,
               width,
               height,
-              num_inference_steps: 30,
-              guidance_scale: 7.5,
+              num_inference_steps: 4,   // FLUX.1-schnell works best with 4
+              guidance_scale: 0.0,      // FLUX schnell uses 0
             },
           }),
         }
       )
 
-      // Model loading — HF returns 503 with estimated_time
+      if (res.status === 404) {
+        // Model not available, try next
+        lastError = new Error(`Modèle ${model} non disponible`)
+        continue
+      }
+
       if (res.status === 503) {
         const json = await res.json().catch(() => ({}))
         const wait = json.estimated_time ? Math.ceil(json.estimated_time) : 30
@@ -46,20 +50,27 @@ async function generateOne({ prompt, style, width, height }) {
       }
 
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err.error || `Erreur HTTP ${res.status}`)
+        const text = await res.text().catch(() => '')
+        let errMsg = `Erreur HTTP ${res.status}`
+        try { errMsg = JSON.parse(text)?.error || errMsg } catch {}
+        lastError = new Error(errMsg)
+        continue
       }
 
       const blob = await res.blob()
+      if (!blob || blob.size === 0) {
+        lastError = new Error('Image vide reçue')
+        continue
+      }
+
       const buffer = Buffer.from(await blob.arrayBuffer())
       const base64 = buffer.toString('base64')
-      const mimeType = blob.type || 'image/png'
+      const mimeType = blob.type || 'image/jpeg'
 
       return `data:${mimeType};base64,${base64}`
 
     } catch (err) {
       lastError = err
-      // Only try next model if it's not a loading error
       if (err.message.includes('chargement')) throw err
       continue
     }
@@ -85,7 +96,6 @@ export async function POST(req) {
     const height = parseInt(heightStr) || 512
     const safeCount = Math.min(Math.max(parseInt(count) || 1, 1), 4)
 
-    // Generate in parallel
     const results = await Promise.allSettled(
       Array.from({ length: safeCount }, () =>
         generateOne({ prompt: prompt.trim(), style, width, height })
