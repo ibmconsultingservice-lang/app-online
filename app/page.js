@@ -14,6 +14,8 @@ const TOOLS = [
   { icon: '📊', name: 'Business Plan', desc: "Plan d'affaires complet",          path: '/Businessplan',  img: '/images/tools/tool-06-business-plan.png' },
   { icon: '📊', name: 'Lettres', desc: "Rédiger votre lettre",          path: '/letter',  img: '/images/tools/tool-01-letter.png' },
   { icon: '📊', name: 'Project Planner', desc: "Planifier votre projet",          path: '/Planner',  img: '/images/tools/tool-01-planner.png' },
+  { icon: '📊', name: 'Modern Card', desc: "Carte de visite moderne",          path: '/CVisite',  img: '/images/tools/tool-01-visite.png' },
+  { icon: '📊', name: 'Contract Generator', desc: "Générer tout type de contrat",          path: '/Contract',  img: '/images/tools/tool-01-contract.png' },
   { icon: '🔧', name: 'Doc Repairer',  desc: 'Correction & réparation de docs',  path: '/docrepairer',   img: '/images/tools/tool-07-doc-repairer.png'  },
   { icon: '🔍', name: 'OCR Vision',    desc: 'Extraction de texte depuis image', path: '/ocr-vision',    img: '/images/tools/tool-08-ocr-vision.png'    },
   { icon: '🖼️', name: 'Remove BG',     desc: 'Suppression de fond IA',           path: '/Removebg',      img: '/images/tools/tool-09-remove-bg.png'     },
