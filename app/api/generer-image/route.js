@@ -69,8 +69,6 @@ async function generateOne({ prompt, style, width, height }) {
 }
 
 export async function POST(req) {
-  console.log('HF_API_KEY exists:', !!process.env.HF_API_KEY)
-  console.log('First 5 chars:', process.env.HF_API_KEY?.slice(0, 5))
   try {
     const { prompt, style = 'photorealistic', size = '512x512', count = 1 } = await req.json()
 

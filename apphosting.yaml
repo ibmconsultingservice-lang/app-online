@@ -44,3 +44,6 @@ env:
 
   - variable: PAYPAL_MODE
     value: "sandbox"                     
+
+  - variable: HF_API_KEY
+    secret: HF_API_KEY
