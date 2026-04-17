@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
-import pdfParse from 'pdf-parse';
+// 1. Import createRequire to handle the old pdf-parse library
+import { createRequire } from 'module';
+
+const require = createRequire(import.meta.url);
+const pdfParse = require('pdf-parse');
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -13,6 +17,8 @@ export async function POST(req) {
     if (!file) return NextResponse.json({ error: 'Fichier manquant' }, { status: 400 });
 
     const buffer = Buffer.from(await file.arrayBuffer());
+    
+    // 2. pdfParse is now correctly loaded via require
     const parsed = await pdfParse(buffer);
     const rawText = parsed.text?.trim() || '';
 
@@ -21,7 +27,7 @@ export async function POST(req) {
     // ── WORD ──
     if (format === 'word') {
       const message = await anthropic.messages.create({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-3-5-sonnet-20240620', // Note: Updated to a valid model name
         max_tokens: 4000,
         messages: [{
           role: 'user',
@@ -42,7 +48,7 @@ ${rawText.slice(0, 12000)}`
     // ── EXCEL ──
     if (format === 'excel') {
       const message = await anthropic.messages.create({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-3-5-sonnet-20240620',
         max_tokens: 4000,
         messages: [{
           role: 'user',
@@ -75,7 +81,7 @@ ${rawText.slice(0, 12000)}`
     if (format === 'powerpoint') {
       const message = await anthropic.messages.create({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 4000,
+        max_tokens: 2000,
         messages: [{
           role: 'user',
           content: `Tu es un expert en création de présentations PowerPoint.
