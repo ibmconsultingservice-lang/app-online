@@ -27,6 +27,7 @@ const TOOLS = [
   { icon: '👩‍🦰', name: 'Image Generator', desc: "Générateur d'image",          path: '/Imagegen',  img: '/images/tools/tool-01-image.jpg' },
   { icon: '🤳', name: 'Capture Me', desc: "Take your image and make it beautiful",          path: '/Capture',  img: '/images/tools/tool-01-capture.png' },
   { icon: '🚀', name: 'Workflow', desc: "Générer workflow",          path: '/workflow',  img: '/images/tools/tool-01-workflow.png' },
+  { icon: '🔥', name: 'Post Generator', desc: "Généer un poste",          path: '/PostGenerator',  img: '/images/tools/tool-01-post.png' },
 ]
 
 // Isolated component so each card manages its own image state
