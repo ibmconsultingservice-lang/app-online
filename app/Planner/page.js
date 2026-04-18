@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useCredits } from '@/hooks/useCredits';
 import { usePlanGuard } from '@/hooks/usePlanGuard';
 import { useRouter } from 'next/navigation';
-import { Zap } from 'lucide-react';
+import { Zap, Save, Download, Upload, FileJson, FileText } from 'lucide-react';
 
 const COLORS = ['#534AB7', '#1D9E75', '#378ADD', '#BA7517', '#D4537E', '#3B6D11', '#D85A30', '#0C447C', '#3C3489', '#0F766E', '#B45309', '#7C3AED'];
 const TEAM = ['Alex', 'Sam', 'Jordan', 'Charlie', 'Taylor'];
@@ -22,6 +22,9 @@ export default function ProjectDeepWork() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [mounted, setMounted] = useState(false)
+  const [saveStatus, setSaveStatus] = useState(null) // 'saving' | 'saved' | null
+  const [showExportMenu, setShowExportMenu] = useState(false)
+  const importRef = useRef(null)
 
   const [formData, setFormData] = useState({
     title: '', assignee: '', status: 'todo', priority: 'medium',
@@ -30,7 +33,6 @@ export default function ProjectDeepWork() {
 
   const dragRef = useRef({ type: null, id: null, startX: 0, startVal: 0, startDur: 0 });
 
-  // ── Fix localStorage SSR — only runs client-side ──
   useEffect(() => {
     setMounted(true)
     try {
@@ -58,6 +60,143 @@ export default function ProjectDeepWork() {
       console.error('localStorage save error:', e)
     }
   }, [tasks, totalDays, mounted]);
+
+  // ── Save project manually ──
+  const handleSave = () => {
+    setSaveStatus('saving')
+    try {
+      const projectData = { tasks, totalDays, savedAt: new Date().toISOString() }
+      localStorage.setItem('nexus-tasks', JSON.stringify(tasks))
+      localStorage.setItem('nexus-total-days', totalDays.toString())
+      localStorage.setItem('nexus-last-saved', new Date().toLocaleString())
+      setTimeout(() => setSaveStatus('saved'), 400)
+      setTimeout(() => setSaveStatus(null), 2400)
+    } catch (e) {
+      console.error('Save error:', e)
+      setSaveStatus(null)
+    }
+  }
+
+  // ── Export as JSON ──
+  const exportJSON = () => {
+    setShowExportMenu(false)
+    const projectData = {
+      name: 'NEXUS Project',
+      exportedAt: new Date().toISOString(),
+      totalDays,
+      tasks,
+    }
+    const blob = new Blob([JSON.stringify(projectData, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `nexus-project-${Date.now()}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  // ── Export as CSV ──
+  const exportCSV = () => {
+    setShowExportMenu(false)
+    const headers = ['Titre', 'Responsable', 'Statut', 'Priorité', 'Jour début', 'Durée (jours)', 'Progression (%)']
+    const rows = tasks.map(t => [
+      `"${t.title}"`,
+      t.assignee || '',
+      t.status,
+      t.priority || 'medium',
+      t.start,
+      t.duration,
+      t.progress,
+    ])
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `nexus-project-${Date.now()}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  // ── Export as printable HTML ──
+  const exportHTML = () => {
+    setShowExportMenu(false)
+    const rows = tasks.map(t => `
+      <tr>
+        <td style="padding:10px;border-bottom:1px solid #eee;font-weight:600">${t.title}</td>
+        <td style="padding:10px;border-bottom:1px solid #eee">${t.assignee || '—'}</td>
+        <td style="padding:10px;border-bottom:1px solid #eee">${t.status}</td>
+        <td style="padding:10px;border-bottom:1px solid #eee">Jour ${t.start} → Jour ${t.start + t.duration - 1}</td>
+        <td style="padding:10px;border-bottom:1px solid #eee">
+          <div style="background:#e2e8f0;border-radius:4px;height:8px;width:100px">
+            <div style="background:${COLORS[t.colorIdx]};width:${t.progress}%;height:8px;border-radius:4px"></div>
+          </div>
+          <span style="font-size:11px;color:#64748b">${t.progress}%</span>
+        </td>
+      </tr>
+    `).join('')
+
+    const html = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>NEXUS — Export Projet</title>
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; padding: 40px; color: #0f172a; }
+    h1 { color: #534AB7; margin-bottom: 4px; }
+    p { color: #64748b; margin-bottom: 30px; font-size: 13px; }
+    table { width: 100%; border-collapse: collapse; }
+    thead { background: #f8fafc; }
+    th { padding: 10px; text-align: left; font-size: 11px; color: #94a3b8; text-transform: uppercase; border-bottom: 2px solid #e2e8f0; }
+    @media print { body { padding: 20px; } }
+  </style>
+</head>
+<body>
+  <h1>NEXUS — Plan de projet</h1>
+  <p>Exporté le ${new Date().toLocaleString()} · ${tasks.length} tâches · ${Math.ceil(totalDays / 7)} semaines</p>
+  <table>
+    <thead>
+      <tr>
+        <th>Tâche</th><th>Responsable</th><th>Statut</th><th>Période</th><th>Progression</th>
+      </tr>
+    </thead>
+    <tbody>${rows}</tbody>
+  </table>
+</body>
+</html>`
+
+    const blob = new Blob([html], { type: 'text/html' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `nexus-project-${Date.now()}.html`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  // ── Import JSON ──
+  const handleImport = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      try {
+        const data = JSON.parse(ev.target.result)
+        if (data.tasks && Array.isArray(data.tasks)) {
+          setTasks(data.tasks)
+          if (data.totalDays) setTotalDays(data.totalDays)
+          setSaveStatus('saved')
+          setTimeout(() => setSaveStatus(null), 2000)
+        } else {
+          alert('Fichier JSON invalide — structure non reconnue.')
+        }
+      } catch {
+        alert('Erreur de lecture du fichier JSON.')
+      }
+    }
+    reader.readAsText(file)
+    e.target.value = ''
+  }
 
   const addWeek = () => setTotalDays(prev => prev + 7);
   const removeWeek = () => setTotalDays(prev => Math.max(7, prev - 7));
@@ -129,7 +268,6 @@ export default function ProjectDeepWork() {
     window.removeEventListener('mouseup', endDrag);
   };
 
-  // ── Loading screen ──
   if (!allowed) return (
     <div style={{ minHeight: '100vh', background: '#f8fafc', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
       <div style={{ width: 44, height: 44, background: '#534AB7', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -161,12 +299,17 @@ export default function ProjectDeepWork() {
         .color-grid { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
         .week-btn { background: #fff; border: 1px solid var(--border); width: 28px; height: 28px; border-radius: 6px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
         .week-btn:hover { background: #f1f5f9; color: var(--primary); }
+        .save-btn { display: flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 8px; border: 1px solid var(--border); background: #fff; cursor: pointer; font-size: 12px; font-weight: 600; color: #334155; transition: 0.2s; }
+        .save-btn:hover { background: #f1f5f9; }
+        .save-btn.saved { border-color: #22c55e; color: #16a34a; background: #f0fdf4; }
+        .export-menu { position: absolute; right: 0; top: calc(100% + 6px); background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 6px; min-width: 180px; box-shadow: 0 8px 16px rgba(0,0,0,0.08); z-index: 200; }
+        .export-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px; border: none; background: none; width: 100%; cursor: pointer; font-size: 12px; color: #334155; font-weight: 600; transition: 0.15s; text-align: left; }
+        .export-item:hover { background: #f1f5f9; color: var(--primary); }
       `}</style>
 
       <aside className="sidebar">
         <div style={{ padding: '10px 0 20px', fontWeight: 800, fontSize: 18, color: 'var(--primary)' }}>NEXUS</div>
 
-        {/* Credits badge in sidebar */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#eef2ff', border: '1px solid #c7d2fe', borderRadius: 20, padding: '6px 12px', marginBottom: 20 }}>
           <Zap size={12} color="#4f46e5" fill="#4f46e5"/>
           <span style={{ fontSize: 11, fontWeight: 700, color: '#4338ca' }}>{credits} crédits</span>
@@ -175,6 +318,21 @@ export default function ProjectDeepWork() {
         <button className={`nav-item ${view === 'gantt' ? 'active' : ''}`} onClick={() => setView('gantt')}>Gantt Timeline</button>
         <button className={`nav-item ${view === 'kanban' ? 'active' : ''}`} onClick={() => setView('kanban')}>Kanban Board</button>
         <button className={`nav-item ${view === 'list' ? 'active' : ''}`} onClick={() => setView('list')}>Task List</button>
+
+        {/* ── Save & Export in sidebar ── */}
+        <div style={{ marginTop: 24, borderTop: '1px solid var(--border)', paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <p style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', marginBottom: 4, paddingLeft: 4 }}>Projet</p>
+
+          <button className={`save-btn ${saveStatus === 'saved' ? 'saved' : ''}`} onClick={handleSave}>
+            <Save size={13} />
+            {saveStatus === 'saving' ? 'Sauvegarde...' : saveStatus === 'saved' ? '✓ Sauvegardé' : 'Sauvegarder'}
+          </button>
+
+          <button className="save-btn" onClick={() => importRef.current?.click()}>
+            <Upload size={13} /> Importer JSON
+          </button>
+          <input ref={importRef} type="file" accept=".json" hidden onChange={handleImport} />
+        </div>
 
         <div style={{ marginTop: 'auto' }}>
           <button onClick={() => router.push('/dashboard')}
@@ -201,6 +359,27 @@ export default function ProjectDeepWork() {
             </div>
 
             <input className="form-control" placeholder="Rechercher..." style={{ width: 180, borderRadius: 20 }} value={search} onChange={(e) => setSearch(e.target.value)} />
+
+            {/* ── Export dropdown in header ── */}
+            <div style={{ position: 'relative' }}>
+              <button className="save-btn" onClick={() => setShowExportMenu(v => !v)}>
+                <Download size={13} /> Exporter ▾
+              </button>
+              {showExportMenu && (
+                <div className="export-menu">
+                  <button className="export-item" onClick={exportJSON}>
+                    <FileJson size={14} color="#534AB7" /> JSON (import/export)
+                  </button>
+                  <button className="export-item" onClick={exportCSV}>
+                    <FileText size={14} color="#1D9E75" /> CSV (tableur)
+                  </button>
+                  <button className="export-item" onClick={exportHTML}>
+                    <FileText size={14} color="#378ADD" /> HTML (impression)
+                  </button>
+                </div>
+              )}
+            </div>
+
             <button onClick={() => openModal()} style={{ background: 'var(--primary)', color: 'white', border: 'none', padding: '8px 16px', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>+ New Task</button>
           </div>
         </header>
