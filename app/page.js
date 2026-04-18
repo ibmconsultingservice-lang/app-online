@@ -26,6 +26,7 @@ const TOOLS = [
   { icon: '📊', name: 'Pdf Convert', desc: "Convertisseur de pdf en fichier",          path: '/pdfconvert',  img: '/images/tools/tool-01-pdfconvert.png' },
   { icon: '👩‍🦰', name: 'Image Generator', desc: "Générateur d'image",          path: '/Imagegen',  img: '/images/tools/tool-01-image.jpg' },
   { icon: '🤳', name: 'Capture Me', desc: "Take your image and make it beautiful",          path: '/Capture',  img: '/images/tools/tool-01-capture.png' },
+  { icon: '🚀', name: 'Workflow', desc: "Générer workflow",          path: '/Capture',  img: '/images/tools/tool-01-workflow.png' },
 ]
 
 // Isolated component so each card manages its own image state
