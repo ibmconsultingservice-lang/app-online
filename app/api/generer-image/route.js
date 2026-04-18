@@ -1,45 +1,20 @@
 import { NextResponse } from 'next/server'
 
-const HF_API_KEY = process.env.HF_API_KEY
-
 async function generateOne({ prompt, style, width, height }) {
   const fullPrompt = `${prompt}, ${style}, high quality, detailed, professional`
+  const encodedPrompt = encodeURIComponent(fullPrompt)
+  
+  const url = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&nologo=true&model=flux&seed=${Math.floor(Math.random() * 999999)}`
 
-  const res = await fetch('https://router.huggingface.co/fal-ai/fal-ai/flux/schnell', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${HF_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      prompt: fullPrompt,
-      image_size: { width, height },
-      num_inference_steps: 4,
-      num_images: 1,
-      enable_safety_checker: false,
-    }),
-  })
+  const res = await fetch(url, { method: 'GET' })
 
-  if (res.status === 401 || res.status === 403) {
-    throw new Error('Token invalide ou permission manquante')
-  }
-  if (res.status === 402) {
-    throw new Error('Crédits épuisés — passez à HuggingFace PRO')
-  }
   if (!res.ok) {
-    const text = await res.text().catch(() => '')
-    let msg = `Erreur HTTP ${res.status}`
-    try { msg = JSON.parse(text)?.error || msg } catch {}
-    throw new Error(msg)
+    throw new Error(`Erreur génération: ${res.status}`)
   }
 
-  const json = await res.json()
-  const imageUrl = json?.images?.[0]?.url
-  if (!imageUrl) throw new Error('Pas d\'URL image dans la réponse')
-
-  // Fetch image and convert to base64
-  const imgRes = await fetch(imageUrl)
-  const blob = await imgRes.blob()
+  const blob = await res.blob()
+  if (!blob || blob.size === 0) throw new Error('Image vide reçue')
+  
   const buffer = Buffer.from(await blob.arrayBuffer())
   return `data:${blob.type || 'image/jpeg'};base64,${buffer.toString('base64')}`
 }
@@ -50,9 +25,6 @@ export async function POST(req) {
 
     if (!prompt?.trim()) {
       return NextResponse.json({ error: 'Prompt manquant' }, { status: 400 })
-    }
-    if (!HF_API_KEY) {
-      return NextResponse.json({ error: 'Clé API HuggingFace non configurée' }, { status: 500 })
     }
 
     const [w, h] = size.split('x').map(n => Math.min(parseInt(n) || 512, 1024))
