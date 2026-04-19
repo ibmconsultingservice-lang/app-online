@@ -3,209 +3,268 @@ import Anthropic from '@anthropic-ai/sdk'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
-// ── Step 1: Generate the data layer + KPI logic ──
-async function generateDataLayer(context) {
+// ── STEP 1: Analyse data structure from first 10 rows ──
+async function analyseData(context) {
   const msg = await client.messages.create({
     model: 'claude-sonnet-4-20250514',
-    max_tokens: 3000,
+    max_tokens: 1000,
     messages: [{
       role: 'user',
-      content: `You are a JavaScript data expert. Generate ONLY the JavaScript data and functions for a dashboard.
+      content: `You are a data analyst. Analyse these first rows of data and return a JSON schema.
 
-Context:
-- Dashboard type: ${context.dashboardType}
-- Description: ${context.description}
-- Data preview: ${context.dataPreview || 'None — use realistic demo data'}
-- File name: ${context.fileName || 'demo'}
-- Language: ${context.language}
+Data preview (first 10 rows):
+${context.dataPreview || 'No file uploaded — use realistic demo data for: ' + context.dashboardType}
 
-Generate a complete JavaScript block with:
-1. A variable called \`dashboardData\` — an array of 15-20 realistic demo objects matching the context
-2. Function \`computeKPIs(data)\` — returns object with 4 KPIs: {kpi1:{label,value,change,positive}, kpi2, kpi3, kpi4}
-3. Function \`computeChartData(data)\` — returns {chart1:{labels,datasets}, chart2:{labels,datasets}, chart3:{labels,datasets}}
-4. Function \`computeInsights(data)\` — returns {anomalies:[], predictions:[], recommendations:[]} each with 3 items (each item has {text, type:'warning'|'success'|'info'})
-5. Function \`filterData(data, search, filter)\` — returns filtered array
-6. Function \`formatValue(val, type)\` — formats numbers as currency/percent/integer based on type string
+Dashboard type requested: ${context.dashboardType}
+User description: ${context.description}
 
-Return ONLY the JavaScript code block, no HTML, no markdown backticks, no explanation.
-Start with: // === DATA LAYER ===
-End with: // === END DATA LAYER ===`
+Return ONLY a JSON object (no markdown, no explanation):
+{
+  "columns": [{"name": "col_name", "type": "number|string|date|percent", "role": "kpi|dimension|metric|date"}],
+  "rowCount": estimated_total_rows,
+  "detectedSector": "finance|sales|hr|marketing|stock|custom",
+  "suggestedKPIs": [{"label": "KPI Name", "column": "col_name", "aggregation": "sum|avg|count|max"}],
+  "suggestedCharts": [
+    {"type": "bar|line|doughnut|radar", "title": "Chart Title", "xColumn": "col", "yColumn": "col"},
+    {"type": "bar|line|doughnut|radar", "title": "Chart Title", "xColumn": "col", "yColumn": "col"},
+    {"type": "bar|line|doughnut|radar", "title": "Chart Title", "xColumn": "col", "yColumn": "col"}
+  ],
+  "filterColumn": "best_column_for_filter",
+  "demoRows": [/* 10 realistic demo rows matching the detected schema */]
+}`
     }]
   })
-  return msg.content[0]?.text?.trim() || ''
+
+  const raw = msg.content[0]?.text?.trim() || '{}'
+  try {
+    const clean = raw.replace(/```json|```/g, '').trim()
+    return JSON.parse(clean)
+  } catch {
+    return { columns: [], demoRows: [], suggestedKPIs: [], suggestedCharts: [], filterColumn: 'status' }
+  }
 }
 
-// ── Step 2: Generate the HTML structure ──
-async function generateHTMLStructure(context) {
-  const msg = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 3000,
-    messages: [{
-      role: 'user',
-      content: `You are a UI expert. Generate ONLY the HTML body content for a dashboard (no <html>, no <head>, no <script> tags).
+// ── STEP 2: Generate the full dashboard HTML in one shot ──
+async function generateDashboardHTML(context, schema) {
+  const schemaStr = JSON.stringify(schema, null, 2)
+  const demoRowsStr = JSON.stringify(schema.demoRows || [], null, 2)
+  const columns = (schema.columns || []).map(c => c.name).join(', ')
 
-Context:
-- Dashboard type: ${context.dashboardType}
-- Color theme: ${context.colorTheme}
-- Language: ${context.language}
-- Description: ${context.description}
-
-Generate semantic HTML with these sections, using Tailwind CSS classes:
-1. A <header> with gradient bg (based on theme), title "${context.dashboardType}", subtitle, and 3 action buttons: id="btnRefresh", id="btnExportPNG", id="btnExportPDF"
-2. A file upload zone: <div id="uploadZone"> with drag-drop area and <input type="file" id="fileInput" accept=".csv,.xlsx,.json">
-3. KPI grid: <div id="kpiGrid" class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6"> with 4 cards each having id="kpi1" through id="kpi4", each card has: <p class="kpi-label">, <p class="kpi-value">, <p class="kpi-change">
-4. Charts grid: <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6"> with 3 canvas elements: id="chart1", id="chart2", id="chart3" each wrapped in a white card div
-5. Insights section: <div id="insightsSection"> with 3 sub-divs: id="anomaliesBox", id="predictionsBox", id="recommendationsBox"
-6. Data table: <div id="tableSection"> with <input id="searchInput">, <select id="filterSelect">, <table id="dataTable"> with <thead id="tableHead"> and <tbody id="tableBody">, and pagination div id="pagination"
-
-Color themes:
-- dark: bg-slate-900 text-white, header bg-gradient-to-r from-slate-800 to-slate-900
-- light: bg-gray-50 text-gray-900, header bg-gradient-to-r from-blue-600 to-indigo-600
-- purple: bg-violet-950 text-white, header bg-gradient-to-r from-violet-800 to-indigo-800
-- green: bg-emerald-950 text-white, header bg-gradient-to-r from-emerald-800 to-teal-800
-
-Apply theme: ${context.colorTheme}
-
-Return ONLY the HTML, starting with <header and ending with </div><!-- end wrapper -->
-No <html>, no <head>, no <script>, no markdown.`
-    }]
-  })
-  return msg.content[0]?.text?.trim() || ''
-}
-
-// ── Step 3: Generate the controller JS ──
-async function generateController(context) {
-  const msg = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 3000,
-    messages: [{
-      role: 'user',
-      content: `You are a JavaScript expert. Generate ONLY the controller JavaScript for a dashboard (no HTML, no data layer).
-
-Context:
-- Dashboard type: ${context.dashboardType}
-- Language: ${context.language}
-
-The page already has these global functions available (defined elsewhere):
-- dashboardData (array), computeKPIs(data), computeChartData(data), computeInsights(data), filterData(data, search, filter), formatValue(val, type)
-- Chart.js is loaded as window.Chart
-- PapaParse is loaded as window.Papa
-- html2canvas is loaded
-- jsPDF is loaded as window.jspdf.jsPDF
-
-Generate a complete controller with:
-
-1. \`let currentData = [...dashboardData];\`
-2. \`let currentPage = 1; const PER_PAGE = 10;\`
-3. \`function renderKPIs()\` — reads computeKPIs(currentData), updates #kpi1 through #kpi4 (.kpi-label, .kpi-value, .kpi-change)
-4. \`function renderCharts()\` — reads computeChartData(currentData), creates/destroys Chart.js charts on #chart1, #chart2, #chart3. Use chart types: bar, doughnut, line. Store chart instances in window._charts = {} to destroy before re-render
-5. \`function renderInsights()\` — reads computeInsights(currentData), populates #anomaliesBox, #predictionsBox, #recommendationsBox with styled <div> items
-6. \`function renderTable()\` — builds #tableHead and #tableBody from currentData keys and values, paginates with #pagination buttons
-7. \`function applyFilters()\` — reads #searchInput and #filterSelect, calls filterData(), updates currentData, calls renderKPIs/renderCharts/renderInsights/renderTable
-8. \`function processUploadedFile(file)\` — handles CSV via Papa.parse, JSON via JSON.parse, updates currentData = parsed data then calls all render functions. Shows alert on error.
-9. \`function exportPNG()\` — uses html2canvas on document.body, triggers download as 'dashboard.png'
-10. \`function exportPDF()\` — uses html2canvas + jsPDF to export as 'dashboard.pdf', A4 landscape
-11. DOMContentLoaded listener that: sets up file upload (drag-drop on #uploadZone + click on #fileInput → processUploadedFile), binds #btnRefresh to applyFilters, #btnExportPNG to exportPNG, #btnExportPDF to exportPDF, #searchInput oninput to applyFilters, #filterSelect onchange to applyFilters, calls renderKPIs(), renderCharts(), renderInsights(), renderTable()
-
-Return ONLY JavaScript, no HTML, no markdown backticks.
-Start with: // === CONTROLLER ===
-End with: // === END CONTROLLER ===`
-    }]
-  })
-  return msg.content[0]?.text?.trim() || ''
-}
-
-// ── Step 4: Verify & fix each layer ──
-async function verifyAndFix(code, layerName, context) {
-  const msg = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 3000,
-    messages: [{
-      role: 'user',
-      content: `You are a code reviewer. Check this ${layerName} JavaScript for syntax errors, incomplete functions, missing closing brackets, and truncated code.
-
-Code to verify:
-\`\`\`javascript
-${code}
-\`\`\`
-
-Rules:
-- Every function must be complete with proper closing braces
-- No syntax errors
-- No undefined references to functions/variables not in scope
-- Arrays and objects must be properly closed
-- The code must be self-contained
-
-If the code is correct, return it exactly as-is.
-If there are issues, fix them and return the corrected version.
-
-Return ONLY the JavaScript code, no explanation, no markdown backticks.`
-    }]
-  })
-  return msg.content[0]?.text?.trim() || code
-}
-
-// ── Assemble the final HTML ──
-function assembleHTML(htmlBody, dataLayer, controller, context) {
-  const themeStyles = {
-    dark: `body{background:#0f172a;color:#f1f5f9} .card{background:#1e293b;border:1px solid #334155} .kpi-label{color:#94a3b8;font-size:0.75rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em} .kpi-value{font-size:1.75rem;font-weight:800;color:#f1f5f9} .kpi-change.positive{color:#34d399} .kpi-change.negative{color:#f87171} .insight-item{background:#1e293b;border:1px solid #334155;border-radius:8px;padding:10px 14px;margin-bottom:8px;font-size:0.85rem} .insight-warning{border-left:3px solid #f59e0b} .insight-success{border-left:3px solid #10b981} .insight-info{border-left:3px solid #3b82f6} table{width:100%;border-collapse:collapse} th{background:#1e293b;color:#94a3b8;padding:10px 14px;text-align:left;font-size:0.75rem;text-transform:uppercase} td{padding:10px 14px;border-bottom:1px solid #1e293b;font-size:0.875rem} tr:hover td{background:#1e293b}`,
-    light: `body{background:#f8fafc;color:#0f172a} .card{background:#ffffff;border:1px solid #e2e8f0;box-shadow:0 1px 3px rgba(0,0,0,0.05)} .kpi-label{color:#64748b;font-size:0.75rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em} .kpi-value{font-size:1.75rem;font-weight:800;color:#0f172a} .kpi-change.positive{color:#059669} .kpi-change.negative{color:#dc2626} .insight-item{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 14px;margin-bottom:8px;font-size:0.85rem} .insight-warning{border-left:3px solid #f59e0b} .insight-success{border-left:3px solid #10b981} .insight-info{border-left:3px solid #3b82f6} table{width:100%;border-collapse:collapse} th{background:#f1f5f9;color:#64748b;padding:10px 14px;text-align:left;font-size:0.75rem;text-transform:uppercase} td{padding:10px 14px;border-bottom:1px solid #f1f5f9;font-size:0.875rem} tr:hover td{background:#f8fafc}`,
-    purple: `body{background:#1e1b4b;color:#ede9fe} .card{background:#312e81;border:1px solid #4338ca} .kpi-label{color:#a5b4fc;font-size:0.75rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em} .kpi-value{font-size:1.75rem;font-weight:800;color:#ede9fe} .kpi-change.positive{color:#34d399} .kpi-change.negative{color:#f87171} .insight-item{background:#312e81;border:1px solid #4338ca;border-radius:8px;padding:10px 14px;margin-bottom:8px;font-size:0.85rem} .insight-warning{border-left:3px solid #f59e0b} .insight-success{border-left:3px solid #10b981} .insight-info{border-left:3px solid #3b82f6} table{width:100%;border-collapse:collapse} th{background:#312e81;color:#a5b4fc;padding:10px 14px;text-align:left;font-size:0.75rem;text-transform:uppercase} td{padding:10px 14px;border-bottom:1px solid #312e81;font-size:0.875rem} tr:hover td{background:#3730a3}`,
-    green: `body{background:#022c22;color:#d1fae5} .card{background:#064e3b;border:1px solid #065f46} .kpi-label{color:#6ee7b7;font-size:0.75rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em} .kpi-value{font-size:1.75rem;font-weight:800;color:#d1fae5} .kpi-change.positive{color:#34d399} .kpi-change.negative{color:#f87171} .insight-item{background:#064e3b;border:1px solid #065f46;border-radius:8px;padding:10px 14px;margin-bottom:8px;font-size:0.85rem} .insight-warning{border-left:3px solid #f59e0b} .insight-success{border-left:3px solid #10b981} .insight-info{border-left:3px solid #3b82f6} table{width:100%;border-collapse:collapse} th{background:#064e3b;color:#6ee7b7;padding:10px 14px;text-align:left;font-size:0.75rem;text-transform:uppercase} td{padding:10px 14px;border-bottom:1px solid #064e3b;font-size:0.875rem} tr:hover td{background:#065f46}`,
+  const themeCSS = {
+    dark:   `--bg:#0f172a;--bg2:#1e293b;--bg3:#334155;--text:#f1f5f9;--text2:#94a3b8;--accent:#6366f1;--border:#334155;--card:#1e293b`,
+    light:  `--bg:#f8fafc;--bg2:#ffffff;--bg3:#f1f5f9;--text:#0f172a;--text2:#64748b;--accent:#6366f1;--border:#e2e8f0;--card:#ffffff`,
+    purple: `--bg:#1e1b4b;--bg2:#312e81;--bg3:#4338ca;--text:#ede9fe;--text2:#a5b4fc;--accent:#818cf8;--border:#4338ca;--card:#312e81`,
+    green:  `--bg:#022c22;--bg2:#064e3b;--bg3:#065f46;--text:#d1fae5;--text2:#6ee7b7;--accent:#34d399;--border:#065f46;--card:#064e3b`,
   }
 
-  return `<!DOCTYPE html>
-<html lang="${context.language === 'English' ? 'en' : 'fr'}">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${context.dashboardType} — Dashboard AI</title>
-  <script src="https://cdn.tailwindcss.com"><\/script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"><\/script>
-  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"><\/script>
-  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"><\/script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"><\/script>
-  <style>
-    * { font-family: 'Segoe UI', system-ui, sans-serif; box-sizing: border-box; }
-    ${themeStyles[context.colorTheme] || themeStyles.dark}
-    .card { border-radius: 12px; padding: 20px; margin-bottom: 0; }
-    #uploadZone { border: 2px dashed #475569; border-radius: 12px; padding: 40px; text-align: center; cursor: pointer; transition: all 0.2s; }
-    #uploadZone:hover, #uploadZone.dragover { border-color: #6366f1; background: rgba(99,102,241,0.05); }
-    #uploadZone h3 { margin: 8px 0 4px; font-size: 1rem; font-weight: 600; }
-    #uploadZone p { margin: 0; font-size: 0.8rem; opacity: 0.6; }
-    .upload-icon { width: 48px; height: 48px; margin: 0 auto 12px; opacity: 0.4; }
-    canvas { max-height: 280px; }
-    .btn { padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer; font-size: 0.8rem; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; transition: all 0.15s; }
-    .btn:hover { opacity: 0.85; transform: translateY(-1px); }
-    .btn-white { background: rgba(255,255,255,0.15); color: inherit; }
-    .pagination-btn { padding: 4px 10px; border-radius: 6px; border: 1px solid #334155; background: transparent; cursor: pointer; font-size: 0.8rem; color: inherit; }
-    .pagination-btn.active { background: #6366f1; border-color: #6366f1; color: white; }
-    input, select { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; padding: 8px 12px; color: inherit; font-size: 0.875rem; outline: none; }
-    input::placeholder { opacity: 0.4; }
-    .section-title { font-size: 1rem; font-weight: 700; margin-bottom: 12px; }
-    .kpi-card { padding: 20px; border-radius: 12px; }
-  </style>
-</head>
-<body>
-<div class="max-w-7xl mx-auto p-4">
+  const msg = await client.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 6000,
+    messages: [{
+      role: 'user',
+      content: `You are an expert dashboard developer. Generate a COMPLETE, WORKING, SELF-CONTAINED HTML dashboard file.
 
-${htmlBody}
+=== CONTEXT ===
+Dashboard type: ${context.dashboardType}
+User description: ${context.description}
+Language: ${context.language}
+Color theme: ${context.colorTheme}
 
-</div>
+=== DATA SCHEMA DETECTED ===
+${schemaStr}
 
-<script>
-// ============================================================
-// SECTION 1 — DATA LAYER
-// ============================================================
-${dataLayer}
+=== DEMO DATA (10 rows — use exactly these as initial dashboardData) ===
+${demoRowsStr}
 
-// ============================================================
-// SECTION 2 — CONTROLLER
-// ============================================================
-${controller}
-<\/script>
-</body>
-</html>`
+=== COLUMNS AVAILABLE ===
+${columns}
+
+=== CRITICAL REQUIREMENTS ===
+
+1. FILE UPLOAD — MUST WORK PERFECTLY:
+   - User drops or selects a CSV/JSON file
+   - CSV: parse with Papa.parse(file, {header:true, dynamicTyping:true, complete: function(results){ dashboardData = results.data; refreshAll(); }})
+   - JSON: FileReader → JSON.parse → dashboardData = parsed array → refreshAll()
+   - After upload: ALL charts, KPIs, table, insights MUST refresh with new data
+   - Show filename and row count after successful upload
+   - Show error message if parse fails
+
+2. EXPORT — MUST WORK:
+   - Export PNG: html2canvas(document.getElementById('dashboardContent')) → download
+   - Export PDF: html2canvas → jsPDF A4 landscape → download
+
+3. CHARTS — use Chart.js 4.x:
+   - Always destroy existing chart before creating new one: if(window._c1) window._c1.destroy();
+   - Store as: window._c1, window._c2, window._c3
+   - Use data from dashboardData to compute chart values dynamically
+
+4. KPI CARDS — compute from dashboardData dynamically:
+   - 4 KPIs based on: ${JSON.stringify(schema.suggestedKPIs || [])}
+   - Show value + trend indicator
+
+5. DATA TABLE:
+   - Show all columns from dashboardData
+   - Search input filters rows in real-time
+   - Pagination: 10 rows per page
+   - Filter dropdown using column: ${schema.filterColumn || 'status'}
+
+6. INSIGHTS SECTION:
+   - 3 anomalies detected from data
+   - 3 predictions
+   - 3 recommendations
+   - Regenerate automatically when data changes
+
+=== HTML STRUCTURE (use EXACTLY these IDs) ===
+- id="dashboardContent" — wraps everything inside body (used for PNG/PDF export)
+- id="uploadZone" — drag-drop area
+- id="fileInput" type="file" accept=".csv,.json"
+- id="uploadStatus" — shows filename + row count after upload
+- id="kpi1" id="kpi2" id="kpi3" id="kpi4" — KPI cards
+- id="chart1" id="chart2" id="chart3" — canvas elements
+- id="tableHead" id="tableBody" — table sections
+- id="searchInput" id="filterSelect" id="pagination"
+- id="anomaliesBox" id="predictionsBox" id="recommendationsBox"
+- id="btnExportPNG" id="btnExportPDF" id="btnRefresh"
+
+=== CSS VARIABLES TO USE ===
+:root { ${themeCSS[context.colorTheme] || themeCSS.dark}; }
+body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; margin:0; padding:0; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+
+=== SCRIPTS TO INCLUDE IN <head> ===
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+=== OUTPUT FORMAT ===
+Return a COMPLETE <!DOCTYPE html>...</html> file.
+ALL JavaScript must be inside a single <script> tag at the bottom of body.
+NO markdown, NO backticks, NO explanation — only the raw HTML file starting with <!DOCTYPE html>`
+    }]
+  })
+
+  return msg.content[0]?.text?.trim() || ''
+}
+
+// ── STEP 3: Verify and fix upload + export functions ──
+async function verifyAndFix(html, schema) {
+  const demoRowsStr = JSON.stringify((schema.demoRows || []).slice(0, 3), null, 2)
+
+  const msg = await client.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 6000,
+    messages: [{
+      role: 'user',
+      content: `You are a code reviewer and fixer. Review this dashboard HTML and fix ALL issues.
+
+=== THE HTML TO REVIEW ===
+${html}
+
+=== TEST DATA (simulate upload with these 3 rows) ===
+${demoRowsStr}
+
+=== CHECKLIST — FIX EVERY ITEM THAT IS BROKEN ===
+
+UPLOAD FUNCTION — verify:
+□ File input #fileInput triggers processUploadedFile(file)
+□ uploadZone drag-drop calls processUploadedFile(file)
+□ CSV: Papa.parse with header:true and dynamicTyping:true, complete callback sets dashboardData and calls refreshAll()
+□ JSON: FileReader.onload reads result, JSON.parse, sets dashboardData, calls refreshAll()
+□ refreshAll() calls: renderKPIs(), renderCharts(), renderInsights(), renderTable()
+□ #uploadStatus shows the filename and row count after upload
+
+CHARTS — verify:
+□ window._c1, window._c2, window._c3 are destroyed before recreating
+□ Chart data is computed FROM dashboardData (not hardcoded)
+□ canvas elements #chart1, #chart2, #chart3 exist in HTML
+
+KPIS — verify:
+□ computeKPIs() reads dashboardData and computes values
+□ Updates #kpi1 through #kpi4 inner HTML with label + value + change
+
+TABLE — verify:
+□ renderTable() builds thead and tbody from dashboardData
+□ #searchInput filters rows in real-time
+□ #filterSelect filters by a column
+□ #pagination renders page buttons correctly
+
+EXPORT — verify:
+□ exportPNG uses html2canvas(document.getElementById('dashboardContent'))
+□ exportPDF uses html2canvas + jsPDF A4 landscape
+□ Both trigger file download
+
+GENERAL — verify:
+□ No syntax errors (unclosed brackets, missing semicolons)
+□ All functions are complete (no truncated code)
+□ DOMContentLoaded sets up ALL event listeners
+□ refreshAll() function exists and calls all render functions
+
+Fix ALL issues found. Return the COMPLETE corrected <!DOCTYPE html>...</html> file.
+NO markdown, NO backticks, NO explanation — only raw HTML.`
+    }]
+  })
+
+  const fixed = msg.content[0]?.text?.trim() || html
+
+  // If response doesn't look like HTML, return original
+  if (!fixed.includes('<!DOCTYPE') && !fixed.includes('<html')) return html
+  return fixed
+}
+
+// ── STEP 4: Final syntax check — loop up to 2 times if still broken ──
+async function finalSyntaxCheck(html, attempt = 1) {
+  if (attempt > 2) return html
+
+  const msg = await client.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 500,
+    messages: [{
+      role: 'user',
+      content: `Scan this HTML file for JavaScript syntax errors ONLY. Look for:
+- Unclosed functions (missing closing braces)
+- Unclosed arrays or objects
+- Missing semicolons that would cause parse errors
+- Truncated code at end of script tag
+
+HTML to check (last 2000 chars of script section):
+${html.slice(-2000)}
+
+Reply with ONLY one of:
+- "OK" if no syntax errors found
+- A brief description of the error location if found (e.g. "function renderTable missing closing brace at line ~450")`
+    }]
+  })
+
+  const verdict = msg.content[0]?.text?.trim() || 'OK'
+
+  if (verdict === 'OK' || verdict.toLowerCase().startsWith('ok')) {
+    return html
+  }
+
+  // There's still an issue — do one more fix pass
+  console.log(`[dashboardai] Syntax issue found (attempt ${attempt}): ${verdict}`)
+
+  const fixMsg = await client.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 6000,
+    messages: [{
+      role: 'user',
+      content: `This HTML dashboard has a JavaScript syntax error: "${verdict}"
+
+Fix ONLY the JavaScript syntax error. Do not change anything else.
+Return the COMPLETE corrected <!DOCTYPE html>...</html> file.
+NO markdown, NO backticks, NO explanation.
+
+${html}`
+    }]
+  })
+
+  const reFix = fixMsg.content[0]?.text?.trim() || html
+  if (!reFix.includes('<!DOCTYPE') && !reFix.includes('<html')) return html
+
+  return finalSyntaxCheck(reFix, attempt + 1)
 }
 
 export async function POST(req) {
@@ -226,27 +285,30 @@ export async function POST(req) {
       language: language || 'Français',
     }
 
-    console.log('[dashboardai] Step 1: Generating data layer...')
-    let dataLayer = await generateDataLayer(context)
+    // ── STEP 1: Analyse data ──
+    console.log('[dashboardai] Step 1: Analysing data schema...')
+    const schema = await analyseData(context)
+    console.log('[dashboardai] Schema detected:', schema.detectedSector, '— columns:', schema.columns?.length)
 
-    console.log('[dashboardai] Step 2: Generating HTML structure...')
-    let htmlBody = await generateHTMLStructure(context)
+    // ── STEP 2: Generate full dashboard ──
+    console.log('[dashboardai] Step 2: Generating full dashboard HTML...')
+    let html = await generateDashboardHTML(context, schema)
 
-    console.log('[dashboardai] Step 3: Generating controller...')
-    let controller = await generateController(context)
+    if (!html || html.length < 500) {
+      return NextResponse.json({ error: 'Génération échouée — réessayez' }, { status: 500 })
+    }
 
-    console.log('[dashboardai] Step 4: Verifying data layer...')
-    dataLayer = await verifyAndFix(dataLayer, 'data layer', context)
+    // ── STEP 3: Verify + fix upload & export ──
+    console.log('[dashboardai] Step 3: Verifying upload and export functions...')
+    html = await verifyAndFix(html, schema)
 
-    console.log('[dashboardai] Step 5: Verifying controller...')
-    controller = await verifyAndFix(controller, 'controller', context)
-
-    console.log('[dashboardai] Step 6: Assembling final HTML...')
-    const html = assembleHTML(htmlBody, dataLayer, controller, context)
+    // ── STEP 4: Final syntax check loop ──
+    console.log('[dashboardai] Step 4: Final syntax check...')
+    html = await finalSyntaxCheck(html)
 
     console.log(`[dashboardai] Done — ${(html.length / 1024).toFixed(1)}KB`)
 
-    return NextResponse.json({ html })
+    return NextResponse.json({ html, schema })
 
   } catch (err) {
     console.error('[dashboardai]', err)
