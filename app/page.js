@@ -15,6 +15,8 @@ const TOOLS = [
   { icon: '📝', name: 'Lettres',             desc: 'Rédiger votre lettre',                path: '/letter',        img: '/images/tools/tool-01-letter.png',        plan: 'starter'  },
   { icon: '📧', name: 'Email',               desc: 'Email Writer Professional',           path: '/email',         img: '/images/tools/tool-01-email.png',         plan: 'starter'  },
   { icon: '📅', name: 'Project Planner',     desc: 'Planifier votre projet',              path: '/Planner',       img: '/images/tools/tool-01-planner.png',       plan: 'pro'      },
+  { icon: '🔥', name: 'Finance Analysis',      desc: 'Faites une analyse de vos chiffres', path: '/FinanceAi', img: '/images/tools/tool-01-finance.png',          plan: 'pro'  },
+  { icon: '🔥', name: 'Dashboard Ai',      desc: 'Créer un tableau de bord personalisé', path: '/DashboardAi', img: '/images/tools/tool-01-dashboard.png',          plan: 'pro'  },
   { icon: '💳', name: 'Modern Card',         desc: 'Carte de visite moderne',             path: '/CVisite',       img: '/images/tools/tool-01-visite.png',        plan: 'starter'  },
   { icon: '🔍', name: 'Document Analyser',   desc: 'Analyse approfondie de document',     path: '/docanalyser',   img: '/images/tools/tool-01-analyser.png',      plan: 'pro'      },
   { icon: '⚖️', name: 'Contract Generator',  desc: 'Générer tout type de contrat',        path: '/Contract',      img: '/images/tools/tool-01-contract.png',      plan: 'pro'      },

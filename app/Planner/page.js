@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useCredits } from '@/hooks/useCredits';
 import { usePlanGuard } from '@/hooks/usePlanGuard';
 import { useRouter } from 'next/navigation';
-import { Zap, Save, Download, Upload, FileJson, FileText } from 'lucide-react';
+import { Zap, Save, Download, Upload, FileText, Image as ImageIcon, FileJson } from 'lucide-react';
 
 const COLORS = ['#534AB7', '#1D9E75', '#378ADD', '#BA7517', '#D4537E', '#3B6D11', '#D85A30', '#0C447C', '#3C3489', '#0F766E', '#B45309', '#7C3AED'];
 const TEAM = ['Alex', 'Sam', 'Jordan', 'Charlie', 'Taylor'];
@@ -22,7 +22,7 @@ export default function ProjectDeepWork() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [mounted, setMounted] = useState(false)
-  const [saveStatus, setSaveStatus] = useState(null) // 'saving' | 'saved' | null
+  const [saveStatus, setSaveStatus] = useState(null)
   const [showExportMenu, setShowExportMenu] = useState(false)
   const importRef = useRef(null)
 
@@ -61,11 +61,10 @@ export default function ProjectDeepWork() {
     }
   }, [tasks, totalDays, mounted]);
 
-  // ── Save project manually ──
+  // ── Save manually ──
   const handleSave = () => {
     setSaveStatus('saving')
     try {
-      const projectData = { tasks, totalDays, savedAt: new Date().toISOString() }
       localStorage.setItem('nexus-tasks', JSON.stringify(tasks))
       localStorage.setItem('nexus-total-days', totalDays.toString())
       localStorage.setItem('nexus-last-saved', new Date().toLocaleString())
@@ -77,39 +76,16 @@ export default function ProjectDeepWork() {
     }
   }
 
-  // ── Export as JSON ──
-  const exportJSON = () => {
-    setShowExportMenu(false)
-    const projectData = {
-      name: 'NEXUS Project',
-      exportedAt: new Date().toISOString(),
-      totalDays,
-      tasks,
-    }
-    const blob = new Blob([JSON.stringify(projectData, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `nexus-project-${Date.now()}.json`
-    a.click()
-    URL.revokeObjectURL(url)
-  }
-
-  // ── Export as CSV ──
+  // ── Export CSV ──
   const exportCSV = () => {
     setShowExportMenu(false)
     const headers = ['Titre', 'Responsable', 'Statut', 'Priorité', 'Jour début', 'Durée (jours)', 'Progression (%)']
     const rows = tasks.map(t => [
-      `"${t.title}"`,
-      t.assignee || '',
-      t.status,
-      t.priority || 'medium',
-      t.start,
-      t.duration,
-      t.progress,
+      `"${t.title}"`, t.assignee || '', t.status,
+      t.priority || 'medium', t.start, t.duration, t.progress,
     ])
     const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
@@ -118,23 +94,36 @@ export default function ProjectDeepWork() {
     URL.revokeObjectURL(url)
   }
 
-  // ── Export as printable HTML ──
+  // ── Export HTML (printable) ──
   const exportHTML = () => {
     setShowExportMenu(false)
-    const rows = tasks.map(t => `
-      <tr>
-        <td style="padding:10px;border-bottom:1px solid #eee;font-weight:600">${t.title}</td>
-        <td style="padding:10px;border-bottom:1px solid #eee">${t.assignee || '—'}</td>
-        <td style="padding:10px;border-bottom:1px solid #eee">${t.status}</td>
-        <td style="padding:10px;border-bottom:1px solid #eee">Jour ${t.start} → Jour ${t.start + t.duration - 1}</td>
-        <td style="padding:10px;border-bottom:1px solid #eee">
-          <div style="background:#e2e8f0;border-radius:4px;height:8px;width:100px">
-            <div style="background:${COLORS[t.colorIdx]};width:${t.progress}%;height:8px;border-radius:4px"></div>
-          </div>
-          <span style="font-size:11px;color:#64748b">${t.progress}%</span>
-        </td>
-      </tr>
-    `).join('')
+    const totalWeeks = Math.ceil(totalDays / 7)
+
+    // Build Gantt rows as SVG-like table
+    const ganttRows = tasks.map(t => {
+      const barLeft = (t.start - 1) / totalDays * 100
+      const barWidth = t.duration / totalDays * 100
+      const progressWidth = barWidth * t.progress / 100
+      return `
+        <tr>
+          <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;font-weight:600;width:180px;white-space:nowrap;color:${COLORS[t.colorIdx]}">${t.title}</td>
+          <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;color:#64748b;width:100px">${t.assignee || '—'}</td>
+          <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;width:80px">
+            <span style="background:${t.status==='done'?'#dcfce7':t.status==='in-progress'?'#dbeafe':'#f1f5f9'};color:${t.status==='done'?'#16a34a':t.status==='in-progress'?'#2563eb':'#64748b'};padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600">${t.status}</span>
+          </td>
+          <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9">
+            <div style="position:relative;height:24px;background:#f1f5f9;border-radius:4px;overflow:hidden">
+              <div style="position:absolute;left:${barLeft}%;width:${barWidth}%;height:100%;background:${COLORS[t.colorIdx]};opacity:0.3;border-radius:4px"></div>
+              <div style="position:absolute;left:${barLeft}%;width:${progressWidth}%;height:100%;background:${COLORS[t.colorIdx]};border-radius:4px"></div>
+              <span style="position:absolute;left:${barLeft + barWidth / 2}%;transform:translateX(-50%);font-size:10px;font-weight:700;color:white;line-height:24px">${t.progress}%</span>
+            </div>
+          </td>
+        </tr>`
+    }).join('')
+
+    const weekHeaders = Array.from({ length: totalWeeks }, (_, i) =>
+      `<th style="padding:6px;font-size:10px;color:#94a3b8;text-align:center;border-right:1px solid #e2e8f0">S${i+1}</th>`
+    ).join('')
 
     const html = `<!DOCTYPE html>
 <html lang="fr">
@@ -142,26 +131,48 @@ export default function ProjectDeepWork() {
   <meta charset="UTF-8">
   <title>NEXUS — Export Projet</title>
   <style>
-    body { font-family: 'Segoe UI', sans-serif; padding: 40px; color: #0f172a; }
-    h1 { color: #534AB7; margin-bottom: 4px; }
-    p { color: #64748b; margin-bottom: 30px; font-size: 13px; }
-    table { width: 100%; border-collapse: collapse; }
-    thead { background: #f8fafc; }
-    th { padding: 10px; text-align: left; font-size: 11px; color: #94a3b8; text-transform: uppercase; border-bottom: 2px solid #e2e8f0; }
-    @media print { body { padding: 20px; } }
+    * { box-sizing: border-box; }
+    body { font-family: 'Segoe UI', sans-serif; padding: 40px; color: #0f172a; background: #fff; }
+    h1 { color: #534AB7; margin: 0 0 4px; font-size: 24px; }
+    .meta { color: #94a3b8; font-size: 12px; margin-bottom: 32px; }
+    .stats { display: flex; gap: 20px; margin-bottom: 32px; }
+    .stat { background: #f8fafc; border-radius: 10px; padding: 12px 20px; }
+    .stat-val { font-size: 22px; font-weight: 800; color: #534AB7; }
+    .stat-lbl { font-size: 11px; color: #94a3b8; text-transform: uppercase; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead { background: #f8fafc; border-bottom: 2px solid #e2e8f0; }
+    th { padding: 10px 12px; text-align: left; font-size: 11px; color: #94a3b8; text-transform: uppercase; }
+    @media print {
+      body { padding: 15px; }
+      .no-print { display: none; }
+      table { page-break-inside: auto; }
+      tr { page-break-inside: avoid; }
+    }
   </style>
 </head>
 <body>
   <h1>NEXUS — Plan de projet</h1>
-  <p>Exporté le ${new Date().toLocaleString()} · ${tasks.length} tâches · ${Math.ceil(totalDays / 7)} semaines</p>
+  <p class="meta">Exporté le ${new Date().toLocaleString()} · ${tasks.length} tâches · ${totalWeeks} semaines</p>
+
+  <div class="stats">
+    <div class="stat"><div class="stat-val">${tasks.length}</div><div class="stat-lbl">Tâches</div></div>
+    <div class="stat"><div class="stat-val">${tasks.filter(t=>t.status==='done').length}</div><div class="stat-lbl">Terminées</div></div>
+    <div class="stat"><div class="stat-val">${tasks.filter(t=>t.status==='in-progress').length}</div><div class="stat-lbl">En cours</div></div>
+    <div class="stat"><div class="stat-val">${Math.round(tasks.reduce((s,t)=>s+Number(t.progress),0)/(tasks.length||1))}%</div><div class="stat-lbl">Progression moy.</div></div>
+  </div>
+
   <table>
     <thead>
       <tr>
-        <th>Tâche</th><th>Responsable</th><th>Statut</th><th>Période</th><th>Progression</th>
+        <th>Tâche</th><th>Responsable</th><th>Statut</th><th>Timeline (${totalDays} jours)</th>
       </tr>
     </thead>
-    <tbody>${rows}</tbody>
+    <tbody>${ganttRows}</tbody>
   </table>
+
+  <div style="margin-top:20px;text-align:right" class="no-print">
+    <button onclick="window.print()" style="padding:10px 20px;background:#534AB7;color:white;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">🖨️ Imprimer / Sauvegarder en PDF</button>
+  </div>
 </body>
 </html>`
 
@@ -174,27 +185,223 @@ export default function ProjectDeepWork() {
     URL.revokeObjectURL(url)
   }
 
-  // ── Import JSON ──
+  // ── Export PDF (via print dialog on the HTML export) ──
+  const exportPDF = () => {
+    setShowExportMenu(false)
+    const totalWeeks = Math.ceil(totalDays / 7)
+
+    const ganttRows = tasks.map(t => {
+      const barLeft = (t.start - 1) / totalDays * 100
+      const barWidth = t.duration / totalDays * 100
+      const progressWidth = barWidth * t.progress / 100
+      return `
+        <tr>
+          <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;font-weight:600;color:${COLORS[t.colorIdx]}">${t.title}</td>
+          <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9;color:#64748b">${t.assignee || '—'}</td>
+          <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9">${t.status}</td>
+          <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9">Jour ${t.start} → ${t.start + t.duration - 1}</td>
+          <td style="padding:8px 12px;border-bottom:1px solid #f1f5f9">
+            <div style="background:#e2e8f0;border-radius:4px;height:8px;width:120px;display:inline-block">
+              <div style="background:${COLORS[t.colorIdx]};width:${t.progress}%;height:8px;border-radius:4px"></div>
+            </div>
+            <span style="font-size:11px;color:#64748b;margin-left:6px">${t.progress}%</span>
+          </td>
+        </tr>`
+    }).join('')
+
+    const html = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>NEXUS — PDF Export</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; padding: 30px; color: #0f172a; background: #fff; }
+    h1 { color: #534AB7; font-size: 20px; margin-bottom: 4px; }
+    .meta { color: #94a3b8; font-size: 11px; margin-bottom: 24px; }
+    .stats { display: flex; gap: 16px; margin-bottom: 24px; }
+    .stat { background: #f8fafc; border-radius: 8px; padding: 10px 16px; border-left: 3px solid #534AB7; }
+    .stat-val { font-size: 18px; font-weight: 800; color: #534AB7; }
+    .stat-lbl { font-size: 10px; color: #94a3b8; text-transform: uppercase; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    thead { background: #f8fafc; }
+    th { padding: 8px 12px; text-align: left; font-size: 10px; color: #94a3b8; text-transform: uppercase; border-bottom: 2px solid #e2e8f0; }
+    @media print {
+      body { padding: 15px; }
+      @page { margin: 15mm; size: A4 landscape; }
+      table { page-break-inside: auto; }
+      tr { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <h1>NEXUS — Plan de projet</h1>
+  <p class="meta">Généré le ${new Date().toLocaleString()} · ${tasks.length} tâches · ${totalWeeks} semaines · ${totalDays} jours</p>
+  <div class="stats">
+    <div class="stat"><div class="stat-val">${tasks.length}</div><div class="stat-lbl">Total tâches</div></div>
+    <div class="stat"><div class="stat-val">${tasks.filter(t=>t.status==='done').length}</div><div class="stat-lbl">Terminées</div></div>
+    <div class="stat"><div class="stat-val">${tasks.filter(t=>t.status==='in-progress').length}</div><div class="stat-lbl">En cours</div></div>
+    <div class="stat"><div class="stat-val">${tasks.filter(t=>t.status==='todo').length}</div><div class="stat-lbl">À faire</div></div>
+    <div class="stat"><div class="stat-val">${Math.round(tasks.reduce((s,t)=>s+Number(t.progress),0)/(tasks.length||1))}%</div><div class="stat-lbl">Progression moy.</div></div>
+  </div>
+  <table>
+    <thead>
+      <tr><th>Tâche</th><th>Responsable</th><th>Statut</th><th>Période</th><th>Progression</th></tr>
+    </thead>
+    <tbody>${ganttRows}</tbody>
+  </table>
+  <script>window.onload = () => { window.print(); }<\/script>
+</body>
+</html>`
+
+    const blob = new Blob([html], { type: 'text/html' })
+    const url = URL.createObjectURL(blob)
+    const win = window.open(url, '_blank')
+    setTimeout(() => URL.revokeObjectURL(url), 5000)
+  }
+
+  // ── Export as Image (PNG via html2canvas) ──
+  const exportImage = async () => {
+    setShowExportMenu(false)
+
+    // Build an offscreen Gantt snapshot div
+    const container = document.createElement('div')
+    container.style.cssText = `
+      position:fixed; left:-9999px; top:0;
+      background:#fff; padding:32px; width:${200 + totalDays * ZOOM}px;
+      font-family:'Segoe UI',sans-serif; color:#0f172a;
+    `
+
+    // Header
+    const header = document.createElement('div')
+    header.style.cssText = 'margin-bottom:20px;'
+    header.innerHTML = `
+      <div style="font-size:22px;font-weight:800;color:#534AB7;margin-bottom:4px">NEXUS</div>
+      <div style="font-size:12px;color:#94a3b8">Exporté le ${new Date().toLocaleString()} · ${tasks.length} tâches · ${Math.ceil(totalDays/7)} semaines</div>
+    `
+    container.appendChild(header)
+
+    // Week headers row
+    const headerRow = document.createElement('div')
+    headerRow.style.cssText = 'display:flex;margin-left:200px;background:#f8fafc;border-bottom:1px solid #e2e8f0;'
+    for (let i = 0; i < Math.ceil(totalDays / 7); i++) {
+      const wh = document.createElement('div')
+      wh.style.cssText = `width:${ZOOM * 7}px;padding:6px 10px;font-size:10px;font-weight:700;color:#94a3b8;border-right:1px solid #e2e8f0;`
+      wh.textContent = `SEMAINE ${i + 1}`
+      headerRow.appendChild(wh)
+    }
+    container.appendChild(headerRow)
+
+    // Task rows
+    tasks.forEach(t => {
+      const row = document.createElement('div')
+      row.style.cssText = 'display:flex;align-items:center;height:44px;border-bottom:1px solid #f1f5f9;position:relative;'
+
+      const label = document.createElement('div')
+      label.style.cssText = `width:200px;padding:0 15px;font-size:13px;font-weight:600;color:${COLORS[t.colorIdx]};background:#fff;border-right:1px solid #e2e8f0;height:100%;display:flex;align-items:center;flex-shrink:0;`
+      label.textContent = t.title
+
+      const timeline = document.createElement('div')
+      timeline.style.cssText = 'flex:1;position:relative;height:100%;'
+
+      const bar = document.createElement('div')
+      bar.style.cssText = `position:absolute;top:6px;left:${(t.start-1)*ZOOM+2}px;width:${t.duration*ZOOM-4}px;height:32px;background:${COLORS[t.colorIdx]};border-radius:6px;display:flex;align-items:center;padding:0 10px;color:white;font-size:11px;font-weight:600;box-shadow:0 2px 4px rgba(0,0,0,0.12);overflow:hidden;`
+
+      const prog = document.createElement('div')
+      prog.style.cssText = `position:absolute;left:0;top:0;bottom:0;width:${t.progress}%;background:rgba(0,0,0,0.2);border-radius:4px 0 0 4px;`
+
+      const label2 = document.createElement('span')
+      label2.style.cssText = 'position:relative;z-index:1;white-space:nowrap;'
+      label2.textContent = `${t.progress}% - ${t.assignee}`
+
+      bar.appendChild(prog)
+      bar.appendChild(label2)
+      timeline.appendChild(bar)
+      row.appendChild(label)
+      row.appendChild(timeline)
+      container.appendChild(row)
+    })
+
+    document.body.appendChild(container)
+
+    try {
+      const { default: html2canvas } = await import('html2canvas')
+      const canvas = await html2canvas(container, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        width: container.offsetWidth,
+      })
+      const a = document.createElement('a')
+      a.href = canvas.toDataURL('image/png')
+      a.download = `nexus-gantt-${Date.now()}.png`
+      a.click()
+    } catch (err) {
+      console.error('Image export error:', err)
+      alert('Installez html2canvas: npm install html2canvas')
+    } finally {
+      document.body.removeChild(container)
+    }
+  }
+
+  // ── Import CSV ──
   const handleImport = (e) => {
     const file = e.target.files[0]
     if (!file) return
+
     const reader = new FileReader()
     reader.onload = (ev) => {
       try {
-        const data = JSON.parse(ev.target.result)
-        if (data.tasks && Array.isArray(data.tasks)) {
-          setTasks(data.tasks)
-          if (data.totalDays) setTotalDays(data.totalDays)
+        const text = ev.target.result
+        const lines = text.split('\n').filter(l => l.trim())
+        if (lines.length < 2) { alert('CSV vide ou invalide.'); return }
+
+        // Parse header to find column indexes
+        const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/['"]/g, ''))
+        const idx = (name) => headers.findIndex(h => h.includes(name))
+
+        const titleIdx = idx('titre') !== -1 ? idx('titre') : 0
+        const assigneeIdx = idx('responsable') !== -1 ? idx('responsable') : 1
+        const statusIdx = idx('statut') !== -1 ? idx('statut') : 2
+        const priorityIdx = idx('priorit') !== -1 ? idx('priorit') : 3
+        const startIdx = idx('début') !== -1 ? idx('début') : idx('debut') !== -1 ? idx('debut') : 4
+        const durationIdx = idx('dur') !== -1 ? idx('dur') : 5
+        const progressIdx = idx('progress') !== -1 ? idx('progress') : 6
+
+        const imported = lines.slice(1).map((line, i) => {
+          // Handle quoted fields
+          const cols = line.match(/(".*?"|[^,]+|(?<=,)(?=,)|^(?=,)|(?<=,)$)/g) || line.split(',')
+          const clean = (v) => (v || '').toString().replace(/^"|"$/g, '').trim()
+
+          const status = clean(cols[statusIdx])
+          const validStatuses = ['todo', 'in-progress', 'done']
+
+          return {
+            id: `imported_${Date.now()}_${i}`,
+            title: clean(cols[titleIdx]) || `Tâche ${i + 1}`,
+            assignee: clean(cols[assigneeIdx]) || '',
+            status: validStatuses.includes(status) ? status : 'todo',
+            priority: clean(cols[priorityIdx]) || 'medium',
+            start: Math.max(1, parseInt(clean(cols[startIdx])) || 1),
+            duration: Math.max(1, parseInt(clean(cols[durationIdx])) || 3),
+            progress: Math.min(100, Math.max(0, parseInt(clean(cols[progressIdx])) || 0)),
+            colorIdx: i % COLORS.length,
+          }
+        }).filter(t => t.title)
+
+        if (imported.length === 0) { alert('Aucune tâche trouvée dans le CSV.'); return }
+
+        if (window.confirm(`${imported.length} tâche(s) trouvée(s). Remplacer le projet actuel ?`)) {
+          setTasks(imported)
           setSaveStatus('saved')
           setTimeout(() => setSaveStatus(null), 2000)
-        } else {
-          alert('Fichier JSON invalide — structure non reconnue.')
         }
-      } catch {
-        alert('Erreur de lecture du fichier JSON.')
+      } catch (err) {
+        console.error('CSV import error:', err)
+        alert('Erreur de lecture du CSV. Vérifiez le format du fichier.')
       }
     }
-    reader.readAsText(file)
+    reader.readAsText(file, 'UTF-8')
     e.target.value = ''
   }
 
@@ -299,12 +506,13 @@ export default function ProjectDeepWork() {
         .color-grid { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
         .week-btn { background: #fff; border: 1px solid var(--border); width: 28px; height: 28px; border-radius: 6px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
         .week-btn:hover { background: #f1f5f9; color: var(--primary); }
-        .save-btn { display: flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 8px; border: 1px solid var(--border); background: #fff; cursor: pointer; font-size: 12px; font-weight: 600; color: #334155; transition: 0.2s; }
+        .save-btn { display: flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 8px; border: 1px solid var(--border); background: #fff; cursor: pointer; font-size: 12px; font-weight: 600; color: #334155; transition: 0.2s; white-space: nowrap; }
         .save-btn:hover { background: #f1f5f9; }
         .save-btn.saved { border-color: #22c55e; color: #16a34a; background: #f0fdf4; }
-        .export-menu { position: absolute; right: 0; top: calc(100% + 6px); background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 6px; min-width: 180px; box-shadow: 0 8px 16px rgba(0,0,0,0.08); z-index: 200; }
+        .export-menu { position: absolute; right: 0; top: calc(100% + 6px); background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 6px; min-width: 190px; box-shadow: 0 8px 16px rgba(0,0,0,0.08); z-index: 200; }
         .export-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px; border: none; background: none; width: 100%; cursor: pointer; font-size: 12px; color: #334155; font-weight: 600; transition: 0.15s; text-align: left; }
         .export-item:hover { background: #f1f5f9; color: var(--primary); }
+        .export-divider { height: 1px; background: var(--border); margin: 4px 0; }
       `}</style>
 
       <aside className="sidebar">
@@ -319,7 +527,7 @@ export default function ProjectDeepWork() {
         <button className={`nav-item ${view === 'kanban' ? 'active' : ''}`} onClick={() => setView('kanban')}>Kanban Board</button>
         <button className={`nav-item ${view === 'list' ? 'active' : ''}`} onClick={() => setView('list')}>Task List</button>
 
-        {/* ── Save & Export in sidebar ── */}
+        {/* Save + Import in sidebar */}
         <div style={{ marginTop: 24, borderTop: '1px solid var(--border)', paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
           <p style={{ fontSize: 10, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', marginBottom: 4, paddingLeft: 4 }}>Projet</p>
 
@@ -329,9 +537,9 @@ export default function ProjectDeepWork() {
           </button>
 
           <button className="save-btn" onClick={() => importRef.current?.click()}>
-            <Upload size={13} /> Importer JSON
+            <Upload size={13} /> Importer CSV
           </button>
-          <input ref={importRef} type="file" accept=".json" hidden onChange={handleImport} />
+          <input ref={importRef} type="file" accept=".csv,text/csv" hidden onChange={handleImport} />
         </div>
 
         <div style={{ marginTop: 'auto' }}>
@@ -360,21 +568,25 @@ export default function ProjectDeepWork() {
 
             <input className="form-control" placeholder="Rechercher..." style={{ width: 180, borderRadius: 20 }} value={search} onChange={(e) => setSearch(e.target.value)} />
 
-            {/* ── Export dropdown in header ── */}
+            {/* Export dropdown */}
             <div style={{ position: 'relative' }}>
               <button className="save-btn" onClick={() => setShowExportMenu(v => !v)}>
                 <Download size={13} /> Exporter ▾
               </button>
               {showExportMenu && (
                 <div className="export-menu">
-                  <button className="export-item" onClick={exportJSON}>
-                    <FileJson size={14} color="#534AB7" /> JSON (import/export)
-                  </button>
                   <button className="export-item" onClick={exportCSV}>
                     <FileText size={14} color="#1D9E75" /> CSV (tableur)
                   </button>
                   <button className="export-item" onClick={exportHTML}>
-                    <FileText size={14} color="#378ADD" /> HTML (impression)
+                    <FileText size={14} color="#378ADD" /> HTML (web)
+                  </button>
+                  <div className="export-divider" />
+                  <button className="export-item" onClick={exportPDF}>
+                    <FileText size={14} color="#D85A30" /> PDF (impression)
+                  </button>
+                  <button className="export-item" onClick={exportImage}>
+                    <ImageIcon size={14} color="#7C3AED" /> Image PNG (Gantt)
                   </button>
                 </div>
               )}
