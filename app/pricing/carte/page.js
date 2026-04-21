@@ -9,7 +9,8 @@ const PLAN_NAMES = { starter: 'Starter', pro: 'Pro', premium: 'Premium' }
 
 // ── Same currency config as pricing/page.js ───────────────────────────────
 const CURRENCY_CONFIG = {
-  CFA: { code: 'CFA', symbol: 'FCFA', fromUSD: 620,  round: (v) => Math.round(v / 100) * 100, format: (v) => v.toLocaleString('fr-FR'), countries: ['SN','ML','BF','CI','BJ','TG','NE','GN','CM','CF','TD','CG','GA','GQ','CD'] },
+  CFA: { code: 'CFA', symbol: 'FCFA', fromUSD: 620,  round: (v) => Math.round(v / 100) * 100, format: (v) => v.toLocaleString('fr-FR'), countries: ['SN','ML','BF','CI','BJ','TG','NE','CM','CF','TD','CG','GA','GQ','CD'] },
+  GNF: { code: 'GNF', symbol: 'GNF',  fromUSD: 8600, round: (v) => Math.round(v / 1000) * 1000, format: (v) => v.toLocaleString('fr-FR'), countries: ['GN'] },  // ← ajout GNF
   NGN: { code: 'NGN', symbol: '₦',    fromUSD: 1600, round: (v) => Math.round(v / 100) * 100, format: (v) => v.toLocaleString('fr-FR'), countries: ['NG'] },
   GHS: { code: 'GHS', symbol: 'GHS',  fromUSD: 15,   round: (v) => Math.round(v * 10) / 10,   format: (v) => v.toFixed(2),              countries: ['GH'] },
   KES: { code: 'KES', symbol: 'KSh',  fromUSD: 130,  round: (v) => Math.round(v),              format: (v) => v.toLocaleString('fr-FR'), countries: ['KE','TZ','UG','RW','ET'] },
