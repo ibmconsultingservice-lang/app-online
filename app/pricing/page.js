@@ -3,9 +3,90 @@ import { useAuth } from '@/hooks/useAuth'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Zap, Check, LogOut, CreditCard } from 'lucide-react'
+import { useState, useEffect } from 'react'
 
 const USD_TO_CFA = 620
 const EUR_TO_CFA = 655
+
+// Currency config per region
+const CURRENCY_CONFIG = {
+  // West/Central Africa (FCFA zone)
+  CFA: {
+    code: 'CFA', symbol: 'FCFA', fromUSD: USD_TO_CFA,
+    round: (v) => Math.round(v / 100) * 100,
+    format: (v) => v.toLocaleString('fr-FR'),
+    countries: ['SN','ML','BF','CI','BJ','TG','NE','GN','CM','CF','TD','CG','GA','GQ','CD'],
+  },
+  // Nigeria
+  NGN: {
+    code: 'NGN', symbol: '₦', fromUSD: 1600,
+    round: (v) => Math.round(v / 100) * 100,
+    format: (v) => v.toLocaleString('fr-FR'),
+    countries: ['NG'],
+  },
+  // Ghana
+  GHS: {
+    code: 'GHS', symbol: 'GHS', fromUSD: 15,
+    round: (v) => Math.round(v * 10) / 10,
+    format: (v) => v.toFixed(2),
+    countries: ['GH'],
+  },
+  // Kenya / East Africa
+  KES: {
+    code: 'KES', symbol: 'KSh', fromUSD: 130,
+    round: (v) => Math.round(v),
+    format: (v) => v.toLocaleString('fr-FR'),
+    countries: ['KE','TZ','UG','RW','ET'],
+  },
+  // Morocco / Maghreb
+  MAD: {
+    code: 'MAD', symbol: 'MAD', fromUSD: 10,
+    round: (v) => Math.round(v * 10) / 10,
+    format: (v) => v.toFixed(2),
+    countries: ['MA','DZ','TN'],
+  },
+  // Europe
+  EUR: {
+    code: 'EUR', symbol: '€', fromUSD: 0.92,
+    round: (v) => Math.round(v * 100) / 100,
+    format: (v) => v.toFixed(2),
+    countries: ['FR','BE','DE','ES','IT','PT','NL','CH','LU','MC','RE','GP','MQ','GF','PM','YT'],
+  },
+  // UK
+  GBP: {
+    code: 'GBP', symbol: '£', fromUSD: 0.79,
+    round: (v) => Math.round(v * 100) / 100,
+    format: (v) => v.toFixed(2),
+    countries: ['GB'],
+  },
+  // Canada
+  CAD: {
+    code: 'CAD', symbol: 'CA$', fromUSD: 1.36,
+    round: (v) => Math.round(v * 100) / 100,
+    format: (v) => v.toFixed(2),
+    countries: ['CA'],
+  },
+  // Default USD
+  USD: {
+    code: 'USD', symbol: '$', fromUSD: 1,
+    round: (v) => Math.round(v * 100) / 100,
+    format: (v) => v.toFixed(2),
+    countries: [], // fallback
+  },
+}
+
+function getCurrencyForCountry(countryCode) {
+  for (const [, cfg] of Object.entries(CURRENCY_CONFIG)) {
+    if (cfg.countries.includes(countryCode)) return cfg
+  }
+  return CURRENCY_CONFIG.USD
+}
+
+function formatPrice(usdPrice, currency) {
+  const raw = usdPrice * currency.fromUSD
+  const rounded = currency.round(raw)
+  return `${currency.format(rounded)} ${currency.symbol}`
+}
 
 const PLANS = [
   {
@@ -42,8 +123,10 @@ const PLANS = [
 
 const WHATSAPP_NUMBER = '221786044910'
 
-function PlanCard({ plan, onWhatsApp, onCard }) {
-  const priceCFA = Math.round(plan.priceUSD * USD_TO_CFA / 100) * 100
+function PlanCard({ plan, onWhatsApp, onCard, currency }) {
+  const priceFormatted = formatPrice(plan.priceUSD, currency)
+  // Always show USD equivalent if not already USD
+  const usdLabel = currency.code !== 'USD' ? `$${plan.priceUSD} USD` : null
 
   return (
     <div className={`relative bg-white border-2 ${
@@ -61,15 +144,15 @@ function PlanCard({ plan, onWhatsApp, onCard }) {
         <div className="text-3xl mb-3">{plan.emoji}</div>
         <h3 className="text-xl font-black text-slate-900">Niveau {plan.name}</h3>
         <div className="mt-4">
-          <div className="flex items-baseline gap-1">
-            <span className="text-4xl font-black text-slate-900">{priceCFA.toLocaleString('fr-FR')}</span>
-            <span className="text-slate-500 font-bold">FCFA</span>
+          <div className="flex items-baseline gap-1 flex-wrap">
+            <span className="text-4xl font-black text-slate-900">{priceFormatted}</span>
             <span className="text-slate-400 text-sm">/mois</span>
           </div>
-          <div className="flex gap-3 mt-1">
-            <span className="text-xs text-slate-400">${plan.priceUSD} USD</span>
-            <span className="text-xs text-slate-400">{Math.round(plan.priceUSD * EUR_TO_CFA / 100) * 100} EUR</span>
-          </div>
+          {usdLabel && (
+            <div className="mt-1">
+              <span className="text-xs text-slate-400">{usdLabel}</span>
+            </div>
+          )}
         </div>
         <div className="mt-3 inline-flex items-center gap-1.5 bg-indigo-50 text-indigo-700 text-xs font-bold px-3 py-1 rounded-full">
           <Zap size={12} fill="currentColor"/> {plan.credits} crédits/mois
@@ -125,14 +208,36 @@ function PlanCard({ plan, onWhatsApp, onCard }) {
 export default function PricingPage() {
   const { user, logout } = useAuth()
   const router = useRouter()
+  const [currency, setCurrency] = useState(CURRENCY_CONFIG.CFA) // default CFA while loading
+  const [countryCode, setCountryCode] = useState(null)
+  const [loadingGeo, setLoadingGeo] = useState(true)
+
+  // Detect country via IP on mount
+  useEffect(() => {
+    async function detectCountry() {
+      try {
+        // ipapi.co — free, no key needed, 1000 req/day
+        const res = await fetch('https://ipapi.co/json/')
+        const data = await res.json()
+        const code = data.country_code
+        setCountryCode(code)
+        setCurrency(getCurrencyForCountry(code))
+      } catch {
+        // silently fall back to CFA default
+      } finally {
+        setLoadingGeo(false)
+      }
+    }
+    detectCountry()
+  }, [])
 
   const handleWhatsApp = (plan) => {
-    const priceCFA = Math.round(plan.priceUSD * USD_TO_CFA / 100) * 100
+    const priceFormatted = formatPrice(plan.priceUSD, currency)
     const userEmail = user?.email || 'non connecté'
     const message = encodeURIComponent(
       `Bonjour ! Je souhaite souscrire au forfait *${plan.name}* sur IA.Business.\n\n` +
       `📧 Mon email : ${userEmail}\n` +
-      `💰 Montant : ${priceCFA.toLocaleString('fr-FR')} FCFA/mois\n` +
+      `💰 Montant : ${priceFormatted}/mois\n` +
       `⚡ Crédits : ${plan.credits} crédits\n\n` +
       `Merci de me confirmer les modalités de paiement (Wave, Orange Money, etc.)`
     )
@@ -140,8 +245,8 @@ export default function PricingPage() {
   }
 
   const handleCard = (plan) => {
-    // Redirect to card payment page with plan info
-    router.push(`/pricing/carte?plan=${plan.id}&credits=${plan.credits}&price=${Math.round(plan.priceUSD * USD_TO_CFA / 100) * 100}`)
+    const priceCFA = Math.round(plan.priceUSD * USD_TO_CFA / 100) * 100
+    router.push(`/pricing/carte?plan=${plan.id}&credits=${plan.credits}&price=${priceCFA}`)
   }
 
   return (
@@ -192,19 +297,35 @@ export default function PricingPage() {
           </span>
         </h1>
         <p className="text-slate-500 text-lg font-medium max-w-xl mx-auto">
-          Prix en FCFA · Paiement par carte Visa, Wave ou Orange Money. Activation automatique.
+          Prix en {currency.code} · Paiement par carte Visa, Wave ou Orange Money. Activation automatique.
         </p>
+
+        {/* Currency info bar */}
         <div className="mt-6 inline-flex items-center gap-4 bg-white border border-slate-200 rounded-2xl px-6 py-3 shadow-sm">
-          <span className="text-xs text-slate-400 font-bold uppercase tracking-widest">Taux du jour</span>
-          <span className="text-xs font-black text-slate-700">1 USD = {USD_TO_CFA} FCFA</span>
-          <span className="text-xs font-black text-slate-700">1 EUR = {EUR_TO_CFA} FCFA</span>
+          {loadingGeo ? (
+            <span className="text-xs text-slate-400 font-bold animate-pulse">Détection de votre devise…</span>
+          ) : (
+            <>
+              <span className="text-xs text-slate-400 font-bold uppercase tracking-widest">
+                {countryCode ? `📍 ${countryCode}` : '🌍 International'}
+              </span>
+              <span className="text-xs font-black text-slate-700">
+                Devise : {currency.symbol} {currency.code}
+              </span>
+              {currency.code !== 'USD' && (
+                <span className="text-xs font-black text-slate-700">
+                  1 USD ≈ {currency.fromUSD} {currency.code}
+                </span>
+              )}
+            </>
+          )}
         </div>
       </section>
 
       <section className="relative z-10 max-w-6xl mx-auto px-6 md:px-12 pb-24">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
           {PLANS.map(plan => (
-            <PlanCard key={plan.id} plan={plan} onWhatsApp={handleWhatsApp} onCard={handleCard}/>
+            <PlanCard key={plan.id} plan={plan} onWhatsApp={handleWhatsApp} onCard={handleCard} currency={currency}/>
           ))}
         </div>
 
