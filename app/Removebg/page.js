@@ -95,9 +95,9 @@ export default function RemoveBGHome() {
         const ctx = canvas.getContext('2d');
         ctx.drawImage(img, 0, 0);
       };
-    } catch (err) {
-      console.error(err);
-      alert("Impossible de traiter l'image. Vérifiez le serveur Python.");
+    }  catch (err) {
+    console.error(err);
+    alert("Impossible de traiter l'image. " + (err.message || "Réessayez dans quelques instants."));
     } finally {
       setIsProcessing(false);
     }
