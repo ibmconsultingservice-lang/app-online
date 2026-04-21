@@ -23,7 +23,7 @@ const ART_STYLES = [
 ]
 
 export default function CaptureGen() {
-  const allowed = usePlanGuard('starter')
+  const allowed = usePlanGuard('pro')  // ← changed to pro
   const { credits } = useCredits()
   const router = useRouter()
 
@@ -96,14 +96,14 @@ export default function CaptureGen() {
     setError(null)
   }
 
-  // ── Loading screen ──
+  // ── Loading screen while plan is verified ──
   if (!allowed) return (
-    <div className="min-h-screen bg-[#f1f5f9] flex items-center justify-center flex-col gap-4">
-      <div className="w-11 h-11 bg-slate-900 rounded-2xl flex items-center justify-center">
+    <div className="min-h-screen bg-[#080c14] flex items-center justify-center flex-col gap-4">
+      <div className="w-11 h-11 bg-gradient-to-br from-emerald-400 to-cyan-500 rounded-2xl flex items-center justify-center">
         <Zap size={20} color="white" fill="white" />
       </div>
-      <div className="w-6 h-6 border-2 border-slate-200 border-t-emerald-500 rounded-full animate-spin" />
-      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Vérification du plan...</p>
+      <div className="w-6 h-6 border-2 border-slate-700 border-t-emerald-400 rounded-full animate-spin" />
+      <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Vérification du plan...</p>
     </div>
   )
 
@@ -119,6 +119,7 @@ export default function CaptureGen() {
           <span className="font-black tracking-tight text-lg">CaptureAI</span>
           <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-full px-2 py-0.5 font-bold uppercase tracking-wider">Studio</span>
         </div>
+        {/* ── Credits badge ── */}
         <div className="flex items-center gap-1.5 bg-emerald-950/60 border border-emerald-500/20 rounded-full px-3 py-1.5">
           <Zap size={12} className="text-emerald-400" fill="currentColor" />
           <span className="text-xs font-black text-emerald-300">{credits}</span>
@@ -295,7 +296,6 @@ export default function CaptureGen() {
                   alt="Résultat"
                   className="w-full h-full object-contain p-4"
                 />
-                {/* Before/After toggle hint */}
                 <div className="absolute top-4 left-4 flex gap-2">
                   <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-full px-2 py-0.5 font-bold uppercase tracking-wider">
                     Résultat
@@ -303,7 +303,6 @@ export default function CaptureGen() {
                 </div>
               </div>
 
-              {/* Before/After comparison */}
               {imagePreview && (
                 <div className="grid grid-cols-2 gap-3">
                   <div className="relative rounded-xl overflow-hidden border border-white/10">

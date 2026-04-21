@@ -79,10 +79,19 @@ export default function ProjectDeepWork() {
   // ── Export CSV ──
   const exportCSV = () => {
     setShowExportMenu(false)
-    const headers = ['Titre', 'Responsable', 'Statut', 'Priorité', 'Jour début', 'Durée (jours)', 'Progression (%)']
+    const headers = [
+      'Titre', 'Responsable', 'Statut', 'Priorité',
+      'Jour début', 'Durée (jours)', 'Progression (%)', 'Couleur'
+    ]
     const rows = tasks.map(t => [
-      `"${t.title}"`, t.assignee || '', t.status,
-      t.priority || 'medium', t.start, t.duration, t.progress,
+      `"${(t.title || '').replace(/"/g, '""')}"`,
+      t.assignee  || '',
+      t.status    || 'todo',
+      t.priority  || 'medium',
+      t.start     || 1,
+      t.duration  || 1,
+      t.progress  || 0,
+      t.colorIdx  ?? 0,
     ])
     const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
@@ -353,39 +362,63 @@ export default function ProjectDeepWork() {
     reader.onload = (ev) => {
       try {
         const text = ev.target.result
-        const lines = text.split('\n').filter(l => l.trim())
+        const lines = text.split('\n').map(l => l.trim()).filter(l => l)
         if (lines.length < 2) { alert('CSV vide ou invalide.'); return }
 
-        // Parse header to find column indexes
-        const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/['"]/g, ''))
+        // Parse a CSV line handling quoted fields without lookbehind
+        const parseCSVLine = (line) => {
+          const result = []
+          let current = ''
+          let inQuotes = false
+          for (let i = 0; i < line.length; i++) {
+            const ch = line[i]
+            if (ch === '"') {
+              inQuotes = !inQuotes
+            } else if (ch === ',' && !inQuotes) {
+              result.push(current.trim())
+              current = ''
+            } else {
+              current += ch
+            }
+          }
+          result.push(current.trim())
+          return result
+        }
+
+        const headers = parseCSVLine(lines[0]).map(h => h.toLowerCase())
         const idx = (name) => headers.findIndex(h => h.includes(name))
 
-        const titleIdx = idx('titre') !== -1 ? idx('titre') : 0
-        const assigneeIdx = idx('responsable') !== -1 ? idx('responsable') : 1
-        const statusIdx = idx('statut') !== -1 ? idx('statut') : 2
-        const priorityIdx = idx('priorit') !== -1 ? idx('priorit') : 3
-        const startIdx = idx('début') !== -1 ? idx('début') : idx('debut') !== -1 ? idx('debut') : 4
-        const durationIdx = idx('dur') !== -1 ? idx('dur') : 5
-        const progressIdx = idx('progress') !== -1 ? idx('progress') : 6
+        const titleIdx    = idx('titre')        !== -1 ? idx('titre')        : 0
+        const assigneeIdx = idx('responsable')  !== -1 ? idx('responsable')  : 1
+        const statusIdx   = idx('statut')       !== -1 ? idx('statut')       : 2
+        const priorityIdx = idx('priorit')      !== -1 ? idx('priorit')      : 3
+        const startIdx    = idx('début')        !== -1 ? idx('début')
+                          : idx('debut')        !== -1 ? idx('debut')        : 4
+        const durationIdx = idx('dur')          !== -1 ? idx('dur')          : 5
+        const progressIdx = idx('progress')     !== -1 ? idx('progress')     : 6
+        const colorIdx_   = idx('couleur')      !== -1 ? idx('couleur')      : -1
+
+        const validStatuses = ['todo', 'in-progress', 'done']
 
         const imported = lines.slice(1).map((line, i) => {
-          // Handle quoted fields
-          const cols = line.match(/(".*?"|[^,]+|(?<=,)(?=,)|^(?=,)|(?<=,)$)/g) || line.split(',')
-          const clean = (v) => (v || '').toString().replace(/^"|"$/g, '').trim()
+          const cols = parseCSVLine(line)
+          const get = (idx) => (cols[idx] || '').trim()
 
-          const status = clean(cols[statusIdx])
-          const validStatuses = ['todo', 'in-progress', 'done']
+          const status = get(statusIdx)
+          const colorRaw = colorIdx_ !== -1 ? parseInt(get(colorIdx_)) : NaN
 
           return {
             id: `imported_${Date.now()}_${i}`,
-            title: clean(cols[titleIdx]) || `Tâche ${i + 1}`,
-            assignee: clean(cols[assigneeIdx]) || '',
-            status: validStatuses.includes(status) ? status : 'todo',
-            priority: clean(cols[priorityIdx]) || 'medium',
-            start: Math.max(1, parseInt(clean(cols[startIdx])) || 1),
-            duration: Math.max(1, parseInt(clean(cols[durationIdx])) || 3),
-            progress: Math.min(100, Math.max(0, parseInt(clean(cols[progressIdx])) || 0)),
-            colorIdx: i % COLORS.length,
+            title:    get(titleIdx)    || `Tâche ${i + 1}`,
+            assignee: get(assigneeIdx) || '',
+            status:   validStatuses.includes(status) ? status : 'todo',
+            priority: get(priorityIdx) || 'medium',
+            start:    Math.max(1, parseInt(get(startIdx))    || 1),
+            duration: Math.max(1, parseInt(get(durationIdx)) || 3),
+            progress: Math.min(100, Math.max(0, parseInt(get(progressIdx)) || 0)),
+            colorIdx: !isNaN(colorRaw) && colorRaw >= 0 && colorRaw < COLORS.length
+                      ? colorRaw
+                      : i % COLORS.length,
           }
         }).filter(t => t.title)
 

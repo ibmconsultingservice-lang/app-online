@@ -1,8 +1,14 @@
 'use client'
 
 import React, { useState } from 'react';
+import { useCredits } from '@/hooks/useCredits'
+import { usePlanGuard } from '@/hooks/usePlanGuard'
+import { Zap } from 'lucide-react'
 
 export default function OfficeToPdf() {
+  const allowed = usePlanGuard('free')
+  const { credits } = useCredits()
+
   const [files, setFiles] = useState([]);
   const [manualText, setManualText] = useState("");
   const [loading, setLoading] = useState(false);
@@ -33,7 +39,6 @@ export default function OfficeToPdf() {
     setLoading(true);
 
     try {
-      // ── Dynamic imports to avoid SSR issues ──
       const { jsPDF } = await import('jspdf');
       const { default: autoTable } = await import('jspdf-autotable');
       const mammoth = await import('mammoth');
@@ -41,12 +46,10 @@ export default function OfficeToPdf() {
 
       const doc = new jsPDF();
 
-      // CAS 1 : TEXTE MANUEL
       if (manualText.trim() && files.length === 0) {
         addTextToDoc(doc, manualText);
         doc.save(`Note_${Date.now()}.pdf`);
       }
-      // CAS 2 : UN OU PLUSIEURS FICHIERS
       else if (files.length > 0) {
         for (let i = 0; i < files.length; i++) {
           const currentFile = files[i];
@@ -65,7 +68,6 @@ export default function OfficeToPdf() {
             }
           });
 
-          // IMAGE
           if (currentFile.type.startsWith('image/')) {
             await new Promise((resolve) => {
               const img = new Image();
@@ -81,12 +83,10 @@ export default function OfficeToPdf() {
               };
             });
           }
-          // DOCX
           else if (fileName.endsWith('.docx')) {
             const result = await mammoth.extractRawText({ arrayBuffer: fileData });
             addTextToDoc(doc, result.value);
           }
-          // EXCEL / CSV
           else if (
             fileName.endsWith('.xlsx') ||
             fileName.endsWith('.xls') ||
@@ -117,6 +117,17 @@ export default function OfficeToPdf() {
     }
   };
 
+  // ── Loading screen while plan is verified ──
+  if (!allowed) return (
+    <div className="min-h-screen bg-[#f1f5f9] flex items-center justify-center flex-col gap-4">
+      <div className="w-11 h-11 bg-red-600 rounded-2xl flex items-center justify-center">
+        <Zap size={20} color="white" fill="white"/>
+      </div>
+      <div className="w-6 h-6 border-2 border-slate-200 border-t-red-600 rounded-full animate-spin"/>
+      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Vérification du plan...</p>
+    </div>
+  )
+
   return (
     <main className="min-h-screen bg-[#f1f5f9] flex items-center justify-center p-6 font-sans">
       <div className="max-w-3xl w-full bg-white/90 backdrop-blur-3xl p-10 md:p-14 rounded-[3.5rem] shadow-2xl border border-white text-center space-y-10">
@@ -133,6 +144,13 @@ export default function OfficeToPdf() {
           <p className="text-slate-400 text-xs font-black mt-2 uppercase tracking-[0.3em]">
             IBM Consulting Edition
           </p>
+          {/* ── Credits badge ── */}
+          <div className="flex items-center justify-center gap-1.5 mt-3">
+            <div className="flex items-center gap-1 bg-red-50 border border-red-100 rounded-full px-3 py-1">
+              <Zap size={11} className="text-red-600" fill="currentColor"/>
+              <span className="text-[10px] font-black text-red-700">{credits} crédits</span>
+            </div>
+          </div>
         </header>
 
         <div className="space-y-8">

@@ -1,17 +1,21 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Copy, Check, Send, Sparkles } from 'lucide-react'
-
+import { Copy, Check, Send, Sparkles, Zap } from 'lucide-react'
+import { useCredits } from '@/hooks/useCredits'
+import { usePlanGuard } from '@/hooks/usePlanGuard'
 
 export default function EmailManager() {
-  const [context, setContext]           = useState('')
-  const [platform, setPlatform]         = useState('linkedin')
-  const [tone, setTone]                 = useState('professional')
+  const allowed = usePlanGuard('starter')
+  const { credits } = useCredits()
+
+  const [context, setContext]             = useState('')
+  const [platform, setPlatform]           = useState('linkedin')
+  const [tone, setTone]                   = useState('professional')
   const [generatedText, setGeneratedText] = useState('')
-  const [loading, setLoading]           = useState(false)
-  const [copied, setCopied]             = useState(false)
-  const [error, setError]               = useState('')
+  const [loading, setLoading]             = useState(false)
+  const [copied, setCopied]               = useState(false)
+  const [error, setError]                 = useState('')
 
   const PLATFORMS = {
     linkedin:  'LinkedIn',
@@ -48,16 +52,16 @@ Rédige un message ${TONES[tone]} pour ${PLATFORMS[platform]}.`,
 
       setGeneratedText(result)
 
-      } catch (err) {
-    console.error('Erreur:', err)
-    if (err.message.includes('non connecté')) {
-      setError('🔒 Connectez-vous pour utiliser cet outil')
-    } else if (err.message.includes('Crédits')) {
-      setError('⚡ Crédits insuffisants')
-    } else {
-      setError('❌ Erreur : ' + err.message)
-    }
-  } finally {
+    } catch (err) {
+      console.error('Erreur:', err)
+      if (err.message.includes('non connecté')) {
+        setError('🔒 Connectez-vous pour utiliser cet outil')
+      } else if (err.message.includes('Crédits')) {
+        setError('⚡ Crédits insuffisants')
+      } else {
+        setError('❌ Erreur : ' + err.message)
+      }
+    } finally {
       setLoading(false)
     }
   }
@@ -68,10 +72,21 @@ Rédige un message ${TONES[tone]} pour ${PLATFORMS[platform]}.`,
     setTimeout(() => setCopied(false), 2000)
   }
 
+  // ── Loading screen while plan is verified ──
+  if (!allowed) return (
+    <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center flex-col gap-4">
+      <div className="w-11 h-11 bg-slate-900 rounded-2xl flex items-center justify-center">
+        <Zap size={20} color="white" fill="white"/>
+      </div>
+      <div className="w-6 h-6 border-2 border-slate-200 border-t-indigo-600 rounded-full animate-spin"/>
+      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Vérification du plan...</p>
+    </div>
+  )
+
   return (
     <main className="min-h-screen bg-[#f8fafc] flex items-center justify-center p-6 font-sans">
       <div className="max-w-4xl w-full bg-white p-8 md:p-12 rounded-[3rem] shadow-2xl border border-slate-100 space-y-8">
-        
+
         <header className="flex justify-between items-center">
           <div className="space-y-1">
             <h1 className="text-3xl font-[950] tracking-tighter text-slate-900 italic">
@@ -81,8 +96,15 @@ Rédige un message ${TONES[tone]} pour ${PLATFORMS[platform]}.`,
               Business Outreach Engine
             </p>
           </div>
-          <div className="bg-indigo-50 p-3 rounded-2xl">
-            <Sparkles className="text-indigo-600 w-6 h-6" />
+          <div className="flex items-center gap-3">
+            {/* ── Credits badge ── */}
+            <div className="flex items-center gap-1.5 bg-indigo-50 border border-indigo-100 rounded-full px-3 py-1.5">
+              <Zap size={12} className="text-indigo-600" fill="currentColor"/>
+              <span className="text-xs font-black text-indigo-700">{credits}</span>
+            </div>
+            <div className="bg-indigo-50 p-3 rounded-2xl">
+              <Sparkles className="text-indigo-600 w-6 h-6" />
+            </div>
           </div>
         </header>
 

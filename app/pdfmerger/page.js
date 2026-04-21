@@ -1,8 +1,14 @@
 'use client'
 
 import React, { useState } from 'react';
+import { useCredits } from '@/hooks/useCredits'
+import { usePlanGuard } from '@/hooks/usePlanGuard'
+import { Zap } from 'lucide-react'
 
 export default function PdfMerger() {
+  const allowed = usePlanGuard('free')
+  const { credits } = useCredits()
+
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -20,7 +26,6 @@ export default function PdfMerger() {
 
     setLoading(true);
     try {
-      // ── Dynamic import to avoid SSR issues ──
       const { PDFDocument } = await import('pdf-lib');
 
       const mergedPdf = await PDFDocument.create();
@@ -49,6 +54,17 @@ export default function PdfMerger() {
     }
   };
 
+  // ── Loading screen while plan is verified ──
+  if (!allowed) return (
+    <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center flex-col gap-4">
+      <div className="w-11 h-11 bg-blue-600 rounded-2xl flex items-center justify-center">
+        <Zap size={20} color="white" fill="white"/>
+      </div>
+      <div className="w-6 h-6 border-2 border-slate-200 border-t-blue-600 rounded-full animate-spin"/>
+      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Vérification du plan...</p>
+    </div>
+  )
+
   return (
     <main className="min-h-screen bg-[#f8fafc] flex items-center justify-center p-6 font-sans">
       <div className="max-w-3xl w-full bg-white p-10 md:p-14 rounded-[3.5rem] shadow-2xl border border-slate-100 text-center space-y-10">
@@ -65,6 +81,13 @@ export default function PdfMerger() {
           <p className="text-slate-400 text-xs font-black mt-2 uppercase tracking-[0.3em]">
             IBM Consulting Internal Tool
           </p>
+          {/* ── Credits badge ── */}
+          <div className="flex items-center justify-center mt-3">
+            <div className="flex items-center gap-1 bg-blue-50 border border-blue-100 rounded-full px-3 py-1">
+              <Zap size={11} className="text-blue-600" fill="currentColor"/>
+              <span className="text-[10px] font-black text-blue-700">{credits} crédits</span>
+            </div>
+          </div>
         </header>
 
         <div className="space-y-6">
