@@ -550,7 +550,7 @@ function VisualEditor({
 
 // ── Main Component ──
 export default function PostGenerator() {
-  const allowed = usePlanGuard('starter')
+  const allowed = usePlanGuard('premium')
   const { credits } = useCredits()
 
   const [step, setStep] = useState(0)

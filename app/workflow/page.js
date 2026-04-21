@@ -16,7 +16,7 @@ const SHAPE_COLORS = {
 }
 
 export default function WorkflowDesigner() {
-  const allowed = usePlanGuard('starter')
+  const allowed = usePlanGuard('premium')
   const { credits } = useCredits()
 
   const [description, setDescription] = useState('')

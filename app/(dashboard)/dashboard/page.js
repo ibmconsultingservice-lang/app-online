@@ -9,23 +9,37 @@ import { Zap, LogOut, ArrowRight, Lock } from 'lucide-react'
 const PLAN_LEVELS = { free: 0, starter: 1, pro: 2, premium: 3 }
 
 const TOOLS = [
-  // ── Gratuit ──────────────────────────────────
-  { icon: '🖼️', name: 'Remove BG',     desc: 'Suppression de fond IA',        path: '/Removebg',     cost: 0, plan: 'free' },
-  { icon: '📎', name: 'PDF Merger',    desc: 'Fusionner vos PDF',              path: '/pdfmerger',    cost: 0, plan: 'free' },
-  { icon: '📤', name: 'Office to PDF', desc: 'Word/Excel → PDF',              path: '/office2pdf',   cost: 0, plan: 'free' },
-  // ── Starter ──────────────────────────────────
-  { icon: '📄', name: 'CV Builder',    desc: 'CV professionnel PDF',           path: '/cv',           cost: 2, plan: 'starter' },
-  { icon: '🧾', name: 'Facture',       desc: 'Génération de factures',         path: '/facture',      cost: 1, plan: 'starter' },
-  { icon: '🎙️', name: 'Audio Trans',   desc: 'Transcription audio',            path: '/AudioTrans',   cost: 1, plan: 'starter' },
-  { icon: '🔧', name: 'Doc Repairer',  desc: 'Correction de documents',        path: '/docrepairer',  cost: 2, plan: 'starter' },
-  { icon: '🔍', name: 'OCR Vision',    desc: 'Extraction de texte depuis image', path: '/ocr-vision', cost: 1, plan: 'starter' },
-  // ── Pro ──────────────────────────────────────
-  { icon: '🧠', name: 'Business IA',   desc: 'Stratégie & négociation',        path: '/business-ia',  cost: 3, plan: 'pro' },
-  { icon: '🖥️', name: 'PPTX Genius',  desc: 'Présentations IA',               path: '/pptxgenius',   cost: 3, plan: 'pro' },
-  { icon: '📊', name: 'Business Plan', desc: "Plan d'affaires complet",        path: '/Businessplan', cost: 4, plan: 'pro' },
-  // ── Premium ───────────────────────────────────
-  { icon: '📚', name: 'Templates',     desc: 'Word, Excel, PowerBI',           path: '/templates',    cost: 0, plan: 'premium' },
-  { icon: '🎓', name: 'Cours en ligne',desc: 'Formation & certification',      path: '/courses',      cost: 0, plan: 'premium' },
+  // ── Gratuit ──────────────────────────────────────────────────────────────
+  { icon: '🖼️', name: 'Remove BG',          desc: 'Suppression de fond IA',               path: '/Removebg',      cost: 0, plan: 'free'    },
+  { icon: '📎', name: 'PDF Merger',          desc: 'Fusionner vos fichiers PDF',            path: '/pdfmerger',     cost: 0, plan: 'free'    },
+  { icon: '📤', name: 'Office to PDF',       desc: 'Convertir Word/Excel en PDF',           path: '/office2pdf',    cost: 0, plan: 'free'    },
+
+  // ── Starter ───────────────────────────────────────────────────────────────
+  { icon: '🧠', name: 'Business IA',         desc: 'Stratégie & négociation IA',            path: '/business-ia',   cost: 2, plan: 'starter' },
+  { icon: '📄', name: 'CV Builder',          desc: 'CV professionnel en PDF',               path: '/cv',            cost: 2, plan: 'starter' },
+  { icon: '🎙️', name: 'Audio Trans',         desc: 'Transcription audio précise',           path: '/AudioTrans',    cost: 1, plan: 'starter' },
+  { icon: '🧾', name: 'Facture',             desc: 'Génération de factures pro',            path: '/facture',       cost: 1, plan: 'starter' },
+  { icon: '📝', name: 'Lettres',             desc: 'Rédiger votre lettre',                  path: '/letter',        cost: 1, plan: 'starter' },
+  { icon: '📧', name: 'Email',               desc: 'Email Writer Professional',             path: '/email',         cost: 1, plan: 'starter' },
+  { icon: '💳', name: 'Modern Card',         desc: 'Carte de visite moderne',               path: '/CVisite',       cost: 1, plan: 'starter' },
+  { icon: '🔧', name: 'Doc Repairer',        desc: 'Correction & réparation de docs',       path: '/docrepairer',   cost: 2, plan: 'starter' },
+  { icon: '🔍', name: 'OCR Vision',          desc: 'Extraction de texte depuis image',      path: '/ocr-vision',    cost: 1, plan: 'starter' },
+  { icon: '📑', name: 'Pdf Convert',         desc: 'Convertisseur de PDF en fichier',       path: '/pdfconvert',    cost: 1, plan: 'starter' },
+
+  // ── Pro ───────────────────────────────────────────────────────────────────
+  { icon: '🖥️', name: 'PPTX Genius',        desc: 'Présentations PowerPoint IA',           path: '/pptxgenius',    cost: 3, plan: 'pro'     },
+  { icon: '📊', name: 'Business Plan',       desc: "Plan d'affaires complet",               path: '/Businessplan',  cost: 4, plan: 'pro'     },
+  { icon: '📅', name: 'Project Planner',     desc: 'Planifier votre projet',                path: '/Planner',       cost: 2, plan: 'pro'     },
+  { icon: '🔥', name: 'Finance Analysis',    desc: 'Analyse de vos chiffres',               path: '/FinanceAi',     cost: 3, plan: 'pro'     },
+  { icon: '🔍', name: 'Document Analyser',   desc: 'Analyse approfondie de document',       path: '/docanalyser',   cost: 2, plan: 'pro'     },
+  { icon: '⚖️', name: 'Contract Generator',  desc: 'Générer tout type de contrat',          path: '/Contract',      cost: 3, plan: 'pro'     },
+
+  // ── Premium ───────────────────────────────────────────────────────────────
+  { icon: '🔥', name: 'Dashboard Ai',        desc: 'Tableau de bord personnalisé',          path: '/DashboardAi',   cost: 0, plan: 'premium' },
+  { icon: '👩‍🦰', name: 'Image Generator',    desc: "Générateur d'image IA",                 path: '/Imagegen',      cost: 2, plan: 'premium' },
+  { icon: '🤳', name: 'Capture Me',          desc: 'Embellissez vos photos',                path: '/Capture',       cost: 2, plan: 'premium' },
+  { icon: '🚀', name: 'Workflow',            desc: 'Générer workflow automatisé',            path: '/workflow',      cost: 3, plan: 'premium' },
+  { icon: '🔥', name: 'Post Generator',      desc: 'Générer un post réseaux sociaux',       path: '/PostGenerator', cost: 1, plan: 'premium' },
 ]
 
 const PLAN_LABELS = {
@@ -34,6 +48,29 @@ const PLAN_LABELS = {
   pro:     { label: 'Pro',     color: 'bg-violet-50 text-violet-600' },
   premium: { label: 'Premium', color: 'bg-amber-50 text-amber-600' },
 }
+
+const SECTIONS = [
+  {
+    plan: 'free',
+    label: '✅ Gratuit',
+    upgradeMsg: null,
+  },
+  {
+    plan: 'starter',
+    label: '⚡ Starter',
+    upgradeMsg: 'Débloquez CV, Facture, Audio Trans et plus encore.',
+  },
+  {
+    plan: 'pro',
+    label: '🚀 Pro',
+    upgradeMsg: 'Débloquez Business IA, PPTX Genius et Business Plan.',
+  },
+  {
+    plan: 'premium',
+    label: '👑 Premium',
+    upgradeMsg: 'Débloquez les templates Word/Excel et les cours en ligne.',
+  },
+]
 
 export default function DashboardPage() {
   const { user, logout } = useAuth()
@@ -55,18 +92,11 @@ export default function DashboardPage() {
     }
   }
 
-  const sections = [
-    { label: '✅ Gratuit', plan: 'free' },
-    { label: '⚡ Starter', plan: 'starter' },
-    { label: '🚀 Pro',     plan: 'pro' },
-    { label: '👑 Premium', plan: 'premium' },
-  ]
-
   return (
     <AuthGuard>
       <div className="min-h-screen bg-[#f8fafc] font-sans">
 
-        {/* Header */}
+        {/* ── Header ────────────────────────────────────────────────────────── */}
         <header className="bg-white border-b border-slate-200 px-6 md:px-10 h-16 flex items-center justify-between sticky top-0 z-50">
           <Link href="/" className="flex items-center gap-3">
             <div className="w-8 h-8 bg-slate-900 text-white rounded-lg flex items-center justify-center">
@@ -108,7 +138,7 @@ export default function DashboardPage() {
           </div>
         </header>
 
-        {/* Content */}
+        {/* ── Content ───────────────────────────────────────────────────────── */}
         <div className="max-w-5xl mx-auto px-6 py-10">
 
           {/* Welcome */}
@@ -137,13 +167,14 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* Tools by section */}
-          {sections.map((section) => {
+          {/* ── Tools by section ──────────────────────────────────────────── */}
+          {SECTIONS.map((section) => {
             const sectionTools = TOOLS.filter(t => t.plan === section.plan)
             const sectionLocked = PLAN_LEVELS[section.plan] > userPlanLevel
 
             return (
               <div key={section.plan} className="mb-10">
+                {/* Section header */}
                 <div className="flex items-center gap-3 mb-4">
                   <h2 className="text-xs font-black uppercase tracking-widest text-slate-400">
                     {section.label}
@@ -156,6 +187,7 @@ export default function DashboardPage() {
                   <div className="flex-1 h-px bg-slate-100"/>
                 </div>
 
+                {/* Tools grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {sectionTools.map((tool) => {
                     const locked = PLAN_LEVELS[tool.plan] > userPlanLevel
@@ -210,16 +242,16 @@ export default function DashboardPage() {
             )
           })}
 
-          {/* Upgrade banner */}
+          {/* ── Upgrade banner ────────────────────────────────────────────── */}
           {plan !== 'premium' && (
             <div className="mt-4 bg-slate-900 rounded-2xl p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative overflow-hidden">
               <div className="absolute top-0 right-0 w-[40%] h-full bg-indigo-600/10 blur-[60px] rounded-full pointer-events-none"/>
               <div className="relative z-10">
                 <h3 className="text-lg font-black text-white mb-2">🚀 Passez au niveau supérieur</h3>
                 <p className="text-slate-400 text-sm">
-                  {plan === 'free' && 'Débloquez CV, Facture, Audio Trans et plus encore.'}
-                  {plan === 'starter' && 'Débloquez Business IA, PPTX Genius et Business Plan.'}
-                  {plan === 'pro' && 'Débloquez les templates Word/Excel et les cours en ligne.'}
+                  {plan === 'free'    && 'Débloquez CV, Facture, Audio Trans, Business IA et plus encore.'}
+                  {plan === 'starter' && 'Débloquez PPTX Genius, Business Plan, Finance Analysis et plus.'}
+                  {plan === 'pro'     && 'Débloquez Dashboard AI, Image Generator, Workflow et Post Generator.'}
                 </p>
               </div>
               <button

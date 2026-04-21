@@ -30,7 +30,7 @@ const SUGGESTIONS = [
 ]
 
 export default function ImageGen() {
-  const allowed = usePlanGuard('starter')
+  const allowed = usePlanGuard('premium')
   const { credits } = useCredits()
   const router = useRouter()
 

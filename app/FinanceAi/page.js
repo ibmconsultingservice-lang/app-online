@@ -110,7 +110,7 @@ function VariableSlider({ label, value, min, max, step = 1, unit = '%', onChange
 }
 
 export default function FinanceAIPage() {
-  const allowed = usePlanGuard('starter')
+  const allowed = usePlanGuard('pro')
   const { deductCredits, hasCredits, credits } = useCredits()
   const router = useRouter()
 

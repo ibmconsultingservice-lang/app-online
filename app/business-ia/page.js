@@ -7,7 +7,7 @@ import { usePlanGuard } from '@/hooks/usePlanGuard';
 import { useRouter } from 'next/navigation';
 
 export default function BusinessIA() {
-  const allowed = usePlanGuard('pro');
+  const allowed = usePlanGuard('starter');
 
   const { deductCredits, hasCredits, credits } = useCredits();
   const router = useRouter();

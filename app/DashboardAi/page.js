@@ -71,7 +71,7 @@ function parseCSVClient(text) {
 }
 
 export default function DashboardAI() {
-  const allowed = usePlanGuard('pro')
+  const allowed = usePlanGuard('premium')
   const { deductCredits, hasCredits, credits } = useCredits()
   const router = useRouter()
 
