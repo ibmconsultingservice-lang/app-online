@@ -4,10 +4,12 @@ import React, { useState } from 'react'
 import { Copy, Check, Send, Sparkles, Zap } from 'lucide-react'
 import { useCredits } from '@/hooks/useCredits'
 import { usePlanGuard } from '@/hooks/usePlanGuard'
+import { useRouter } from 'next/navigation'
 
 export default function EmailManager() {
   const allowed = usePlanGuard('starter')
-  const { credits } = useCredits()
+  const { deductCredits, hasCredits, credits } = useCredits()
+  const router = useRouter()
 
   const [context, setContext]             = useState('')
   const [platform, setPlatform]           = useState('linkedin')
@@ -33,34 +35,31 @@ export default function EmailManager() {
 
   const generateMessage = async () => {
     if (!context.trim()) return
+
+    if (!hasCredits(1)) {
+      router.push('/pricing')
+      return
+    }
+
     setLoading(true)
     setError('')
 
     try {
-      const result = await callClaude({
-        system: `Tu es un expert en communication professionnelle et business development.
-Tu rédiges des messages optimisés pour ${PLATFORMS[platform]}.
-Ton : ${TONES[tone]}.
-Le message doit être prêt à envoyer, sans explication supplémentaire.
-Adapte la longueur et le style à la plateforme choisie.`,
-        prompt: `Contexte et objectif : ${context}
-
-Rédige un message ${TONES[tone]} pour ${PLATFORMS[platform]}.`,
-        tool: 'marketing',
-        maxTokens: 800,
+      const res = await fetch('/api/generer-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ context, platform, tone }),
       })
 
-      setGeneratedText(result)
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Erreur serveur')
+
+      await deductCredits(1)
+      setGeneratedText(data.text)
 
     } catch (err) {
       console.error('Erreur:', err)
-      if (err.message.includes('non connecté')) {
-        setError('🔒 Connectez-vous pour utiliser cet outil')
-      } else if (err.message.includes('Crédits')) {
-        setError('⚡ Crédits insuffisants')
-      } else {
-        setError('❌ Erreur : ' + err.message)
-      }
+      setError('❌ Erreur : ' + err.message)
     } finally {
       setLoading(false)
     }
@@ -97,7 +96,7 @@ Rédige un message ${TONES[tone]} pour ${PLATFORMS[platform]}.`,
             </p>
           </div>
           <div className="flex items-center gap-3">
-            {/* ── Credits badge ── */}
+            {/* Credits badge */}
             <div className="flex items-center gap-1.5 bg-indigo-50 border border-indigo-100 rounded-full px-3 py-1.5">
               <Zap size={12} className="text-indigo-600" fill="currentColor"/>
               <span className="text-xs font-black text-indigo-700">{credits}</span>
@@ -108,7 +107,17 @@ Rédige un message ${TONES[tone]} pour ${PLATFORMS[platform]}.`,
           </div>
         </header>
 
-        {/* Erreur */}
+        {/* Low credits warning */}
+        {credits < 1 && (
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 text-xs text-amber-700 font-medium flex items-center justify-between">
+            <span>⚠️ Crédits insuffisants (1 requis)</span>
+            <button onClick={() => router.push('/pricing')} className="font-black underline">
+              Recharger
+            </button>
+          </div>
+        )}
+
+        {/* Error */}
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-600 rounded-2xl p-4 text-sm font-medium">
             {error}
@@ -165,10 +174,10 @@ Rédige un message ${TONES[tone]} pour ${PLATFORMS[platform]}.`,
 
             <button
               onClick={generateMessage}
-              disabled={loading || !context.trim()}
+              disabled={loading || !context.trim() || !hasCredits(1)}
               className="w-full bg-indigo-600 text-white py-5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-indigo-200 hover:bg-slate-900 transition-all active:scale-95 disabled:opacity-30"
             >
-              {loading ? 'Analyse stratégique...' : 'Générer le message'}
+              {loading ? 'Analyse stratégique...' : 'Générer le message · ⚡1'}
             </button>
           </div>
 
