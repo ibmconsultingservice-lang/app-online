@@ -6,30 +6,37 @@ import { useRouter } from 'next/navigation'
 import { Zap, ArrowRight, Shield, Users, Star, LogOut, ChevronDown } from 'lucide-react'
 
 const TOOLS = [
-  { icon: '🧠', name: 'Business IA',        desc: 'Stratégie & négociation IA',          path: '/business-ia',   img: '/images/tools/tool-01-business-ia.png',   plan: 'starter'      },
-  { icon: '📄', name: 'CV Builder',          desc: 'CV professionnel en PDF',             path: '/cv',            img: '/images/tools/tool-02-cv-builder.png',    plan: 'starter'  },
-  { icon: '🎙️', name: 'Audio Trans',         desc: 'Transcription audio précise',         path: '/AudioTrans',    img: '/images/tools/tool-03-audio-trans.png',   plan: 'starter'  },
-  { icon: '🖥️', name: 'PPTX Genius',        desc: 'Présentations PowerPoint IA',         path: '/pptxgenius',    img: '/images/tools/tool-04-pptx-genius.png',   plan: 'pro'      },
-  { icon: '🧾', name: 'Facture',             desc: 'Génération de factures pro',          path: '/facture',       img: '/images/tools/tool-05-facture.png',       plan: 'starter'  },
-  { icon: '📊', name: 'Business Plan',       desc: "Plan d'affaires complet",             path: '/Businessplan',  img: '/images/tools/tool-06-business-plan.png', plan: 'pro'      },
-  { icon: '📝', name: 'Lettres',             desc: 'Rédiger votre lettre',                path: '/letter',        img: '/images/tools/tool-01-letter.png',        plan: 'starter'  },
-  { icon: '📧', name: 'Email',               desc: 'Email Writer Professional',           path: '/email',         img: '/images/tools/tool-01-email.png',         plan: 'starter'  },
-  { icon: '📅', name: 'Project Planner',     desc: 'Planifier votre projet',              path: '/Planner',       img: '/images/tools/tool-01-planner.png',       plan: 'pro'      },
-  { icon: '🔥', name: 'Finance Analysis',      desc: 'Faites une analyse de vos chiffres', path: '/FinanceAi', img: '/images/tools/tool-01-finance.png',          plan: 'pro'  },
-  { icon: '🔥', name: 'Dashboard Ai',      desc: 'Créer un tableau de bord personalisé', path: '/DashboardAi', img: '/images/tools/tool-01-dashboard.png',          plan: 'premium'  },
-  { icon: '💳', name: 'Modern Card',         desc: 'Carte de visite moderne',             path: '/CVisite',       img: '/images/tools/tool-01-visite.png',        plan: 'starter'  },
-  { icon: '🔍', name: 'Document Analyser',   desc: 'Analyse approfondie de document',     path: '/docanalyser',   img: '/images/tools/tool-01-analyser.png',      plan: 'pro'      },
-  { icon: '⚖️', name: 'Contract Generator',  desc: 'Générer tout type de contrat',        path: '/Contract',      img: '/images/tools/tool-01-contract.png',      plan: 'pro'      },
-  { icon: '🔧', name: 'Doc Repairer',        desc: 'Correction & réparation de docs',     path: '/docrepairer',   img: '/images/tools/tool-07-doc-repairer.png',  plan: 'starter'  },
-  { icon: '🔍', name: 'OCR Vision',          desc: 'Extraction de texte depuis image',    path: '/ocr-vision',    img: '/images/tools/tool-08-ocr-vision.png',    plan: 'starter'  },
-  { icon: '🖼️', name: 'Remove BG',           desc: 'Suppression de fond IA',              path: '/Removebg',      img: '/images/tools/tool-09-remove-bg.png',     plan: 'free'     },
-  { icon: '📎', name: 'PDF Merger',          desc: 'Fusionner vos fichiers PDF',          path: '/pdfmerger',     img: '/images/tools/tool-10-pdf-merger.png',    plan: 'free'     },
-  { icon: '📤', name: 'Office to PDF',       desc: 'Convertir Word/Excel en PDF',         path: '/office2pdf',    img: '/images/tools/tool-11-office-to-pdf.png', plan: 'free'     },
-  { icon: '📑', name: 'Pdf Convert',         desc: 'Convertisseur de pdf en fichier',     path: '/pdfconvert',    img: '/images/tools/tool-01-pdfconvert.png',    plan: 'starter'  },
-  { icon: '👩‍🦰', name: 'Image Generator',    desc: "Générateur d'image",                  path: '/Imagegen',      img: '/images/tools/tool-01-image.jpg',         plan: 'premium'      },
-  { icon: '🤳', name: 'Capture Me',          desc: 'Take your image and make it beautiful',path: '/Capture',      img: '/images/tools/tool-01-capture.png',       plan: 'premium'      },
-  { icon: '🚀', name: 'Workflow',            desc: 'Générer workflow',                    path: '/workflow',      img: '/images/tools/tool-01-workflow.png',      plan: 'premium'  },
-  { icon: '🔥', name: 'Post Generator',      desc: 'Générer un post',                     path: '/PostGenerator', img: '/images/tools/tool-01-post.png',          plan: 'premium'  },
+  // ── Free ─────────────────────────────────────────────────────────────────
+  { icon: '🖼️', name: 'Remove BG',          desc: 'Suppression de fond IA',               path: '/Removebg',      img: '/images/tools/tool-09-remove-bg.png',     plan: 'free'    },
+  { icon: '📎', name: 'PDF Merger',          desc: 'Fusionner vos fichiers PDF',            path: '/pdfmerger',     img: '/images/tools/tool-10-pdf-merger.png',    plan: 'free'    },
+  { icon: '📤', name: 'Office to PDF',       desc: 'Convertir Word/Excel en PDF',           path: '/office2pdf',    img: '/images/tools/tool-11-office-to-pdf.png', plan: 'free'    },
+
+  // ── Starter ───────────────────────────────────────────────────────────────
+  { icon: '🧠', name: 'Business IA',         desc: 'Stratégie & négociation IA',            path: '/business-ia',   img: '/images/tools/tool-01-business-ia.png',   plan: 'starter' },
+  { icon: '📄', name: 'CV Builder',          desc: 'CV professionnel en PDF',               path: '/cv',            img: '/images/tools/tool-02-cv-builder.png',    plan: 'starter' },
+  { icon: '🎙️', name: 'Audio Trans',         desc: 'Transcription audio précise',           path: '/AudioTrans',    img: '/images/tools/tool-03-audio-trans.png',   plan: 'starter' },
+  { icon: '🧾', name: 'Facture',             desc: 'Génération de factures pro',            path: '/facture',       img: '/images/tools/tool-05-facture.png',       plan: 'starter' },
+  { icon: '📝', name: 'Lettres',             desc: 'Rédiger votre lettre',                  path: '/letter',        img: '/images/tools/tool-01-letter.png',        plan: 'starter' },
+  { icon: '📧', name: 'Email',               desc: 'Email Writer Professional',             path: '/email',         img: '/images/tools/tool-01-email.png',         plan: 'starter' },
+  { icon: '💳', name: 'Modern Card',         desc: 'Carte de visite moderne',               path: '/CVisite',       img: '/images/tools/tool-01-visite.png',        plan: 'starter' },
+  { icon: '🔧', name: 'Doc Repairer',        desc: 'Correction & réparation de docs',       path: '/docrepairer',   img: '/images/tools/tool-07-doc-repairer.png',  plan: 'starter' },
+  { icon: '🔍', name: 'OCR Vision',          desc: 'Extraction de texte depuis image',      path: '/ocr-vision',    img: '/images/tools/tool-08-ocr-vision.png',    plan: 'starter' },
+  { icon: '📑', name: 'Pdf Convert',         desc: 'Convertisseur de pdf en fichier',       path: '/pdfconvert',    img: '/images/tools/tool-01-pdfconvert.png',    plan: 'starter' },
+
+  // ── Pro ───────────────────────────────────────────────────────────────────
+  { icon: '🖥️', name: 'PPTX Genius',        desc: 'Présentations PowerPoint IA',           path: '/pptxgenius',    img: '/images/tools/tool-04-pptx-genius.png',   plan: 'pro'     },
+  { icon: '📊', name: 'Business Plan',       desc: "Plan d'affaires complet",               path: '/Businessplan',  img: '/images/tools/tool-06-business-plan.png', plan: 'pro'     },
+  { icon: '📅', name: 'Project Planner',     desc: 'Planifier votre projet',                path: '/Planner',       img: '/images/tools/tool-01-planner.png',       plan: 'pro'     },
+  { icon: '🔥', name: 'Finance Analysis',    desc: 'Faites une analyse de vos chiffres',    path: '/FinanceAi',     img: '/images/tools/tool-01-finance.png',        plan: 'pro'     },
+  { icon: '🔍', name: 'Document Analyser',   desc: 'Analyse approfondie de document',       path: '/docanalyser',   img: '/images/tools/tool-01-analyser.png',      plan: 'pro'     },
+  { icon: '⚖️', name: 'Contract Generator',  desc: 'Générer tout type de contrat',          path: '/Contract',      img: '/images/tools/tool-01-contract.png',      plan: 'pro'     },
+
+  // ── Premium ───────────────────────────────────────────────────────────────
+  { icon: '🔥', name: 'Dashboard Ai',        desc: 'Créer un tableau de bord personalisé',  path: '/DashboardAi',   img: '/images/tools/tool-01-dashboard.png',     plan: 'premium' },
+  { icon: '👩‍🦰', name: 'Image Generator',    desc: "Générateur d'image",                    path: '/Imagegen',      img: '/images/tools/tool-01-image.jpg',         plan: 'premium' },
+  { icon: '🤳', name: 'Capture Me',          desc: 'Take your image and make it beautiful', path: '/Capture',       img: '/images/tools/tool-01-capture.png',       plan: 'premium' },
+  { icon: '🚀', name: 'Workflow',            desc: 'Générer workflow',                      path: '/workflow',      img: '/images/tools/tool-01-workflow.png',      plan: 'premium' },
+  { icon: '🔥', name: 'Post Generator',      desc: 'Générer un post',                       path: '/PostGenerator', img: '/images/tools/tool-01-post.png',          plan: 'premium' },
 ]
 
 const PLAN_BADGE = {
