@@ -1,20 +1,5 @@
 import { NextResponse } from 'next/server'
-import { initializeApp, getApps, cert } from 'firebase-admin/app'
-import { getFirestore, FieldValue } from 'firebase-admin/firestore'
-
-// ── Firebase Admin init (singleton) ──────────────────────────────────────────
-if (!getApps().length) {
-  initializeApp({
-    credential: cert({
-      projectId:   process.env.FIREBASE_ADMIN_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
-      // Replace escaped newlines in the private key (common env var issue)
-      privateKey:  process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    }),
-  })
-}
-
-const adminDb = getFirestore()
+import { adminDb } from '@/lib/firebase-admin'
 
 // ── PayPal config ─────────────────────────────────────────────────────────────
 const PAYPAL_CLIENT_ID     = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID
@@ -83,12 +68,12 @@ export async function POST(request) {
       currentPlan    = data.plan    ?? 'free'
     }
 
-    // ── 4. Determine upgraded plan (never downgrade) ───────────────────────────
+    // ── 4. Determine upgraded plan (never downgrade) ──────────────────────────
     const newPlanLevel     = PLAN_LEVELS[plan]        ?? 0
     const currentPlanLevel = PLAN_LEVELS[currentPlan] ?? 0
     const upgradedPlan     = newPlanLevel > currentPlanLevel ? plan : currentPlan
 
-    // ── 5. Cumulate credits ────────────────────────────────────────────────────
+    // ── 5. Cumulate credits ───────────────────────────────────────────────────
     const creditsToAdd = PLAN_CREDITS[plan] ?? 50
     const newCredits   = currentCredits + creditsToAdd
 
@@ -100,17 +85,16 @@ export async function POST(request) {
     })
 
     return NextResponse.json({
-      success:     true,
-      status:      'COMPLETED',
-      plan:        upgradedPlan,
-      credits:     newCredits,
+      success:      true,
+      status:       'COMPLETED',
+      plan:         upgradedPlan,
+      credits:      newCredits,
       creditsAdded: creditsToAdd,
     })
 
   } catch (error) {
     console.error('[paypal/capture] error:', error.message)
 
-    // Let the client know if it was already captured (idempotent)
     if (error.message?.includes('ORDER_ALREADY_CAPTURED')) {
       return NextResponse.json({ success: true, error: 'ORDER_ALREADY_CAPTURED' })
     }
