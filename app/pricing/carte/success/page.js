@@ -1,183 +1,161 @@
 'use client'
 import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { useAuth } from '@/hooks/useAuth'
-import { CheckCircle, Loader2, XCircle } from 'lucide-react'
-import { db } from '@/lib/firebase'
-import { doc, getDoc, updateDoc } from 'firebase/firestore'
+import { CheckCircle, AlertCircle, Loader2 } from 'lucide-react'
+import Link from 'next/link'
 
-// ── Plan hierarchy ────────────────────────────────────────────────────────────
-const PLAN_LEVELS  = { free: 0, starter: 1, pro: 2, premium: 3 }
-const PLAN_CREDITS = { starter: 50, pro: 150, premium: 500 }
-const PLAN_NAMES   = { starter: 'Starter', pro: 'Pro', premium: 'Premium' }
+const PLAN_NAMES = { starter: 'Starter', pro: 'Pro', premium: 'Premium' }
 
-// ─────────────────────────────────────────────────────────────────────────────
 function SuccessContent() {
   const searchParams = useSearchParams()
-  const { user }     = useAuth()
   const router       = useRouter()
 
-  const plan    = searchParams.get('plan')
-  const userId  = searchParams.get('userId')
-  const orderId = searchParams.get('token')  // PayPal returns ?token=ORDER_ID
-
-  const [status, setStatus]         = useState('loading') // loading | success | error
+  const [status, setStatus]         = useState('loading') // 'loading' | 'success' | 'error'
+  const [result, setResult]         = useState(null)
   const [errorMsg, setErrorMsg]     = useState('')
-  const [finalCredits, setFinalCredits] = useState(null)
-  const [finalPlan, setFinalPlan]       = useState(null)
 
   useEffect(() => {
-    if (!userId || !plan || !orderId) {
+    const orderId = searchParams.get('token')
+    const plan    = searchParams.get('plan')
+    const userId  = searchParams.get('userId')
+
+    if (!orderId || !userId || !plan) {
+      setErrorMsg('Paramètres de paiement manquants dans l\'URL.')
       setStatus('error')
-      setErrorMsg('Paramètres manquants dans l\'URL.')
       return
     }
 
-    activatePlan()
+    fetch('/api/payment/paypal/capture', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ orderId, userId, plan }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          setResult(data)
+          setStatus('success')
+        } else {
+          throw new Error(data.error || 'Activation échouée')
+        }
+      })
+      .catch(err => {
+        console.error('[success page]', err)
+        setErrorMsg(err.message)
+        setStatus('error')
+      })
   }, [])
 
-  const activatePlan = async () => {
-    try {
-      // 1. Capture PayPal order (confirms the payment server-side)
-      const captureRes = await fetch('/api/payment/paypal/capture', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderId, userId, plan }),
-      })
-      const captureData = await captureRes.json()
-
-      // Allow to continue even if capture already done (idempotent)
-      if (!captureData.success && captureData.error !== 'ORDER_ALREADY_CAPTURED') {
-        throw new Error(captureData.error || 'Échec de la capture PayPal')
-      }
-
-      // 2. Read current user document from Firestore
-      const userRef  = doc(db, 'users', userId)
-      const userSnap = await getDoc(userRef)
-
-      let currentCredits = 0
-      let currentPlan    = 'free'
-
-      if (userSnap.exists()) {
-        const data   = userSnap.data()
-        currentCredits = data.credits ?? 0
-        currentPlan    = data.plan    ?? 'free'
-      }
-
-      // 3. Determine new plan (only upgrade, never downgrade)
-      const newPlanLevel     = PLAN_LEVELS[plan]     ?? 0
-      const currentPlanLevel = PLAN_LEVELS[currentPlan] ?? 0
-      const upgradedPlan     = newPlanLevel > currentPlanLevel ? plan : currentPlan
-
-      // 4. Credits to add = credits of the purchased plan
-      const creditsToAdd = PLAN_CREDITS[plan] ?? 0
-      const newCredits   = currentCredits + creditsToAdd
-
-      // 5. Write back to Firestore
-      await updateDoc(userRef, {
-        plan:      upgradedPlan,
-        credits:   newCredits,
-        updatedAt: new Date().toISOString(),
-      })
-
-      setFinalPlan(upgradedPlan)
-      setFinalCredits(newCredits)
-      setStatus('success')
-
-    } catch (err) {
-      console.error('[success] activation error:', err)
-      setErrorMsg(err.message || 'Une erreur est survenue.')
-      setStatus('error')
-    }
-  }
-
-  // ── Loading ────────────────────────────────────────────────────────────────
+  // ── Loading ──
   if (status === 'loading') return (
     <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center p-6">
-      <div className="bg-white border border-slate-200 rounded-3xl p-12 max-w-md w-full text-center shadow-xl flex flex-col items-center gap-5">
-        <Loader2 size={40} className="text-indigo-600 animate-spin"/>
-        <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">Activation en cours…</p>
-        <p className="text-xs text-slate-400">Vérification du paiement et mise à jour de votre compte</p>
+      <div className="bg-white border border-slate-200 rounded-3xl p-12 max-w-md w-full text-center shadow-xl space-y-5">
+        <Loader2 size={40} className="text-indigo-500 animate-spin mx-auto"/>
+        <h2 className="text-xl font-black text-slate-800">Activation en cours...</h2>
+        <p className="text-slate-400 text-sm">Confirmation du paiement et mise à jour de votre compte</p>
+        <div className="space-y-2 text-left">
+          {[
+            '✓ Vérification du paiement PayPal',
+            '✓ Lecture de votre compte',
+            '⏳ Mise à jour du plan et des crédits',
+          ].map((step, i) => (
+            <p key={i} className="text-xs text-slate-400">{step}</p>
+          ))}
+        </div>
       </div>
     </div>
   )
 
-  // ── Error ──────────────────────────────────────────────────────────────────
+  // ── Error ──
   if (status === 'error') return (
     <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center p-6">
-      <div className="bg-white border border-red-200 rounded-3xl p-12 max-w-md w-full text-center shadow-xl">
-        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
-          <XCircle size={36} className="text-red-500"/>
+      <div className="bg-white border border-red-200 rounded-3xl p-12 max-w-md w-full text-center shadow-xl space-y-5">
+        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto">
+          <AlertCircle size={36} className="text-red-500"/>
         </div>
-        <h2 className="text-xl font-black text-slate-900 mb-3">Problème d'activation</h2>
-        <p className="text-sm text-slate-500 mb-6">{errorMsg}</p>
-        <p className="text-xs text-slate-400 mb-8">
-          Votre paiement a peut-être été effectué. Contactez-nous via WhatsApp pour activation manuelle.
+        <h2 className="text-xl font-black text-slate-800">Problème d'activation</h2>
+        <p className="text-slate-500 text-sm">
+          Votre paiement a été reçu mais l'activation automatique a échoué.
         </p>
-        <div className="flex flex-col gap-3">
-          <a href="https://wa.me/221786044910" target="_blank"
-            className="inline-flex items-center justify-center gap-2 bg-emerald-500 text-white px-6 py-3 rounded-2xl font-black text-sm hover:bg-emerald-600 transition-all">
-            📱 Contacter via WhatsApp
+        <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-600 font-mono text-left break-all">
+          {errorMsg}
+        </div>
+        <p className="text-slate-400 text-xs">
+          Contactez le support avec votre ID de transaction PayPal.
+          Votre compte sera activé manuellement sous 24h.
+        </p>
+        <div className="flex gap-3">
+          <Link href="/dashboard"
+            className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl font-bold text-sm text-center transition-all">
+            Dashboard
+          </Link>
+          <a href="mailto:support@example.com"
+            className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-bold text-sm text-center transition-all">
+            Contacter Support
           </a>
-          <button onClick={() => router.push('/dashboard')}
-            className="text-xs font-bold text-slate-400 hover:text-slate-700 transition-colors">
-            Aller au Dashboard quand même →
-          </button>
         </div>
       </div>
     </div>
   )
 
-  // ── Success ────────────────────────────────────────────────────────────────
+  // ── Success ──
+  const planName    = PLAN_NAMES[result?.plan] || result?.plan || '—'
+  const prevPlan    = PLAN_NAMES[result?.previousPlan] || result?.previousPlan
+  const wasUpgraded = result?.plan !== result?.previousPlan
+  const keptPlan    = !wasUpgraded && result?.previousPlan && result?.previousPlan !== 'free'
+
   return (
     <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center p-6">
-      <div className="bg-white border border-emerald-200 rounded-3xl p-12 max-w-md w-full text-center shadow-xl">
+      <div className="bg-white border border-emerald-200 rounded-3xl p-12 max-w-md w-full text-center shadow-xl space-y-5">
 
-        {/* Animated checkmark */}
-        <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6 animate-[bounce_0.6s_ease-out]">
-          <CheckCircle size={44} className="text-emerald-500"/>
+        <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto">
+          <CheckCircle size={36} className="text-emerald-500"/>
         </div>
 
-        <h2 className="text-2xl font-black text-slate-900 mb-3">Paiement confirmé !</h2>
+        <h2 className="text-2xl font-black text-slate-900">Paiement confirmé !</h2>
 
-        <p className="text-slate-500 mb-2">
-          Plan <span className="font-black text-indigo-600">{PLAN_NAMES[finalPlan] || finalPlan}</span> activé avec succès
-        </p>
-
-        {/* Credits info */}
-        <div className="bg-indigo-50 border border-indigo-100 rounded-2xl px-5 py-4 my-6 text-left space-y-2">
-          <div className="flex justify-between items-center">
-            <span className="text-xs text-slate-500 font-medium">Crédits ajoutés</span>
-            <span className="text-sm font-black text-indigo-600">
-              +{PLAN_CREDITS[plan] ?? 0} crédits
-            </span>
-          </div>
-          <div className="flex justify-between items-center pt-2 border-t border-indigo-100">
-            <span className="text-xs text-slate-500 font-medium">Solde total</span>
-            <span className="text-sm font-black text-slate-900">
-              ⚡ {finalCredits} crédits
-            </span>
-          </div>
-        </div>
-
-        {/* Downgrade notice if plan wasn't changed (already higher) */}
-        {finalPlan !== plan && (
-          <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2 mb-4">
-            ℹ️ Votre plan <strong>{PLAN_NAMES[finalPlan]}</strong> a été conservé (supérieur au plan acheté). Les crédits ont quand même été ajoutés.
+        {/* Plan status */}
+        <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 space-y-1">
+          <p className="text-slate-500 text-sm">
+            Plan actif :{' '}
+            <span className="font-black text-indigo-600">{planName}</span>
           </p>
-        )}
+          {keptPlan && (
+            <p className="text-xs text-slate-400">
+              (Votre plan <span className="font-bold">{prevPlan}</span> a été conservé car il est supérieur)
+            </p>
+          )}
+          {wasUpgraded && prevPlan && prevPlan !== 'free' && (
+            <p className="text-xs text-slate-400">
+              Mis à niveau depuis <span className="font-bold">{prevPlan}</span>
+            </p>
+          )}
+        </div>
 
-        <button
-          onClick={() => router.push('/dashboard')}
-          className="w-full inline-flex items-center justify-center gap-2 bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black text-sm hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/25">
+        {/* Credits */}
+        <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 space-y-1">
+          <p className="text-slate-500 text-sm">
+            ⚡ <span className="font-black text-emerald-600">+{result?.creditsAdded} crédits</span> ajoutés
+          </p>
+          <p className="text-slate-500 text-sm">
+            Solde total :{' '}
+            <span className="font-black text-slate-800">{result?.credits} crédits</span>
+          </p>
+        </div>
+
+        <Link href="/dashboard"
+          className="inline-flex items-center justify-center gap-2 bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black text-sm hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/25 w-full">
           Accéder au Dashboard →
-        </button>
+        </Link>
+
+        <p className="text-xs text-slate-400">
+          Vos crédits sont maintenant disponibles dans tous les outils.
+        </p>
       </div>
     </div>
   )
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 export default function SuccessPage() {
   return (
     <Suspense fallback={
