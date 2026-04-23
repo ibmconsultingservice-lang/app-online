@@ -47,3 +47,9 @@ env:
 
   - variable: HF_API_KEY
     secret: HF_API_KEY
+  - variable: FIREBASE_PROJECT_ID
+    value: aibusiness-ibm
+  - variable: FIREBASE_CLIENT_EMAIL
+    secret: FIREBASE_CLIENT_EMAIL
+  - variable: FIREBASE_PRIVATE_KEY
+    secret: FIREBASE_PRIVATE_KEY

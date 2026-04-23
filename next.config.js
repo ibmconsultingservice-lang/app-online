@@ -1,5 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  serverExternalPackages: ['firebase-admin'],  // ← dit à Next.js de ne pas bundler firebase-admin
+
   async rewrites() {
     return [
       {
