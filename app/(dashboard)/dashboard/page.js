@@ -10,7 +10,6 @@ const PLAN_LEVELS = { free: 0, starter: 1, pro: 2, premium: 3 }
 
 const TOOLS = [
   // ── Gratuit ──────────────────────────────────────────────────────────────
-  { icon: '🖼️', name: 'Remove BG',          desc: 'Suppression de fond IA',               path: '/Removebg',      cost: 0, plan: 'free'    },
   { icon: '📎', name: 'PDF Merger',          desc: 'Fusionner vos fichiers PDF',            path: '/pdfmerger',     cost: 0, plan: 'free'    },
   { icon: '📤', name: 'Office to PDF',       desc: 'Convertir Word/Excel en PDF',           path: '/office2pdf',    cost: 0, plan: 'free'    },
 

@@ -7,7 +7,7 @@ import { Zap, ArrowRight, Shield, Users, Star, LogOut, ChevronDown } from 'lucid
 
 const TOOLS = [
   // ── Free ─────────────────────────────────────────────────────────────────
-  { icon: '🖼️', name: 'Remove BG',          desc: 'Suppression de fond IA',               path: '/Removebg',      img: '/images/tools/tool-09-remove-bg.png',     plan: 'free'    },
+  
   { icon: '📎', name: 'PDF Merger',          desc: 'Fusionner vos fichiers PDF',            path: '/pdfmerger',     img: '/images/tools/tool-10-pdf-merger.png',    plan: 'free'    },
   { icon: '📤', name: 'Office to PDF',       desc: 'Convertir Word/Excel en PDF',           path: '/office2pdf',    img: '/images/tools/tool-11-office-to-pdf.png', plan: 'free'    },
 
