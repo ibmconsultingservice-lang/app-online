@@ -528,7 +528,7 @@ export default function ProjectDeepWork() {
         .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 8px; border: none; background: none; width: 100%; cursor: pointer; color: #64748b; font-size: 13px; transition: 0.2s; text-align: left; }
         .nav-item.active { background: var(--primary); color: white; }
         .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-        .header { height: 60px; background: #fff; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; z-index: 50; }
+        .header { height: 60px; background: #fff; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; z-index: 300; overflow: visible; }
         .gantt-grid { position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; pointer-events: none; }
         .grid-line { width: ${ZOOM}px; border-right: 1px solid rgba(226, 232, 240, 0.6); height: 100%; }
         .grid-line.week-end { background: rgba(241, 245, 249, 0.5); }
