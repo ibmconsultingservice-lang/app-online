@@ -8,9 +8,103 @@ import {
   Zap, Upload, TrendingUp, TrendingDown, FileText,
   Printer, BarChart2, AlertTriangle, CheckCircle,
   RefreshCw, DollarSign, Percent, Target, Activity, PieChart,
-  MessageSquare, Send, Bot, User, Sparkles, ChevronDown, ChevronUp,
-  Table, LineChart, BarChart, X
+  MessageSquare, Send, Bot, User, Sparkles, ChevronDown,
 } from 'lucide-react'
+
+// ─────────────────────────────────────────────────────────────────
+// CSV PARSER — runs in browser, no library needed
+// Returns { headers, rows, aggregates }
+// ─────────────────────────────────────────────────────────────────
+function parseCSV(text) {
+  const lines = text.trim().split('\n')
+  const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''))
+  const rows = []
+  for (let i = 1; i < lines.length; i++) {
+    const vals = lines[i].split(',').map(v => v.trim().replace(/"/g, ''))
+    if (vals.length === headers.length) {
+      const row = {}
+      headers.forEach((h, j) => { row[h] = vals[j] })
+      rows.push(row)
+    }
+  }
+
+  // ── Auto-detect numeric and category columns ──────────────────
+  const aggregates = {}
+
+  // Detect amount column (contains FCFA or Montant or Total)
+  const amountCol = headers.find(h => /montant|total|amount|fcfa|prix|ca/i.test(h))
+  const statusCol = headers.find(h => /statut|status|état|etat/i.test(h))
+  const dateCol   = headers.find(h => /date/i.test(h))
+  const catCol    = headers.find(h => /catégorie|categorie|category|type/i.test(h))
+  const qtyCol    = headers.find(h => /quantité|quantite|qty|qté/i.test(h))
+
+  aggregates.totalRows = rows.length
+  aggregates.amountCol = amountCol || null
+  aggregates.statusCol = statusCol || null
+
+  // Total global
+  if (amountCol) {
+    const nums = rows.map(r => parseFloat((r[amountCol] || '0').replace(/\s/g, '').replace(/,/g, '')) || 0)
+    aggregates.totalAmount = nums.reduce((a, b) => a + b, 0)
+
+    // By status
+    if (statusCol) {
+      const byStatus = {}
+      rows.forEach((r, i) => {
+        const s = r[statusCol]?.trim() || 'Inconnu'
+        byStatus[s] = (byStatus[s] || 0) + nums[i]
+      })
+      aggregates.byStatus = byStatus
+
+      // Count by status
+      const countByStatus = {}
+      rows.forEach(r => {
+        const s = r[statusCol]?.trim() || 'Inconnu'
+        countByStatus[s] = (countByStatus[s] || 0) + 1
+      })
+      aggregates.countByStatus = countByStatus
+    }
+
+    // By category
+    if (catCol) {
+      const byCat = {}
+      rows.forEach((r, i) => {
+        const c = r[catCol]?.trim() || 'Autre'
+        byCat[c] = (byCat[c] || 0) + nums[i]
+      })
+      aggregates.byCategory = byCat
+    }
+
+    // By month (if date col exists)
+    if (dateCol) {
+      const byMonth = {}
+      rows.forEach((r, i) => {
+        const d = r[dateCol]?.trim() || ''
+        const m = d.slice(0, 7) // YYYY-MM
+        if (m) byMonth[m] = (byMonth[m] || 0) + nums[i]
+      })
+      aggregates.byMonth = byMonth
+    }
+
+    aggregates.avgAmount = aggregates.totalAmount / rows.length
+    aggregates.maxAmount = Math.max(...nums)
+    aggregates.minAmount = Math.min(...nums.filter(n => n > 0))
+  }
+
+  // Total quantity
+  if (qtyCol) {
+    const qtys = rows.map(r => parseFloat((r[qtyCol] || '0').replace(/\s/g, '')) || 0)
+    aggregates.totalQty = qtys.reduce((a, b) => a + b, 0)
+  }
+
+  return { headers, rows, aggregates }
+}
+
+// Format number as FCFA
+function fmt(n) {
+  if (!n && n !== 0) return '—'
+  return Math.round(n).toLocaleString('fr-FR') + ' FCFA'
+}
 
 // ── KPI Card ─────────────────────────────────────────────────────
 function KpiCard({ label, value, trend, trendLabel, icon: Icon, color = 'blue' }) {
@@ -27,9 +121,7 @@ function KpiCard({ label, value, trend, trendLabel, icon: Icon, color = 'blue' }
     <div className="bg-white border rounded-2xl p-5 flex flex-col gap-3 border-slate-100">
       <div className="flex items-center justify-between">
         <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{label}</span>
-        <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${cls}`}>
-          <Icon size={15} />
-        </div>
+        <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${cls}`}><Icon size={15}/></div>
       </div>
       <div>
         <p className="text-2xl font-black text-slate-900 tracking-tight">{value}</p>
@@ -58,7 +150,7 @@ function MiniBarChart({ data, color = '#3b82f6', label }) {
             <div key={i} className="flex-1 flex flex-col items-center gap-1">
               <div className="w-full flex items-end justify-center" style={{ height: 80 }}>
                 <div className="w-full rounded-t-sm transition-all duration-700"
-                  style={{ height: `${h}%`, background: d.value < 0 ? '#ef4444' : color, opacity: 0.65 + (i / data.length) * 0.35 }} />
+                  style={{ height: `${h}%`, background: d.value < 0 ? '#ef4444' : color, opacity: 0.65 + (i / data.length) * 0.35 }}/>
               </div>
               <span className="text-[8px] text-slate-400 font-bold truncate w-full text-center">{d.label}</span>
             </div>
@@ -101,7 +193,7 @@ function VariableSlider({ label, value, min, max, step = 1, unit = '%', onChange
       </div>
       <input type="range" min={min} max={max} step={step} value={value}
         onChange={e => onChange(Number(e.target.value))}
-        className="w-full h-1.5 bg-slate-200 rounded-full appearance-none cursor-pointer accent-blue-600" />
+        className="w-full h-1.5 bg-slate-200 rounded-full appearance-none cursor-pointer accent-blue-600"/>
       <div className="flex justify-between text-[9px] text-slate-300 font-bold">
         <span>{min}{unit}</span>
         {description && <span className="italic text-slate-300">{description}</span>}
@@ -111,16 +203,13 @@ function VariableSlider({ label, value, min, max, step = 1, unit = '%', onChange
   )
 }
 
-// ── Consultant Chat Message ───────────────────────────────────────
+// ── Chat Message ──────────────────────────────────────────────────
 function ChatMessage({ msg }) {
   const isUser = msg.role === 'user'
 
-  // Render AI response blocks (text, table, chart)
   const renderBlock = (block, i) => {
     if (block.type === 'text') {
-      return (
-        <p key={i} className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{block.content}</p>
-      )
+      return <p key={i} className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{block.content}</p>
     }
     if (block.type === 'table') {
       return (
@@ -161,7 +250,7 @@ function ChatMessage({ msg }) {
                 : block.color || '#3b82f6'
               return (
                 <div key={j} className="flex-1 flex flex-col items-center gap-1">
-                  <span className="text-[8px] text-slate-500 font-bold">{d.value < 0 ? '' : ''}{d.displayValue || d.value}</span>
+                  <span className="text-[8px] text-slate-500 font-bold">{d.displayValue || d.value}</span>
                   <div className="w-full flex items-end justify-center" style={{ height: 80 }}>
                     <div className="w-full rounded-t-sm" style={{ height: `${h}%`, background: col, opacity: 0.8 }}/>
                   </div>
@@ -193,21 +282,15 @@ function ChatMessage({ msg }) {
 
   return (
     <div className={`flex gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
-      {/* Avatar */}
       <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${isUser ? 'bg-[#0f1f3d]' : 'bg-blue-600'}`}>
         {isUser ? <User size={14} color="white"/> : <Bot size={14} color="white"/>}
       </div>
-
-      {/* Bubble */}
       <div className={`max-w-[85%] ${isUser ? 'items-end' : 'items-start'} flex flex-col gap-1`}>
         <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">
           {isUser ? 'Vous' : 'Consultant IA'}
         </span>
-
         {isUser ? (
-          <div className="bg-[#0f1f3d] text-white rounded-2xl rounded-tr-sm px-4 py-3 text-sm font-medium">
-            {msg.content}
-          </div>
+          <div className="bg-[#0f1f3d] text-white rounded-2xl rounded-tr-sm px-4 py-3 text-sm font-medium">{msg.content}</div>
         ) : (
           <div className="bg-white border border-slate-200 rounded-2xl rounded-tl-sm px-4 py-4 space-y-3 shadow-sm w-full">
             {msg.loading ? (
@@ -217,7 +300,7 @@ function ChatMessage({ msg }) {
                     <div key={i} className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: `${i*150}ms` }}/>
                   ))}
                 </div>
-                <span className="text-xs text-slate-400 font-medium">Le consultant analyse...</span>
+                <span className="text-xs text-slate-400 font-medium">Le consultant calcule sur vos données brutes...</span>
               </div>
             ) : (
               msg.blocks?.map((block, i) => renderBlock(block, i))
@@ -229,14 +312,13 @@ function ChatMessage({ msg }) {
   )
 }
 
-// ── Suggested questions ───────────────────────────────────────────
 const SUGGESTED_QUESTIONS = [
-  { icon: '📊', text: 'Quelle est la tendance de mes marges ?' },
-  { icon: '⚠️', text: 'Quels sont mes principaux risques financiers ?' },
-  { icon: '🎯', text: 'Quel est mon point mort ?' },
-  { icon: '📈', text: 'Fais une projection sur 3 ans' },
-  { icon: '💡', text: 'Quels postes de coûts puis-je optimiser ?' },
-  { icon: '🏦', text: 'Mon niveau d\'endettement est-il sain ?' },
+  { icon: '💰', text: 'Donne-moi le CA total par statut (Payé, Livré, En attente, Annulé)' },
+  { icon: '📊', text: 'Quel est le CA par catégorie de produit ?' },
+  { icon: '📅', text: 'Quelle est l\'évolution mensuelle du CA ?' },
+  { icon: '🏆', text: 'Quels sont les 5 meilleurs clients ?' },
+  { icon: '⚠️', text: 'Analyse le taux d\'annulation et ses impacts' },
+  { icon: '🎯', text: 'Quel commercial performe le mieux ?' },
 ]
 
 // ─────────────────────────────────────────────────────────────────
@@ -252,13 +334,17 @@ export default function FinanceAIPage() {
   const [analysis, setAnalysis]     = useState(null)
   const [activeTab, setActiveTab]   = useState('overview')
 
-  // ── Consultant chat state ──────────────────────────────────────
-  const [chatOpen, setChatOpen]           = useState(false)
-  const [chatMessages, setChatMessages]   = useState([])
-  const [chatInput, setChatInput]         = useState('')
-  const [chatLoading, setChatLoading]     = useState(false)
+  // ── RAW CSV data stored in state for chat ─────────────────────
+  const [csvData, setCsvData]       = useState(null)  // { headers, rows, aggregates }
+  const [csvText, setCsvText]       = useState('')    // raw text for API
+
+  // ── Consultant chat ───────────────────────────────────────────
+  const [chatOpen, setChatOpen]         = useState(false)
+  const [chatMessages, setChatMessages] = useState([])
+  const [chatInput, setChatInput]       = useState('')
+  const [chatLoading, setChatLoading]   = useState(false)
   const [showSuggestions, setShowSuggestions] = useState(true)
-  const chatEndRef = useRef(null)
+  const chatEndRef  = useRef(null)
   const chatInputRef = useRef(null)
 
   const [variables, setVariables] = useState({
@@ -268,37 +354,62 @@ export default function FinanceAIPage() {
   const fileRef = useRef(null)
   const updateVar = (k, v) => setVariables(p => ({ ...p, [k]: v }))
 
-  // Auto-scroll chat
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [chatMessages])
 
-  // Welcome message when chat opens for first time
   useEffect(() => {
     if (chatOpen && chatMessages.length === 0 && analysis) {
+      // Build welcome with real computed numbers
+      const agg = csvData?.aggregates
+      let welcomeText = 'Bonjour ! Je suis votre consultant financier IA.\n\nContrairement à une analyse approximative, je travaille directement sur vos données brutes — chaque chiffre que je vous donne est calculé ligne par ligne depuis votre fichier.'
+
+      let insightContent = `Score de santé : ${analysis.healthScore}/100`
+
+      if (agg?.byStatus) {
+        const lines = Object.entries(agg.byStatus)
+          .map(([s, v]) => `${s} : ${fmt(v)}`)
+          .join(' · ')
+        insightContent = `Données réelles — ${lines} · Total : ${fmt(agg.totalAmount)}`
+      }
+
       setChatMessages([{
         role: 'assistant',
-        blocks: [{
-          type: 'text',
-          content: `Bonjour ! Je suis votre consultant financier IA. J'ai analysé vos données financières.\n\nJe peux vous répondre avec des tableaux comparatifs, des graphiques et des analyses approfondies. Posez-moi n'importe quelle question sur vos finances.`
-        }, {
-          type: 'insight',
-          tone: 'neutral',
-          content: `Score de santé financière : ${analysis.healthScore}/100 — ${analysis.healthScore >= 70 ? 'Situation saine' : analysis.healthScore >= 40 ? 'Vigilance recommandée' : 'Situation préoccupante'}`
-        }]
+        blocks: [
+          { type: 'text', content: welcomeText },
+          { type: 'insight', tone: 'neutral', content: insightContent },
+        ]
       }])
     }
   }, [chatOpen])
 
+  // ── Read file and parse CSV immediately on upload ─────────────
   const handleFileChange = (e) => {
     const f = e.target.files[0]
-    if (f) { setFile(f); setStep('variables') }
+    if (!f) return
+    setFile(f)
+    setStep('variables')
+
+    if (f.name.endsWith('.csv')) {
+      const reader = new FileReader()
+      reader.onload = (ev) => {
+        const text = ev.target.result
+        setCsvText(text)
+        const parsed = parseCSV(text)
+        setCsvData(parsed)
+      }
+      reader.readAsText(f, 'UTF-8')
+    }
   }
 
   const handleDrop = useCallback((e) => {
     e.preventDefault()
     const f = e.dataTransfer.files[0]
-    if (f && /\.(xlsx|xls|csv)$/.test(f.name)) { setFile(f); setStep('variables') }
+    if (f && /\.(xlsx|xls|csv)$/.test(f.name)) {
+      // Trigger same logic
+      const fakeEvent = { target: { files: [f] } }
+      handleFileChange(fakeEvent)
+    }
   }, [])
 
   const callAPI = async (creditCost) => {
@@ -314,7 +425,6 @@ export default function FinanceAIPage() {
       setAnalysis(data.analysis)
       setStep('analysis')
       await deductCredits(creditCost)
-      // Reset chat when new analysis is done
       setChatMessages([])
     }
   }
@@ -332,7 +442,7 @@ export default function FinanceAIPage() {
     try { await callAPI(2) } catch (e) { alert('Erreur de recalcul.') } finally { setLoading(false) }
   }
 
-  // ── Consultant chat send ───────────────────────────────────────
+  // ── Send chat — passes raw aggregates + csvText to API ────────
   const sendChatMessage = async (questionOverride = null) => {
     const question = questionOverride || chatInput.trim()
     if (!question || chatLoading) return
@@ -340,11 +450,8 @@ export default function FinanceAIPage() {
 
     setShowSuggestions(false)
     setChatInput('')
-
-    // Add user message
     setChatMessages(prev => [...prev, { role: 'user', content: question }])
 
-    // Add loading assistant message
     const loadingId = Date.now()
     setChatMessages(prev => [...prev, { role: 'assistant', loading: true, id: loadingId, blocks: [] }])
     setChatLoading(true)
@@ -357,22 +464,25 @@ export default function FinanceAIPage() {
           question,
           analysis,
           variables,
-          fileData: manualData || null,
-          chatHistory: chatMessages.filter(m => !m.loading).slice(-6), // last 6 messages for context
+          // ── KEY FIX: send real computed aggregates and raw rows ──
+          csvAggregates: csvData?.aggregates || null,
+          csvHeaders:    csvData?.headers    || null,
+          // Send first 50 rows as sample so Claude can see real data
+          csvSampleRows: csvData?.rows?.slice(0, 50) || null,
+          // Send full raw text (truncated to ~8000 chars to stay in context)
+          csvRawText:    csvText ? csvText.slice(0, 8000) : (manualData || null),
+          chatHistory:   chatMessages.filter(m => !m.loading).slice(-6),
         })
       })
 
       const data = await res.json()
-
-      // Replace loading message with real response
       setChatMessages(prev => prev.map(m =>
         m.id === loadingId
-          ? { role: 'assistant', blocks: data.blocks || [{ type: 'text', content: data.error || 'Une erreur est survenue.' }] }
+          ? { role: 'assistant', blocks: data.blocks || [{ type: 'text', content: data.error || 'Erreur.' }] }
           : m
       ))
-
       await deductCredits(1)
-    } catch (err) {
+    } catch {
       setChatMessages(prev => prev.map(m =>
         m.id === loadingId
           ? { role: 'assistant', blocks: [{ type: 'text', content: 'Erreur de connexion. Réessayez.' }] }
@@ -422,7 +532,6 @@ export default function FinanceAIPage() {
           </div>
         </div>
 
-        {/* Steps */}
         <div className="hidden md:flex items-center gap-2">
           {STEPS_LABELS.map((s, i) => (
             <div key={s} className="flex items-center gap-2">
@@ -442,26 +551,20 @@ export default function FinanceAIPage() {
             <Zap size={11} className="text-blue-400" fill="currentColor"/>
             <span className="text-xs font-black text-white/70">{credits}</span>
           </div>
-
-          {/* ── Consultant button (only when analysis exists) ── */}
           {analysis && (
-            <button
-              onClick={() => setChatOpen(o => !o)}
+            <button onClick={() => setChatOpen(o => !o)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wide transition-all border ${
-                chatOpen
-                  ? 'bg-blue-500 text-white border-blue-400'
-                  : 'bg-white/10 text-white/70 border-white/10 hover:bg-white/15'
+                chatOpen ? 'bg-blue-500 text-white border-blue-400' : 'bg-white/10 text-white/70 border-white/10 hover:bg-white/15'
               }`}>
               <MessageSquare size={11}/>
               Consultant IA
-              {chatMessages.length > 0 && !chatOpen && (
+              {chatMessages.filter(m => m.role === 'assistant' && !m.loading).length > 0 && !chatOpen && (
                 <span className="w-4 h-4 bg-blue-400 rounded-full text-[8px] font-black text-white flex items-center justify-center">
                   {chatMessages.filter(m => m.role === 'assistant' && !m.loading).length}
                 </span>
               )}
             </button>
           )}
-
           {analysis && <>
             <button onClick={exportReport} className="flex items-center gap-1.5 bg-blue-500 hover:bg-blue-400 text-white px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wide transition-all">
               <FileText size={11}/> Word
@@ -477,15 +580,12 @@ export default function FinanceAIPage() {
 
         {/* ══ LEFT SIDEBAR ═════════════════════════════════════════ */}
         <aside className="lg:w-[340px] bg-white border-r border-slate-200 flex flex-col p-6 gap-5 shrink-0">
-
-          {/* Step 1: Upload */}
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <div className="w-5 h-5 bg-blue-600 text-white rounded-full flex items-center justify-center text-[9px] font-black">1</div>
               <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Import des Données</label>
             </div>
-            <div
-              onDrop={handleDrop} onDragOver={e => e.preventDefault()}
+            <div onDrop={handleDrop} onDragOver={e => e.preventDefault()}
               onClick={() => fileRef.current?.click()}
               className={`border-2 border-dashed rounded-2xl p-5 text-center cursor-pointer transition-all ${file ? 'border-blue-300 bg-blue-50' : 'border-slate-200 hover:border-blue-300 hover:bg-blue-50/30'}`}>
               <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" onChange={handleFileChange} className="hidden"/>
@@ -494,6 +594,16 @@ export default function FinanceAIPage() {
                   <CheckCircle size={20} className="text-blue-500 mx-auto"/>
                   <p className="text-xs font-black text-blue-700 truncate">{file.name}</p>
                   <p className="text-[10px] text-blue-400">{(file.size/1024).toFixed(1)} KB</p>
+                  {/* Show parsed summary if CSV */}
+                  {csvData?.aggregates && (
+                    <div className="mt-2 pt-2 border-t border-blue-100 text-left space-y-1">
+                      <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Données parsées ✓</p>
+                      <p className="text-[10px] text-blue-500">{csvData.aggregates.totalRows} lignes · {csvData.headers.length} colonnes</p>
+                      {csvData.aggregates.totalAmount && (
+                        <p className="text-[10px] text-blue-700 font-black">Total : {fmt(csvData.aggregates.totalAmount)}</p>
+                      )}
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -516,7 +626,6 @@ export default function FinanceAIPage() {
             />
           </div>
 
-          {/* Step 2: Variables */}
           <div className={`space-y-4 transition-opacity duration-300 ${step !== 'upload' ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
             <div className="flex items-center gap-2">
               <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black ${step !== 'upload' ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-400'}`}>2</div>
@@ -531,7 +640,6 @@ export default function FinanceAIPage() {
             </div>
           </div>
 
-          {/* Credits warning */}
           {credits < 4 && (
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center justify-between">
               <span className="text-amber-700 text-xs font-bold">⚠️ 4 crédits requis</span>
@@ -539,9 +647,7 @@ export default function FinanceAIPage() {
             </div>
           )}
 
-          {/* Analyze */}
-          <button
-            onClick={handleAnalyze}
+          <button onClick={handleAnalyze}
             disabled={loading || !hasCredits(4) || step === 'upload'}
             className={`w-full py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all duration-300 flex items-center justify-center gap-2 ${
               loading || !hasCredits(4) || step === 'upload'
@@ -560,10 +666,8 @@ export default function FinanceAIPage() {
             </button>
           )}
 
-          {/* ── Quick consultant access from sidebar ── */}
           {analysis && !chatOpen && (
-            <button
-              onClick={() => { setChatOpen(true); chatInputRef.current?.focus() }}
+            <button onClick={() => { setChatOpen(true); setTimeout(() => chatInputRef.current?.focus(), 100) }}
               className="w-full py-3 rounded-xl font-black text-xs uppercase tracking-wide flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/20 hover:from-blue-500 hover:to-blue-400 transition-all">
               <Sparkles size={12}/> Poser une question · ⚡1
             </button>
@@ -573,7 +677,6 @@ export default function FinanceAIPage() {
         {/* ══ MAIN PANEL ═══════════════════════════════════════════ */}
         <div className="flex-1 overflow-y-auto relative">
 
-          {/* Empty state */}
           {!analysis && (
             <div className="flex flex-col items-center justify-center h-full min-h-[500px] gap-6 p-12 text-center">
               <div className="w-24 h-24 bg-white rounded-3xl shadow-lg flex items-center justify-center">
@@ -599,11 +702,8 @@ export default function FinanceAIPage() {
             </div>
           )}
 
-          {/* Dashboard */}
           {analysis && (
-            <div id="finance-report" className={`p-6 space-y-6 transition-all duration-300 ${chatOpen ? 'pb-0' : ''}`}>
-
-              {/* Report Header */}
+            <div id="finance-report" className="p-6 space-y-6">
               <div className="bg-gradient-to-r from-[#0f1f3d] to-[#1e3a6b] rounded-2xl p-6 text-white flex flex-wrap justify-between items-start gap-4">
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-widest text-blue-300 mb-1">Rapport FinanceAI</p>
@@ -623,7 +723,6 @@ export default function FinanceAIPage() {
                 </div>
               </div>
 
-              {/* Tabs */}
               <div className="flex flex-wrap gap-1 bg-white border border-slate-200 rounded-2xl p-1 w-fit no-print">
                 {[
                   { key: 'overview',    label: 'Vue Générale',  icon: PieChart      },
@@ -640,7 +739,6 @@ export default function FinanceAIPage() {
                 ))}
               </div>
 
-              {/* Tab: Overview */}
               {activeTab === 'overview' && (
                 <div className="space-y-5">
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -660,7 +758,6 @@ export default function FinanceAIPage() {
                 </div>
               )}
 
-              {/* Tab: Performance */}
               {activeTab === 'performance' && (
                 <div className="bg-white rounded-2xl border border-slate-100 p-6 space-y-1">
                   <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-4">Indicateurs de Performance</h3>
@@ -681,7 +778,6 @@ export default function FinanceAIPage() {
                 </div>
               )}
 
-              {/* Tab: Risks */}
               {activeTab === 'risks' && (
                 <div className="space-y-4">
                   <div className="bg-white rounded-2xl border border-slate-100 p-6 space-y-3">
@@ -702,7 +798,6 @@ export default function FinanceAIPage() {
                 </div>
               )}
 
-              {/* Tab: Projections */}
               {activeTab === 'projections' && (
                 <div className="space-y-4">
                   <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 flex items-center gap-3">
@@ -746,13 +841,10 @@ export default function FinanceAIPage() {
             </div>
           )}
 
-          {/* ══ CONSULTANT CHAT PANEL ════════════════════════════════
-              Slides in from the bottom inside the main panel         */}
+          {/* ══ CONSULTANT CHAT PANEL ════════════════════════════ */}
           {analysis && chatOpen && (
             <div className="sticky bottom-0 left-0 right-0 bg-white border-t-2 border-blue-200 flex flex-col shadow-2xl shadow-blue-900/20 no-print"
               style={{ height: '420px' }}>
-
-              {/* Chat header */}
               <div className="flex items-center justify-between px-5 py-3 bg-[#0f1f3d] border-b border-white/10">
                 <div className="flex items-center gap-2.5">
                   <div className="w-7 h-7 bg-blue-500 rounded-lg flex items-center justify-center">
@@ -762,55 +854,45 @@ export default function FinanceAIPage() {
                     <p className="text-white text-xs font-black">Consultant Financier IA</p>
                     <div className="flex items-center gap-1">
                       <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"/>
-                      <span className="text-[9px] text-white/40 font-bold">Analyse contextuelle · ⚡1 crédit/question</span>
+                      <span className="text-[9px] text-white/40 font-bold">
+                        Calculs sur données brutes · ⚡1 crédit/question
+                        {csvData && <span className="text-green-400/70"> · {csvData.aggregates.totalRows} lignes chargées</span>}
+                      </span>
                     </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   {chatMessages.length > 0 && (
-                    <button
-                      onClick={() => { setChatMessages([]); setShowSuggestions(true) }}
-                      className="text-[9px] font-black uppercase tracking-wide text-white/30 hover:text-white/60 transition-colors px-2 py-1">
+                    <button onClick={() => { setChatMessages([]); setShowSuggestions(true) }}
+                      className="text-[9px] font-black uppercase tracking-wide text-white/30 hover:text-white/60 px-2 py-1">
                       Effacer
                     </button>
                   )}
                   <button onClick={() => setChatOpen(false)}
-                    className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors">
+                    className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center">
                     <ChevronDown size={14} color="white"/>
                   </button>
                 </div>
               </div>
 
-              {/* Messages area */}
               <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 bg-slate-50/80">
-
-                {/* Suggested questions (shown when no messages yet) */}
                 {showSuggestions && chatMessages.length <= 1 && (
                   <div className="space-y-2">
                     <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Questions suggérées</p>
                     <div className="flex flex-wrap gap-2">
                       {SUGGESTED_QUESTIONS.map((q, i) => (
-                        <button
-                          key={i}
-                          onClick={() => sendChatMessage(q.text)}
-                          disabled={chatLoading}
+                        <button key={i} onClick={() => sendChatMessage(q.text)} disabled={chatLoading}
                           className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-full text-xs font-medium text-slate-600 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50 transition-all disabled:opacity-40">
-                          <span>{q.icon}</span>
-                          {q.text}
+                          <span>{q.icon}</span>{q.text}
                         </button>
                       ))}
                     </div>
                   </div>
                 )}
-
-                {/* Messages */}
-                {chatMessages.map((msg, i) => (
-                  <ChatMessage key={i} msg={msg}/>
-                ))}
+                {chatMessages.map((msg, i) => <ChatMessage key={i} msg={msg}/>)}
                 <div ref={chatEndRef}/>
               </div>
 
-              {/* Input area */}
               <div className="px-4 py-3 bg-white border-t border-slate-100">
                 {credits < 1 && (
                   <div className="flex items-center justify-between mb-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
@@ -819,18 +901,14 @@ export default function FinanceAIPage() {
                   </div>
                 )}
                 <div className="flex gap-2 items-end">
-                  <textarea
-                    ref={chatInputRef}
-                    value={chatInput}
+                  <textarea ref={chatInputRef} value={chatInput}
                     onChange={e => setChatInput(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage() } }}
-                    placeholder="Posez une question sur vos finances... (Entrée pour envoyer)"
-                    rows={2}
-                    disabled={chatLoading || credits < 1}
+                    placeholder="Posez une question sur vos données... (Entrée pour envoyer)"
+                    rows={2} disabled={chatLoading || credits < 1}
                     className="flex-1 text-sm text-slate-700 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 resize-none outline-none focus:border-blue-300 transition-colors placeholder-slate-300 disabled:opacity-40"
                   />
-                  <button
-                    onClick={() => sendChatMessage()}
+                  <button onClick={() => sendChatMessage()}
                     disabled={chatLoading || !chatInput.trim() || credits < 1}
                     className="w-10 h-10 bg-blue-600 hover:bg-blue-500 disabled:opacity-30 text-white rounded-xl flex items-center justify-center flex-shrink-0 transition-all shadow-md shadow-blue-500/20">
                     {chatLoading
@@ -838,7 +916,7 @@ export default function FinanceAIPage() {
                       : <Send size={15}/>}
                   </button>
                 </div>
-                <p className="text-[9px] text-slate-300 mt-1.5 font-medium">Shift+Entrée pour nouvelle ligne · Les réponses incluent tableaux et graphiques</p>
+                <p className="text-[9px] text-slate-300 mt-1.5 font-medium">Les chiffres sont calculés directement depuis vos données brutes</p>
               </div>
             </div>
           )}

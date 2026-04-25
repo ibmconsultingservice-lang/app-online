@@ -113,7 +113,7 @@ function CarteForm() {
       `⚡ Crédits : ${credits}\n\n` +
       `Merci de me confirmer les modalités de paiement (Wave, Orange Money, etc.)`
     )
-    window.open(`https://wa.me/221786044910?text=${message}`, '_blank')
+    window.open(`https://wa.me/447897037884?text=${message}`, '_blank')
   }
 
   const localPrice    = formatPrice(usdPrice, currency)

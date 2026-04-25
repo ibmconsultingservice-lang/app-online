@@ -121,7 +121,7 @@ const PLANS = [
   },
 ]
 
-const WHATSAPP_NUMBER = '221786044910'
+const WHATSAPP_NUMBER = '447897037884'
 
 function PlanCard({ plan, onWhatsApp, onCard, currency }) {
   const priceFormatted = formatPrice(plan.priceUSD, currency)

@@ -115,7 +115,7 @@ function SuccessContent() {
           Votre paiement a peut-être été effectué. Contactez-nous via WhatsApp pour activation manuelle.
         </p>
         <div className="flex flex-col gap-3">
-          <a href="https://wa.me/221786044910" target="_blank"
+          <a href="https://wa.me/447897037884" target="_blank"
             className="inline-flex items-center justify-center gap-2 bg-emerald-500 text-white px-6 py-3 rounded-2xl font-black text-sm hover:bg-emerald-600 transition-all">
             📱 Contacter via WhatsApp
           </a>
