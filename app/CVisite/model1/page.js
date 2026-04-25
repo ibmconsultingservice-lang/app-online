@@ -87,7 +87,24 @@ export default function BusinessCardGenerator() {
         .back-right .logo-box i { color: var(--navy); }
         .back-right .company-name { color: white; font-size: 14px; }
         .back-accent { position: absolute; left: -40px; top: 0; height: 100%; width: 100px; background: var(--primary); clip-path: polygon(40% 0, 100% 0, 60% 100%, 0 100%); z-index: -1; }
-        @media print { body { background: white; padding: 0; } .card { box-shadow: none; margin-bottom: 20px; } }
+        @media print {
+          body { background: white; padding: 0; }
+          .card { 
+            box-shadow: none; 
+            margin-bottom: 20px;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+          }
+          .front::after, .front::before,
+          .back-right, .back-accent,
+          .logo-box, .icon-circle,
+          .blue-line, .address-bar {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+          }
+        }
       </style>
     </head>
     <body>
