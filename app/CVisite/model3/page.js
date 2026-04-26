@@ -12,17 +12,18 @@ export default function AcademicCardGenerator() {
   const router = useRouter()
 
   const [cardData, setCardData] = useState({
-    fullName: "Dr Mansour GUEYE",
-    title: "Enseignant-Chercheur",
-    specialty: "Hydrogéologue",
-    department: "Département de Géologie",
-    faculty: "Faculté des Sciences et Techniques",
-    university: "Université Cheikh Anta Diop Dakar",
-    address: "Fann BP: 5005",
-    phone: "221 77 554 03 58",
-    email: "mansour5.gueye@ucad.edu.sn",
-    logo: null,
-  })
+      fullName: "Marc DUBOIS",
+      title: "Directeur de l'Innovation",
+      specialty: "Intelligence Artificielle",
+      department: "Pôle Recherche & Développement",
+      faculty: "Solutions Numériques Avancées", // Correspond à la branche d'activité
+      university: "NovaTech Solutions France", // Le nom de l'entreprise
+      address: "75008 Paris, France",
+      phone: "+33 1 42 68 10 00",
+      email: "m.dubois@novatech-solutions.fr",
+      logo: null,
+    })
+
 
   const [primaryColor, setPrimaryColor] = useState('#002d62')
   const iframeRef = useRef(null)

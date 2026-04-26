@@ -61,10 +61,35 @@ export default function BusinessCardGenerator() {
       <style>
         :root { --primary: ${primaryColor}; --navy: #1d2631; }
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
-        body { background: #f0f2f5; display: flex; flex-direction: column; align-items: center; gap: 20px; padding: 20px; }
-        .card { width: 550px; height: 310px; background: white; position: relative; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border-radius: 4px; flex-shrink: 0; }
+        
+        body { 
+          background: #f0f2f5; 
+          display: flex; 
+          flex-direction: column; 
+          align-items: center; 
+          gap: 40px; 
+          padding: 40px; 
+        }
+        
+        /* Card Base */
+        .card { 
+          width: 550px; 
+          height: 310px; 
+          background: white; 
+          position: relative; 
+          overflow: hidden; 
+          box-shadow: 0 10px 30px rgba(0,0,0,0.1); 
+          border-radius: 4px; 
+          flex-shrink: 0;
+          /* Default border for cutting reference */
+          border: 1px solid transparent; 
+        }
+
+        /* Edit Mode Styles */
         [contenteditable="true"] { outline: none; border-radius: 2px; }
         [contenteditable="true"]:hover { background: rgba(0,0,0,0.05); }
+        
+        /* Layout Components */
         .front .content { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding-right: 120px; }
         .logo-box { width: 60px; height: 60px; background: var(--primary); clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%); margin-bottom: 10px; display: flex; align-items: center; justify-content: center; overflow: hidden; cursor: pointer; }
         .logo-box img { width: 100%; height: 100%; object-fit: cover; }
@@ -72,38 +97,52 @@ export default function BusinessCardGenerator() {
         .company-name { font-weight: 700; font-size: 22px; color: var(--navy); text-transform: uppercase; }
         .slogan { font-size: 10px; color: #58595b; text-transform: uppercase; letter-spacing: 1px; }
         .website-footer { position: absolute; bottom: 40px; display: flex; align-items: center; gap: 8px; font-size: 12px; color: #58595b; }
+        
+        /* Shapes */
         .front::after { content: ''; position: absolute; right: 0; top: 0; height: 100%; width: 200px; background: var(--primary); clip-path: polygon(100% 0, 100% 100%, 40% 100%, 0 0); z-index: 1; }
         .front::before { content: ''; position: absolute; right: 0; top: 0; height: 100%; width: 240px; background: var(--navy); clip-path: polygon(100% 0, 100% 100%, 75% 100%, 25% 0); z-index: 2; }
+        
         .back { display: flex; }
-        .back-left { width: 60%; padding: 40px; display: flex; flex-direction: column; justify-content: center; }
+        .back-left { width: 60%; padding: 40px; display: flex; flex-direction: column; justify-content: center; position: relative; }
         .user-info h2 { color: var(--primary); font-size: 24px; text-transform: uppercase; }
         .user-info p { color: var(--navy); font-weight: 600; font-size: 14px; }
         .blue-line { width: 50px; height: 4px; background: var(--primary); margin: 10px 0 20px; }
         .contact-row { display: flex; align-items: center; gap: 15px; margin-bottom: 12px; font-size: 12px; color: var(--navy); }
         .icon-circle { width: 26px; height: 26px; background: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; flex-shrink: 0; }
-        .address-bar { position: absolute; bottom: 30px; left: 0; width: 75%; background: #e1f5fe; padding: 8px 35px; display: flex; align-items: center; gap: 12px; font-size: 10px; clip-path: polygon(0 0, 95% 0, 100% 100%, 0 100%); }
-        .back-right { width: 40%; background: var(--navy); position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; clip-path: polygon(25% 0, 100% 0, 100% 100%, 0 100%); }
+        .address-bar { position: absolute; bottom: 30px; left: 0; width: 85%; background: #e1f5fe; padding: 8px 35px; display: flex; align-items: center; gap: 12px; font-size: 10px; clip-path: polygon(0 0, 95% 0, 100% 100%, 0 100%); }
+        .back-right { width: 40%; background: var(--navy); position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; clip-path: polygon(25% 0, 100% 0, 100% 100%, 0 100%); z-index: 5; }
         .back-right .logo-box { background: white; }
         .back-right .logo-box i { color: var(--navy); }
         .back-right .company-name { color: white; font-size: 14px; }
         .back-accent { position: absolute; left: -40px; top: 0; height: 100%; width: 100px; background: var(--primary); clip-path: polygon(40% 0, 100% 0, 60% 100%, 0 100%); z-index: -1; }
+
         @media print {
-          body { background: white; padding: 0; }
+          @page { margin: 10mm; size: auto; }
+          body { 
+            background: white !important; 
+            padding: 0;
+            display: block; /* Stack cards for easier cutting */
+            -webkit-print-color-adjust: exact !important; 
+            print-color-adjust: exact !important; 
+          }
           .card { 
-            box-shadow: none; 
-            margin-bottom: 20px;
+            box-shadow: none !important; 
+            page-break-inside: avoid;
+            margin: 0 auto 30px auto !important;
+            /* This adds the cutting line */
+            border: 1px dashed #e0e0e0 !important; 
+          }
+          * {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
-            color-adjust: exact !important;
           }
-          .front::after, .front::before,
-          .back-right, .back-accent,
-          .logo-box, .icon-circle,
-          .blue-line, .address-bar {
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-            color-adjust: exact !important;
+          .logo-box, .blue-line, .icon-circle, .back-accent, .front::after { 
+            background-color: ${primaryColor} !important; 
           }
+          .back-right, .front::before { 
+            background-color: #1d2631 !important; 
+          }
+          .address-bar { background-color: #e1f5fe !important; }
         }
       </style>
     </head>
@@ -131,23 +170,23 @@ export default function BusinessCardGenerator() {
           </div>
           <div class="contact-row">
             <div class="icon-circle"><i class="fas fa-phone-alt"></i></div>
-            <div contenteditable="true" onblur="window.parent.postMessage({type:'SYNC', name:'phone', value:this.innerText}, '*')">${cardData.phone}</div>
+            <div contenteditable="true">${cardData.phone}</div>
           </div>
           <div class="contact-row">
             <div class="icon-circle"><i class="fas fa-envelope"></i></div>
-            <div contenteditable="true" onblur="window.parent.postMessage({type:'SYNC', name:'email', value:this.innerText}, '*')">${cardData.email}</div>
+            <div contenteditable="true">${cardData.email}</div>
           </div>
           <div class="address-bar">
             <div class="icon-circle" style="background: var(--navy);"><i class="fas fa-map-marker-alt"></i></div>
             <div>
-              <strong contenteditable="true" onblur="window.parent.postMessage({type:'SYNC', name:'address', value:this.innerText}, '*')">${cardData.address}</strong><br>
-              <span contenteditable="true" onblur="window.parent.postMessage({type:'SYNC', name:'street', value:this.innerText}, '*')">${cardData.street}</span>
+              <strong contenteditable="true">${cardData.address}</strong><br>
+              <span contenteditable="true">${cardData.street}</span>
             </div>
           </div>
         </div>
         <div class="back-right">
           <div class="back-accent"></div>
-          <div class="logo-box" onclick="window.parent.document.getElementById('logoInput').click()">
+          <div class="logo-box">
             ${cardData.logo ? `<img src="${cardData.logo}">` : `<i class="fas fa-cube"></i>`}
           </div>
           <h1 class="company-name">${cardData.companyName}</h1>
@@ -163,7 +202,8 @@ export default function BusinessCardGenerator() {
       </script>
     </body>
     </html>`
-  }
+  };
+
 
   // ── Loading screen ──
   if (!allowed) return (
@@ -208,8 +248,13 @@ export default function BusinessCardGenerator() {
         </div>
 
         <button
-          onClick={() => iframeRef.current.contentWindow.print()}
-          className="w-full bg-slate-900 text-white py-3 rounded-xl font-bold hover:bg-blue-600 transition-all mt-6 shadow-lg">
+          onClick={() => {
+            const frame = iframeRef.current;
+            frame.contentWindow.focus();
+            frame.contentWindow.print();
+          }}
+          className="w-full bg-slate-900 text-white py-3 rounded-xl font-bold hover:bg-blue-600 transition-all mt-6 shadow-lg"
+        >
           📥 Télécharger / Imprimer (PDF)
         </button>
       </div>

@@ -55,103 +55,154 @@ export default function IBMCardGenerator() {
   }
 
   const renderHTML = () => `
-    <!DOCTYPE html>
-    <html lang="fr">
-    <head>
-        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-        <style>
-            :root { --ibm-blue: ${primaryColor}; }
-            * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Montserrat', sans-serif; }
-            body { background: #f4f4f4; display: flex; flex-direction: column; align-items: center; gap: 30px; padding: 20px; }
-            
-            .card { width: 600px; height: 350px; background: #ffffff; box-shadow: 0 10px 30px rgba(0,0,0,0.1); position: relative; overflow: hidden; border-radius: 4px; }
-            
-            [contenteditable="true"]:hover { background: rgba(0,0,0,0.05); cursor: text; }
-            [contenteditable="true"]:focus { 
-                outline: 2px solid var(--ibm-blue); 
-                background: white; 
-                color: #161616;
-            }
+      <!DOCTYPE html>
+      <html lang="fr">
+      <head>
+          <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+          <style>
+              :root { --ibm-blue: ${primaryColor}; }
+              * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Montserrat', sans-serif; }
+              
+              body { 
+                  background: #f4f4f4; 
+                  display: flex; 
+                  flex-direction: column; 
+                  align-items: center; 
+                  gap: 30px; 
+                  padding: 40px; 
+              }
+              
+              .card { 
+                  width: 600px; 
+                  height: 350px; 
+                  background: #ffffff; 
+                  box-shadow: 0 10px 30px rgba(0,0,0,0.1); 
+                  position: relative; 
+                  overflow: hidden; 
+                  border-radius: 4px; 
+                  flex-shrink: 0;
+                  border: 1px solid transparent; /* Placeholder for print border */
+              }
+              
+              [contenteditable="true"]:hover { background: rgba(0,0,0,0.05); cursor: text; }
 
-            .header-banner [contenteditable="true"]:focus {
-                background: rgba(255,255,255,0.2);
-                color: #ffffff !important;
-                outline: 1px solid rgba(255,255,255,0.5);
-            }
+              /* Header Banner with forced background properties */
+              .header-banner { 
+                  height: 40%; 
+                  background: linear-gradient(${hexToRgba(primaryColor, 0.85)}, ${hexToRgba(primaryColor, 0.85)}), url('${cardData.bannerImg}');
+                  background-size: cover; 
+                  background-position: center; 
+                  padding: 20px 30px; 
+                  color: white; 
+                  cursor: pointer;
+                  -webkit-print-color-adjust: exact !important;
+                  print-color-adjust: exact !important;
+              }
 
-            .header-banner { 
-                height: 40%; 
-                background: linear-gradient(${hexToRgba(primaryColor, 0.85)}, ${hexToRgba(primaryColor, 0.85)}), url('${cardData.bannerImg}');
-                background-size: cover; background-position: center; padding: 20px 30px; color: white; cursor: pointer;
-            }
-            .header-banner h1 { font-size: 18px; font-weight: 700; text-transform: uppercase; white-space: pre-line; line-height: 1.2; color: #ffffff; }
-            .header-banner p { font-size: 11px; font-weight: 300; margin-top: 5px; color: #ffffff; }
+              .header-banner h1 { font-size: 18px; font-weight: 700; text-transform: uppercase; white-space: pre-line; line-height: 1.2; color: #ffffff !important; }
+              .header-banner p { font-size: 11px; font-weight: 300; margin-top: 5px; color: #ffffff !important; }
 
-            .logo-circle {
-                position: absolute; top: 25%; right: 30px; width: 100px; height: 100px;
-                background: white; border-radius: 50%; border: 4px solid var(--ibm-blue);
-                display: flex; align-items: center; justify-content: center; z-index: 10; cursor: pointer; overflow: hidden;
-            }
-            .logo-circle img { width: 100%; height: 100%; object-fit: contain; padding: 10px; }
+              .logo-circle {
+                  position: absolute; top: 25%; right: 30px; width: 100px; height: 100px;
+                  background: white !important; border-radius: 50%; border: 4px solid var(--ibm-blue);
+                  display: flex; align-items: center; justify-content: center; z-index: 10; cursor: pointer; overflow: hidden;
+                  -webkit-print-color-adjust: exact !important;
+              }
+              .logo-circle img { width: 100%; height: 100%; object-fit: contain; padding: 10px; }
 
-            .main-content { display: flex; padding: 25px 30px; justify-content: space-between; }
-            .profile-section { width: 45%; text-align: center; }
-            .profile-section h2 { font-size: 20px; color: #000; margin-bottom: 5px; }
-            .divider { height: 3px; background: var(--ibm-blue); width: 60%; margin: 8px auto; }
-            .position { font-size: 11px; color: #333; line-height: 1.4; white-space: pre-line; }
-            
-            .contact-info { width: 50%; font-size: 12px; font-weight: 600; padding-top: 5px; }
-            .contact-item { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-            .contact-item i { font-size: 16px; color: var(--ibm-blue); width: 20px; }
-            
-            .corner-accent { position: absolute; bottom: 0; left: 0; width: 80px; height: 80px; background: var(--ibm-blue); clip-path: polygon(0 0, 0 100%, 100% 100%); filter: brightness(0.85); }
+              .main-content { display: flex; padding: 25px 30px; justify-content: space-between; }
+              .profile-section { width: 45%; text-align: center; }
+              .profile-section h2 { font-size: 20px; color: #000; margin-bottom: 5px; }
+              
+              .divider { 
+                  height: 3px; 
+                  background-color: var(--ibm-blue) !important; 
+                  width: 60%; 
+                  margin: 8px auto; 
+                  -webkit-print-color-adjust: exact !important;
+              }
+              
+              .position { font-size: 11px; color: #333; line-height: 1.4; white-space: pre-line; }
+              
+              .contact-info { width: 50%; font-size: 12px; font-weight: 600; padding-top: 5px; }
+              .contact-item { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+              .contact-item i { font-size: 16px; color: var(--ibm-blue) !important; width: 20px; -webkit-print-color-adjust: exact !important; }
+              
+              /* Corner Accents */
+              .corner-accent { 
+                  position: absolute; bottom: 0; left: 0; width: 80px; height: 80px; 
+                  background-color: ${primaryColor} !important; 
+                  clip-path: polygon(0 0, 0 100%, 100% 100%); 
+                  -webkit-print-color-adjust: exact !important;
+              }
 
-            .back { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; background: white; }
-            .tagline { margin-top: 15px; font-size: 14px; color: #333; padding: 0 50px; line-height: 1.5; }
-            .bottom-email { position: absolute; bottom: 15px; font-size: 10px; color: #888; }
-            .corner-accent-back { position: absolute; bottom: 0; right: 0; width: 120px; height: 120px; background: var(--ibm-blue); clip-path: polygon(100% 0, 100% 100%, 0 100%); filter: brightness(0.85); }
-            
-            @media print { body { background: white; padding: 0; } .card { box-shadow: none; page-break-after: always; } }
-        </style>
-    </head>
-    <body>
-        <div class="card">
-            <div class="header-banner">
-                <h1 contenteditable="true" spellcheck="false" onblur="window.parent.postMessage({n:'bannerTitle', v:this.innerText}, '*')">${cardData.bannerTitle}</h1>
-                <p contenteditable="true" spellcheck="false" onblur="window.parent.postMessage({n:'bannerSub', v:this.innerText}, '*')">${cardData.bannerSub}</p>
-            </div>
-            <div class="logo-circle" onclick="window.parent.document.getElementById('logoInput').click()">
-                ${cardData.logo ? `<img src="${cardData.logo}">` : `<div style="text-align:center"><b style="color:var(--ibm-blue)">LOGO</b></div>`}
-            </div>
-            <div class="main-content">
-                <div class="profile-section">
-                    <i class="fas fa-user-circle" style="font-size: 30px; color: var(--ibm-blue)"></i>
-                    <h2 contenteditable="true" spellcheck="false" onblur="window.parent.postMessage({n:'fullName', v:this.innerText}, '*')">${cardData.fullName}</h2>
-                    <div class="divider"></div>
-                    <div class="position" contenteditable="true" spellcheck="false" onblur="window.parent.postMessage({n:'position', v:this.innerText}, '*')">${cardData.position}</div>
-                    <p style="font-size: 12px; font-weight: 700; margin-top: 10px;" contenteditable="true" spellcheck="false" onblur="window.parent.postMessage({n:'location', v:this.innerText}, '*')">${cardData.location}</p>
-                </div>
-                <div class="contact-info">
-                    <div class="contact-item"><i class="fas fa-location-dot"></i><span contenteditable="true" spellcheck="false" onblur="window.parent.postMessage({n:'address', v:this.innerText}, '*')">${cardData.address}</span></div>
-                    <div class="contact-item"><i class="fas fa-phone"></i><span contenteditable="true" spellcheck="false" onblur="window.parent.postMessage({n:'phone', v:this.innerText}, '*')">${cardData.phone}</span></div>
-                    <div class="contact-item"><i class="fas fa-envelope"></i><span contenteditable="true" spellcheck="false" onblur="window.parent.postMessage({n:'email', v:this.innerText}, '*')">${cardData.email}</span></div>
-                </div>
-            </div>
-            <div class="corner-accent"></div>
-        </div>
+              .card.back { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; background: white; }
+              .tagline { margin-top: 15px; font-size: 14px; color: #333; padding: 0 50px; line-height: 1.5; }
+              .bottom-email { position: absolute; bottom: 15px; font-size: 10px; color: #888; }
+              
+              .corner-accent-back { 
+                  position: absolute; bottom: 0; right: 0; width: 120px; height: 120px; 
+                  background-color: ${primaryColor} !important; 
+                  clip-path: polygon(100% 0, 100% 100%, 0 100%); 
+                  -webkit-print-color-adjust: exact !important;
+              }
+              
+              @media print { 
+                  @page { margin: 10mm; size: auto; }
+                  body { background: white !important; padding: 0; display: block; } 
+                  .card { 
+                      box-shadow: none !important; 
+                      page-break-inside: avoid; 
+                      margin: 0 auto 40px auto !important; 
+                      border: 1px dashed #cccccc !important; /* Cut line */
+                  } 
+                  /* Force background image and gradients */
+                  .header-banner {
+                      background: linear-gradient(${hexToRgba(primaryColor, 0.85)}, ${hexToRgba(primaryColor, 0.85)}), url('${cardData.bannerImg}') !important;
+                      background-size: cover !important;
+                      -webkit-print-color-adjust: exact !important;
+                  }
+              }
+          </style>
+      </head>
+      <body>
+          <div class="card">
+              <div class="header-banner">
+                  <h1 contenteditable="true" spellcheck="false" onblur="window.parent.postMessage({n:'bannerTitle', v:this.innerText}, '*')">${cardData.bannerTitle}</h1>
+                  <p contenteditable="true" spellcheck="false" onblur="window.parent.postMessage({n:'bannerSub', v:this.innerText}, '*')">${cardData.bannerSub}</p>
+              </div>
+              <div class="logo-circle" onclick="window.parent.document.getElementById('logoInput').click()">
+                  ${cardData.logo ? `<img src="${cardData.logo}">` : `<div style="text-align:center"><b style="color:var(--ibm-blue)">LOGO</b></div>`}
+              </div>
+              <div class="main-content">
+                  <div class="profile-section">
+                      <i class="fas fa-user-circle" style="font-size: 30px; color: var(--ibm-blue)"></i>
+                      <h2 contenteditable="true" spellcheck="false" onblur="window.parent.postMessage({n:'fullName', v:this.innerText}, '*')">${cardData.fullName}</h2>
+                      <div class="divider"></div>
+                      <div class="position" contenteditable="true" spellcheck="false" onblur="window.parent.postMessage({n:'position', v:this.innerText}, '*')">${cardData.position}</div>
+                      <p style="font-size: 12px; font-weight: 700; margin-top: 10px;" contenteditable="true" spellcheck="false" onblur="window.parent.postMessage({n:'location', v:this.innerText}, '*')">${cardData.location}</p>
+                  </div>
+                  <div class="contact-info">
+                      <div class="contact-item"><i class="fas fa-location-dot"></i><span contenteditable="true" spellcheck="false" onblur="window.parent.postMessage({n:'address', v:this.innerText}, '*')">${cardData.address}</span></div>
+                      <div class="contact-item"><i class="fas fa-phone"></i><span contenteditable="true" spellcheck="false" onblur="window.parent.postMessage({n:'phone', v:this.innerText}, '*')">${cardData.phone}</span></div>
+                      <div class="contact-item"><i class="fas fa-envelope"></i><span contenteditable="true" spellcheck="false" onblur="window.parent.postMessage({n:'email', v:this.innerText}, '*')">${cardData.email}</span></div>
+                  </div>
+              </div>
+              <div class="corner-accent"></div>
+          </div>
 
-        <div class="card back">
-            <div class="logo-circle" style="position:static; width:110px; height:110px" onclick="window.parent.document.getElementById('logoInput').click()">
-                ${cardData.logo ? `<img src="${cardData.logo}">` : `<b style="color:var(--ibm-blue)">LOGO</b>`}
-            </div>
-            <p class="tagline" contenteditable="true" spellcheck="false" onblur="window.parent.postMessage({n:'tagline', v:this.innerText}, '*')">${cardData.tagline}</p>
-            <i class="fas fa-handshake" style="color: var(--ibm-blue); font-size: 24px; margin-top: 10px;"></i>
-            <div class="bottom-email" contenteditable="true" spellcheck="false" onblur="window.parent.postMessage({n:'backEmail', v:this.innerText}, '*')">${cardData.backEmail}</div>
-            <div class="corner-accent-back"></div>
-        </div>
-    </body>
-    </html>
-  `
+          <div class="card back">
+              <div class="logo-circle" style="position:static; width:110px; height:110px" onclick="window.parent.document.getElementById('logoInput').click()">
+                  ${cardData.logo ? `<img src="${cardData.logo}">` : `<b style="color:var(--ibm-blue)">LOGO</b>`}
+              </div>
+              <p class="tagline" contenteditable="true" spellcheck="false" onblur="window.parent.postMessage({n:'tagline', v:this.innerText}, '*')">${cardData.tagline}</p>
+              <i class="fas fa-handshake" style="color: var(--ibm-blue); font-size: 24px; margin-top: 10px;"></i>
+              <div class="bottom-email" contenteditable="true" spellcheck="false" onblur="window.parent.postMessage({n:'backEmail', v:this.innerText}, '*')">${cardData.backEmail}</div>
+              <div class="corner-accent-back"></div>
+          </div>
+      </body>
+      </html>
+    `
 
   // ── Loading screen ──
   if (!allowed) return (
