@@ -12,19 +12,20 @@ export default function IBMCardGenerator() {
   const router = useRouter()
 
   const [cardData, setCardData] = useState({
-    bannerTitle: "FORMER LES TALENTS\nDIGITALISER LES\nENTREPRISES",
-    bannerSub: "Skill up your talent, scale up your business",
-    fullName: "IBOU DIOUF",
-    position: "Directeur Général\nConsultant - Formateur",
-    location: "Dakar, Sénégal",
-    address: "Malika, Cité Sonatel",
-    phone: "+221 77 539 34 31",
-    email: "dioufkhalil1@gmail.com",
-    tagline: "Nous sommes près de vous pour vous accompagner où que vous soyez",
-    backEmail: "ibmconsultingservice@gmail.com",
+    bannerTitle: "ACCÉLÉRER L'INNOVATION\nTRANSFORMER VOS\nAMBITIONS",
+    bannerSub: "Sublimez vos talents, propulsez votre croissance",
+    fullName: "Marc-Antoine DUVAL",
+    position: "Directeur Associé\nConsultant en Stratégie Digitale",
+    location: "Paris, France",
+    address: "8 Rue de la Paix",
+    phone: "+33 1 45 20 80 00",
+    email: "ma.duval@lyra-consulting.fr",
+    tagline: "Votre partenaire de confiance pour une transformation numérique d'excellence",
+    backEmail: "contact@lyra-consulting.fr",
     logo: null,
     bannerImg: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=1000&auto=format&fit=crop"
   })
+
 
   const [primaryColor, setPrimaryColor] = useState('#0043ce')
   const iframeRef = useRef(null)
