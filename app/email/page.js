@@ -7,7 +7,7 @@ import { usePlanGuard } from '@/hooks/usePlanGuard'
 import { useRouter } from 'next/navigation'
 
 export default function EmailManager() {
-  const allowed = usePlanGuard('starter')
+  const allowed = usePlanGuard('free')
   const { deductCredits, hasCredits, credits } = useCredits()
   const router = useRouter()
 

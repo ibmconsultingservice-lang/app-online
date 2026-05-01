@@ -11,7 +11,7 @@ import { saveAs } from 'file-saver';
 import PptxGenJS from 'pptxgenjs';
 
 export default function PdfConverter() {
-  const allowed = usePlanGuard('starter')
+  const allowed = usePlanGuard('free')
   const { credits } = useCredits()
   const router = useRouter()
 

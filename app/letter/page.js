@@ -83,7 +83,7 @@ function AutoInput({ value, onChange, placeholder, className = '', align = 'left
 }
 
 export default function LetterPage() {
-  const allowed = usePlanGuard('starter')
+  const allowed = usePlanGuard('free')
   const { deductCredits, hasCredits, credits } = useCredits()
   const router = useRouter()
 

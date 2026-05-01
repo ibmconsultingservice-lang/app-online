@@ -23,7 +23,7 @@ const ART_STYLES = [
 ]
 
 export default function CaptureGen() {
-  const allowed = usePlanGuard('premium')  // ← changed to pro
+  const allowed = usePlanGuard('free')  // ← changed to pro
   const { credits } = useCredits()
   const router = useRouter()
 

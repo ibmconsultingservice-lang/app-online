@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { Zap } from 'lucide-react';
 
 export default function OCRVision() {
-  const allowed = usePlanGuard('starter')
+  const allowed = usePlanGuard('free')
   const { deductCredits, hasCredits, credits } = useCredits()
   const router = useRouter()
 
