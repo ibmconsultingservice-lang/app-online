@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Zap, LogOut, ArrowRight, Lock } from 'lucide-react'
 
-const PLAN_LEVELS = { free: 0, starter: 0, pro: 1, premium: 2 }
+const PLAN_LEVELS = { free: 0, starter: 1, pro: 2, premium: 3 }
 
 const TOOLS = [
   // ── Gratuit ──────────────────────────────────────────────────────────────
@@ -84,8 +84,16 @@ export default function DashboardPage() {
   }
 
   const handleToolClick = (tool) => {
-    // Pro et Premium uniquement bloqués pour les free
-    if (PLAN_LEVELS[tool.plan] > userPlanLevel) {
+    const toolLevel = PLAN_LEVELS[tool.plan] ?? 0
+    const userLevel = PLAN_LEVELS[plan] ?? 0
+
+    // ← Si free mais a des crédits → accès aux outils starter autorisé
+    if (plan === 'free' && tool.plan === 'starter' && (credits ?? 0) > 0) {
+      router.push(tool.path)
+      return
+    }
+
+    if (toolLevel > userLevel) {
       router.push('/pricing')
     } else {
       router.push(tool.path)
