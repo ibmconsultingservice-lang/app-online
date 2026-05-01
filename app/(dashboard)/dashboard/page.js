@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Zap, LogOut, ArrowRight, Lock } from 'lucide-react'
 
-const PLAN_LEVELS = { free: 0, starter: 1, pro: 2, premium: 3 }
+const PLAN_LEVELS = { free: 0, starter: 0, pro: 1, premium: 2 }
 
 const TOOLS = [
   // ── Gratuit ──────────────────────────────────────────────────────────────
@@ -84,13 +84,13 @@ export default function DashboardPage() {
   }
 
   const handleToolClick = (tool) => {
+    // Pro et Premium uniquement bloqués pour les free
     if (PLAN_LEVELS[tool.plan] > userPlanLevel) {
       router.push('/pricing')
     } else {
       router.push(tool.path)
     }
   }
-
   return (
     <AuthGuard>
       <div className="min-h-screen bg-[#f8fafc] font-sans">

@@ -5,936 +5,935 @@ import { useCredits } from '@/hooks/useCredits'
 import { usePlanGuard } from '@/hooks/usePlanGuard'
 import { useRouter } from 'next/navigation'
 import {
-  Zap, Upload, TrendingUp, TrendingDown, FileText,
-  Printer, BarChart2, AlertTriangle, CheckCircle,
-  RefreshCw, DollarSign, Percent, Target, Activity, PieChart,
-  MessageSquare, Send, Bot, User, Sparkles, ChevronDown,
+  Zap, Upload, FileSpreadsheet, Brain, Download,
+  TrendingUp, TrendingDown, Minus, RefreshCw,
+  AlertCircle, Lightbulb, X, Plus, Trash2,
+  ChevronRight, Calculator, BarChart3, CheckCircle,
+  Hash, Filter, Sigma, ChevronDown, Layers,
+  Play, Loader2, Sparkles, ArrowRight
 } from 'lucide-react'
 
 // ─────────────────────────────────────────────────────────────────
-// CSV PARSER — runs in browser, no library needed
-// Returns { headers, rows, aggregates }
+// FORMULA ENGINE
 // ─────────────────────────────────────────────────────────────────
-function parseCSV(text) {
-  const lines = text.trim().split('\n')
-  const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''))
-  const rows = []
-  for (let i = 1; i < lines.length; i++) {
-    const vals = lines[i].split(',').map(v => v.trim().replace(/"/g, ''))
-    if (vals.length === headers.length) {
-      const row = {}
-      headers.forEach((h, j) => { row[h] = vals[j] })
-      rows.push(row)
-    }
-  }
+function evalFormula(formula, grid) {
+  if (!formula.startsWith('=')) return formula
+  let expr = formula.slice(1).toUpperCase()
+  const colIdx = (letter) => letter.charCodeAt(0) - 65
 
-  // ── Auto-detect numeric and category columns ──────────────────
-  const aggregates = {}
-
-  // Detect amount column (contains FCFA or Montant or Total)
-  const amountCol = headers.find(h => /montant|total|amount|fcfa|prix|ca/i.test(h))
-  const statusCol = headers.find(h => /statut|status|état|etat/i.test(h))
-  const dateCol   = headers.find(h => /date/i.test(h))
-  const catCol    = headers.find(h => /catégorie|categorie|category|type/i.test(h))
-  const qtyCol    = headers.find(h => /quantité|quantite|qty|qté/i.test(h))
-
-  aggregates.totalRows = rows.length
-  aggregates.amountCol = amountCol || null
-  aggregates.statusCol = statusCol || null
-
-  // Total global
-  if (amountCol) {
-    const nums = rows.map(r => parseFloat((r[amountCol] || '0').replace(/\s/g, '').replace(/,/g, '')) || 0)
-    aggregates.totalAmount = nums.reduce((a, b) => a + b, 0)
-
-    // By status
-    if (statusCol) {
-      const byStatus = {}
-      rows.forEach((r, i) => {
-        const s = r[statusCol]?.trim() || 'Inconnu'
-        byStatus[s] = (byStatus[s] || 0) + nums[i]
-      })
-      aggregates.byStatus = byStatus
-
-      // Count by status
-      const countByStatus = {}
-      rows.forEach(r => {
-        const s = r[statusCol]?.trim() || 'Inconnu'
-        countByStatus[s] = (countByStatus[s] || 0) + 1
-      })
-      aggregates.countByStatus = countByStatus
-    }
-
-    // By category
-    if (catCol) {
-      const byCat = {}
-      rows.forEach((r, i) => {
-        const c = r[catCol]?.trim() || 'Autre'
-        byCat[c] = (byCat[c] || 0) + nums[i]
-      })
-      aggregates.byCategory = byCat
-    }
-
-    // By month (if date col exists)
-    if (dateCol) {
-      const byMonth = {}
-      rows.forEach((r, i) => {
-        const d = r[dateCol]?.trim() || ''
-        const m = d.slice(0, 7) // YYYY-MM
-        if (m) byMonth[m] = (byMonth[m] || 0) + nums[i]
-      })
-      aggregates.byMonth = byMonth
-    }
-
-    aggregates.avgAmount = aggregates.totalAmount / rows.length
-    aggregates.maxAmount = Math.max(...nums)
-    aggregates.minAmount = Math.min(...nums.filter(n => n > 0))
-  }
-
-  // Total quantity
-  if (qtyCol) {
-    const qtys = rows.map(r => parseFloat((r[qtyCol] || '0').replace(/\s/g, '')) || 0)
-    aggregates.totalQty = qtys.reduce((a, b) => a + b, 0)
-  }
-
-  return { headers, rows, aggregates }
-}
-
-// Format number as FCFA
-function fmt(n) {
-  if (!n && n !== 0) return '—'
-  return Math.round(n).toLocaleString('fr-FR') + ' FCFA'
-}
-
-// ── KPI Card ─────────────────────────────────────────────────────
-function KpiCard({ label, value, trend, trendLabel, icon: Icon, color = 'blue' }) {
-  const colors = {
-    blue:   'bg-blue-50 text-blue-600 border-blue-100',
-    green:  'bg-green-50 text-green-600 border-green-100',
-    red:    'bg-red-50 text-red-600 border-red-100',
-    amber:  'bg-amber-50 text-amber-600 border-amber-100',
-    indigo: 'bg-indigo-50 text-indigo-600 border-indigo-100',
-  }
-  const cls = colors[color] || colors.blue
-  const isPos = trend >= 0
-  return (
-    <div className="bg-white border rounded-2xl p-5 flex flex-col gap-3 border-slate-100">
-      <div className="flex items-center justify-between">
-        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{label}</span>
-        <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${cls}`}><Icon size={15}/></div>
-      </div>
-      <div>
-        <p className="text-2xl font-black text-slate-900 tracking-tight">{value}</p>
-        {trend !== undefined && (
-          <div className={`flex items-center gap-1 mt-1 text-xs font-bold ${isPos ? 'text-green-600' : 'text-red-500'}`}>
-            {isPos ? <TrendingUp size={12}/> : <TrendingDown size={12}/>}
-            <span>{isPos ? '+' : ''}{trend}% {trendLabel}</span>
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
-// ── Mini Bar Chart ────────────────────────────────────────────────
-function MiniBarChart({ data, color = '#3b82f6', label }) {
-  if (!data?.length) return null
-  const max = Math.max(...data.map(d => Math.abs(d.value)), 1)
-  return (
-    <div className="space-y-2">
-      {label && <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{label}</p>}
-      <div className="flex items-end gap-1.5 h-24">
-        {data.map((d, i) => {
-          const h = Math.max((Math.abs(d.value) / max) * 100, 4)
-          return (
-            <div key={i} className="flex-1 flex flex-col items-center gap-1">
-              <div className="w-full flex items-end justify-center" style={{ height: 80 }}>
-                <div className="w-full rounded-t-sm transition-all duration-700"
-                  style={{ height: `${h}%`, background: d.value < 0 ? '#ef4444' : color, opacity: 0.65 + (i / data.length) * 0.35 }}/>
-              </div>
-              <span className="text-[8px] text-slate-400 font-bold truncate w-full text-center">{d.label}</span>
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
-// ── Alert Badge ───────────────────────────────────────────────────
-function AlertBadge({ type, message }) {
-  const s = {
-    warning: 'bg-amber-50 border-amber-200 text-amber-700',
-    danger:  'bg-red-50 border-red-200 text-red-700',
-    success: 'bg-green-50 border-green-200 text-green-700',
-    info:    'bg-blue-50 border-blue-200 text-blue-700',
-  }
-  const ic = {
-    warning: <AlertTriangle size={13}/>,
-    danger:  <AlertTriangle size={13}/>,
-    success: <CheckCircle size={13}/>,
-    info:    <Activity size={13}/>,
-  }
-  return (
-    <div className={`flex items-start gap-2 px-3 py-2.5 rounded-xl border text-xs font-medium ${s[type] || s.info}`}>
-      <span className="mt-0.5 shrink-0">{ic[type]}</span>
-      <span>{message}</span>
-    </div>
-  )
-}
-
-// ── Variable Slider ───────────────────────────────────────────────
-function VariableSlider({ label, value, min, max, step = 1, unit = '%', onChange, description }) {
-  return (
-    <div className="space-y-2">
-      <div className="flex justify-between items-center">
-        <span className="text-[11px] font-black text-slate-600 uppercase tracking-wide">{label}</span>
-        <span className="text-sm font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg tabular-nums">{value}{unit}</span>
-      </div>
-      <input type="range" min={min} max={max} step={step} value={value}
-        onChange={e => onChange(Number(e.target.value))}
-        className="w-full h-1.5 bg-slate-200 rounded-full appearance-none cursor-pointer accent-blue-600"/>
-      <div className="flex justify-between text-[9px] text-slate-300 font-bold">
-        <span>{min}{unit}</span>
-        {description && <span className="italic text-slate-300">{description}</span>}
-        <span>{max}{unit}</span>
-      </div>
-    </div>
-  )
-}
-
-// ── Chat Message ──────────────────────────────────────────────────
-function ChatMessage({ msg }) {
-  const isUser = msg.role === 'user'
-
-  const renderBlock = (block, i) => {
-    if (block.type === 'text') {
-      return <p key={i} className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{block.content}</p>
-    }
-    if (block.type === 'table') {
-      return (
-        <div key={i} className="overflow-x-auto rounded-xl border border-slate-200 mt-2">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="bg-[#0f1f3d]">
-                {block.headers.map((h, j) => (
-                  <th key={j} className="px-3 py-2 text-left text-[10px] font-black uppercase tracking-widest text-white">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {block.rows.map((row, j) => (
-                <tr key={j} className={j % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
-                  {row.map((cell, k) => (
-                    <td key={k} className={`px-3 py-2 text-slate-700 font-medium border-b border-slate-100 ${k === 0 ? 'font-bold text-slate-800' : ''}`}>
-                      {cell}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )
-    }
-    if (block.type === 'chart') {
-      const max = Math.max(...block.data.map(d => Math.abs(d.value)), 1)
-      return (
-        <div key={i} className="mt-3 p-4 bg-slate-50 rounded-xl border border-slate-200">
-          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">{block.title}</p>
-          <div className="flex items-end gap-2 h-28">
-            {block.data.map((d, j) => {
-              const h = Math.max((Math.abs(d.value) / max) * 100, 4)
-              const col = block.chartType === 'negative-positive'
-                ? (d.value < 0 ? '#ef4444' : '#10b981')
-                : block.color || '#3b82f6'
-              return (
-                <div key={j} className="flex-1 flex flex-col items-center gap-1">
-                  <span className="text-[8px] text-slate-500 font-bold">{d.displayValue || d.value}</span>
-                  <div className="w-full flex items-end justify-center" style={{ height: 80 }}>
-                    <div className="w-full rounded-t-sm" style={{ height: `${h}%`, background: col, opacity: 0.8 }}/>
-                  </div>
-                  <span className="text-[8px] text-slate-400 font-bold truncate w-full text-center">{d.label}</span>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )
-    }
-    if (block.type === 'insight') {
-      const colors = {
-        positive: 'bg-green-50 border-green-200 text-green-800',
-        negative: 'bg-red-50 border-red-200 text-red-800',
-        neutral:  'bg-blue-50 border-blue-200 text-blue-800',
-        warning:  'bg-amber-50 border-amber-200 text-amber-800',
+  const resolveRange = (range) => {
+    const m = range.match(/^([A-Z]+)(\d+):([A-Z]+)(\d+)$/)
+    if (!m) return []
+    const c1 = colIdx(m[1]), r1 = parseInt(m[2]) - 2
+    const c2 = colIdx(m[3]), r2 = parseInt(m[4]) - 2
+    const vals = []
+    for (let r = r1; r <= r2; r++)
+      for (let c = c1; c <= c2; c++) {
+        const n = parseFloat(String(grid[r]?.[c] || '').replace(/[\s\u202f,]/g, ''))
+        if (!isNaN(n)) vals.push(n)
       }
-      const icons = { positive: '✅', negative: '⚠️', neutral: 'ℹ️', warning: '🔶' }
-      return (
-        <div key={i} className={`flex gap-2 p-3 rounded-xl border text-xs font-medium mt-2 ${colors[block.tone] || colors.neutral}`}>
-          <span>{icons[block.tone] || 'ℹ️'}</span>
-          <span>{block.content}</span>
-        </div>
-      )
-    }
-    return null
+    return vals
   }
 
-  return (
-    <div className={`flex gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
-      <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${isUser ? 'bg-[#0f1f3d]' : 'bg-blue-600'}`}>
-        {isUser ? <User size={14} color="white"/> : <Bot size={14} color="white"/>}
-      </div>
-      <div className={`max-w-[85%] ${isUser ? 'items-end' : 'items-start'} flex flex-col gap-1`}>
-        <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">
-          {isUser ? 'Vous' : 'Consultant IA'}
-        </span>
-        {isUser ? (
-          <div className="bg-[#0f1f3d] text-white rounded-2xl rounded-tr-sm px-4 py-3 text-sm font-medium">{msg.content}</div>
-        ) : (
-          <div className="bg-white border border-slate-200 rounded-2xl rounded-tl-sm px-4 py-4 space-y-3 shadow-sm w-full">
-            {msg.loading ? (
-              <div className="flex items-center gap-2">
-                <div className="flex gap-1">
-                  {[0,1,2].map(i => (
-                    <div key={i} className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: `${i*150}ms` }}/>
-                  ))}
-                </div>
-                <span className="text-xs text-slate-400 font-medium">Le consultant calcule sur vos données brutes...</span>
-              </div>
-            ) : (
-              msg.blocks?.map((block, i) => renderBlock(block, i))
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  )
+  const resolveCell = (ref) => {
+    const m = ref.match(/^([A-Z]+)(\d+)$/)
+    if (!m) return 0
+    const c = colIdx(m[1]), r = parseInt(m[2]) - 2
+    return parseFloat(String(grid[r]?.[c] || '').replace(/[\s\u202f,]/g, '')) || 0
+  }
+
+  try {
+    if (/^SUM\((.+)\)$/i.test(expr)) {
+      return resolveRange(expr.match(/^SUM\((.+)\)$/i)[1]).reduce((a, b) => a + b, 0)
+    }
+    if (/^AVERAGE\((.+)\)$/i.test(expr)) {
+      const v = resolveRange(expr.match(/^AVERAGE\((.+)\)$/i)[1])
+      return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0
+    }
+    if (/^COUNT\((.+)\)$/i.test(expr)) {
+      return resolveRange(expr.match(/^COUNT\((.+)\)$/i)[1]).length
+    }
+    if (/^MAX\((.+)\)$/i.test(expr)) {
+      const v = resolveRange(expr.match(/^MAX\((.+)\)$/i)[1])
+      return v.length ? Math.max(...v) : 0
+    }
+    if (/^MIN\((.+)\)$/i.test(expr)) {
+      const v = resolveRange(expr.match(/^MIN\((.+)\)$/i)[1])
+      return v.length ? Math.min(...v) : 0
+    }
+    if (/^COUNTIF\((.+),(.+)\)$/i.test(expr)) {
+      const [, range, crit] = expr.match(/^COUNTIF\((.+),(.+)\)$/i)
+      const criterion = crit.trim().replace(/"/g, '')
+      const m2 = range.match(/^([A-Z]+)(\d+):([A-Z]+)(\d+)$/)
+      if (!m2) return 0
+      const c1 = colIdx(m2[1]), r1 = parseInt(m2[2]) - 2
+      const r2 = parseInt(m2[4]) - 2
+      let count = 0
+      for (let r = r1; r <= r2; r++)
+        if (String(grid[r]?.[c1] || '').trim().toUpperCase() === criterion.toUpperCase()) count++
+      return count
+    }
+    if (/^SUMIF\((.+),(.+),(.+)\)$/i.test(expr)) {
+      const [, rangeRef, crit, sumRef] = expr.match(/^SUMIF\((.+),(.+),(.+)\)$/i)
+      const criterion = crit.trim().replace(/"/g, '')
+      const m1 = rangeRef.match(/^([A-Z]+)(\d+):([A-Z]+)(\d+)$/)
+      const m2 = sumRef.match(/^([A-Z]+)(\d+):([A-Z]+)(\d+)$/)
+      if (!m1 || !m2) return 0
+      const c1 = colIdx(m1[1]), r1 = parseInt(m1[2]) - 2
+      const r2 = parseInt(m1[4]) - 2, sc = colIdx(m2[1])
+      let sum = 0
+      for (let r = r1; r <= r2; r++)
+        if (String(grid[r]?.[c1] || '').trim().toUpperCase() === criterion.toUpperCase())
+          sum += parseFloat(String(grid[r]?.[sc] || '').replace(/[\s\u202f,]/g, '')) || 0
+      return sum
+    }
+    // Arithmetic with cell refs
+    const withCells = expr.replace(/([A-Z]+\d+)/g, (ref) => resolveCell(ref))
+    // eslint-disable-next-line no-new-func
+    return Function('"use strict"; return (' + withCells + ')')()
+  } catch {
+    return '#ERR'
+  }
 }
 
-const SUGGESTED_QUESTIONS = [
-  { icon: '💰', text: 'Donne-moi le CA total par statut (Payé, Livré, En attente, Annulé)' },
-  { icon: '📊', text: 'Quel est le CA par catégorie de produit ?' },
-  { icon: '📅', text: 'Quelle est l\'évolution mensuelle du CA ?' },
-  { icon: '🏆', text: 'Quels sont les 5 meilleurs clients ?' },
-  { icon: '⚠️', text: 'Analyse le taux d\'annulation et ses impacts' },
-  { icon: '🎯', text: 'Quel commercial performe le mieux ?' },
+function fmt(n, short = false) {
+  if (n == null || isNaN(n)) return '—'
+  if (short) {
+    if (Math.abs(n) >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M'
+    if (Math.abs(n) >= 1_000)    return (n / 1_000).toFixed(0) + 'K'
+  }
+  return Math.round(n).toLocaleString('fr-FR')
+}
+
+const colLetter = (i) => {
+  let s = ''; i++
+  while (i > 0) { i--; s = String.fromCharCode(65 + (i % 26)) + s; i = Math.floor(i / 26) }
+  return s
+}
+
+const CATEGORY_COLORS = {
+  total:       { bg: 'bg-emerald-500/15', border: 'border-emerald-500/30', text: 'text-emerald-300', dot: 'bg-emerald-500' },
+  statut:      { bg: 'bg-blue-500/15',    border: 'border-blue-500/30',    text: 'text-blue-300',    dot: 'bg-blue-500'    },
+  catégorie:   { bg: 'bg-violet-500/15',  border: 'border-violet-500/30',  text: 'text-violet-300',  dot: 'bg-violet-500'  },
+  temporel:    { bg: 'bg-amber-500/15',   border: 'border-amber-500/30',   text: 'text-amber-300',   dot: 'bg-amber-500'   },
+  performance: { bg: 'bg-cyan-500/15',    border: 'border-cyan-500/30',    text: 'text-cyan-300',    dot: 'bg-cyan-500'    },
+  ratio:       { bg: 'bg-rose-500/15',    border: 'border-rose-500/30',    text: 'text-rose-300',    dot: 'bg-rose-500'    },
+}
+
+const STEPS_NAV = [
+  { id: 'upload',    label: 'Fichier',    icon: '📂' },
+  { id: 'grid',      label: 'Tableur',    icon: '⊞'  },
+  { id: 'planning',  label: 'Formules IA',icon: '🤖' },
+  { id: 'computing', label: 'Calcul JS',  icon: '⚙️' },
+  { id: 'result',    label: 'Rapport',    icon: '📊' },
 ]
 
-// ─────────────────────────────────────────────────────────────────
-export default function FinanceAIPage() {
+export default function ExcelAI() {
   const allowed = usePlanGuard('pro')
   const { deductCredits, hasCredits, credits } = useCredits()
   const router = useRouter()
 
-  const [step, setStep]             = useState('upload')
-  const [file, setFile]             = useState(null)
-  const [manualData, setManualData] = useState('')
-  const [loading, setLoading]       = useState(false)
-  const [analysis, setAnalysis]     = useState(null)
-  const [activeTab, setActiveTab]   = useState('overview')
+  const [step, setStep]               = useState('upload')
+  const [file, setFile]               = useState(null)
+  const [headers, setHeaders]         = useState([])
+  const [grid, setGrid]               = useState([])
+  const [selectedCell, setSelectedCell] = useState(null)
+  const [editingCell, setEditingCell]   = useState(null)
 
-  // ── RAW CSV data stored in state for chat ─────────────────────
-  const [csvData, setCsvData]       = useState(null)  // { headers, rows, aggregates }
-  const [csvText, setCsvText]       = useState('')    // raw text for API
+  // ── Phase 1 outputs ──
+  const [plan, setPlan]               = useState(null)   // { dataType, analysisGoal, formulas[] }
+  const [manualFormulas, setManualFormulas] = useState([])  // user-added rows
 
-  // ── Consultant chat ───────────────────────────────────────────
-  const [chatOpen, setChatOpen]         = useState(false)
-  const [chatMessages, setChatMessages] = useState([])
-  const [chatInput, setChatInput]       = useState('')
-  const [chatLoading, setChatLoading]   = useState(false)
-  const [showSuggestions, setShowSuggestions] = useState(true)
-  const chatEndRef  = useRef(null)
-  const chatInputRef = useRef(null)
+  // ── Phase 2 outputs ──
+  const [formulaResults, setFormulaResults] = useState([])  // [{label, formula, result}]
+  const [computeProgress, setComputeProgress] = useState(0)
 
-  const [variables, setVariables] = useState({
-    growthRate: 10, costReduction: 5, taxRate: 30, discountRate: 10, inflationRate: 3,
-  })
+  // ── Phase 3 outputs ──
+  const [analysis, setAnalysis]       = useState(null)
+  const [activeSection, setActiveSection] = useState(0)
+  const [analysisRequest, setAnalysisRequest] = useState('')
 
-  const fileRef = useRef(null)
-  const updateVar = (k, v) => setVariables(p => ({ ...p, [k]: v }))
+  const [loading, setLoading]         = useState(false)
+  const [loadingMsg, setLoadingMsg]   = useState('')
+  const [error, setError]             = useState('')
+  const [visibleRows, setVisibleRows] = useState(50)
 
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [chatMessages])
+  const fileRef  = useRef(null)
+  const inputRef = useRef(null)
 
-  useEffect(() => {
-    if (chatOpen && chatMessages.length === 0 && analysis) {
-      // Build welcome with real computed numbers
-      const agg = csvData?.aggregates
-      let welcomeText = 'Bonjour ! Je suis votre consultant financier IA.\n\nContrairement à une analyse approximative, je travaille directement sur vos données brutes — chaque chiffre que je vous donne est calculé ligne par ligne depuis votre fichier.'
-
-      let insightContent = `Score de santé : ${analysis.healthScore}/100`
-
-      if (agg?.byStatus) {
-        const lines = Object.entries(agg.byStatus)
-          .map(([s, v]) => `${s} : ${fmt(v)}`)
-          .join(' · ')
-        insightContent = `Données réelles — ${lines} · Total : ${fmt(agg.totalAmount)}`
-      }
-
-      setChatMessages([{
-        role: 'assistant',
-        blocks: [
-          { type: 'text', content: welcomeText },
-          { type: 'insight', tone: 'neutral', content: insightContent },
-        ]
-      }])
-    }
-  }, [chatOpen])
-
-  // ── Read file and parse CSV immediately on upload ─────────────
-  const handleFileChange = (e) => {
+  // ── Load file ──
+  const handleFile = async (e) => {
     const f = e.target.files[0]
     if (!f) return
-    setFile(f)
-    setStep('variables')
-
-    if (f.name.endsWith('.csv')) {
-      const reader = new FileReader()
-      reader.onload = (ev) => {
-        const text = ev.target.result
-        setCsvText(text)
-        const parsed = parseCSV(text)
-        setCsvData(parsed)
-      }
-      reader.readAsText(f, 'UTF-8')
-    }
-  }
-
-  const handleDrop = useCallback((e) => {
-    e.preventDefault()
-    const f = e.dataTransfer.files[0]
-    if (f && /\.(xlsx|xls|csv)$/.test(f.name)) {
-      // Trigger same logic
-      const fakeEvent = { target: { files: [f] } }
-      handleFileChange(fakeEvent)
-    }
-  }, [])
-
-  const callAPI = async (creditCost) => {
-    const formData = new FormData()
-    if (file) formData.append('file', file)
-    if (manualData) formData.append('manualData', manualData)
-    formData.append('variables', JSON.stringify(variables))
-
-    const res = await fetch('/api/generer-financeai', { method: 'POST', body: formData })
-    if (!res.ok) throw new Error(`Erreur ${res.status}`)
-    const data = await res.json()
-    if (data.analysis) {
-      setAnalysis(data.analysis)
-      setStep('analysis')
-      await deductCredits(creditCost)
-      setChatMessages([])
-    }
-  }
-
-  const handleAnalyze = async () => {
-    if (!file && !manualData.trim()) return alert('Importez un fichier ou saisissez des données.')
-    if (!hasCredits(4)) { router.push('/pricing'); return }
-    setLoading(true)
-    try { await callAPI(4) } catch (e) { alert('Erreur d\'analyse.'); console.error(e) } finally { setLoading(false) }
-  }
-
-  const handleRecalculate = async () => {
-    if (!analysis || !hasCredits(2)) { if (!hasCredits(2)) router.push('/pricing'); return }
-    setLoading(true)
-    try { await callAPI(2) } catch (e) { alert('Erreur de recalcul.') } finally { setLoading(false) }
-  }
-
-  // ── Send chat — passes raw aggregates + csvText to API ────────
-  const sendChatMessage = async (questionOverride = null) => {
-    const question = questionOverride || chatInput.trim()
-    if (!question || chatLoading) return
-    if (!hasCredits(1)) { router.push('/pricing'); return }
-
-    setShowSuggestions(false)
-    setChatInput('')
-    setChatMessages(prev => [...prev, { role: 'user', content: question }])
-
-    const loadingId = Date.now()
-    setChatMessages(prev => [...prev, { role: 'assistant', loading: true, id: loadingId, blocks: [] }])
-    setChatLoading(true)
-
+    setFile(f); setError(''); setPlan(null); setFormulaResults([]); setAnalysis(null)
+    setLoadingMsg('Lecture du fichier...'); setLoading(true)
     try {
-      const res = await fetch('/api/financeai-chat', {
+      let rows = [], hdrs = []
+      if (f.name.endsWith('.csv')) {
+        const text = await f.text()
+        const lines = text.trim().split('\n').filter(l => l.trim())
+        const parseRow = (line) => {
+          const res = []; let cur = '', inQ = false
+          for (const ch of line) {
+            if (ch === '"') inQ = !inQ
+            else if (ch === ',' && !inQ) { res.push(cur.trim()); cur = '' }
+            else cur += ch
+          }
+          res.push(cur.trim())
+          return res.map(v => v.replace(/^"|"$/g, ''))
+        }
+        hdrs = parseRow(lines[0])
+        rows = lines.slice(1).map(l => {
+          const cols = parseRow(l); const obj = {}
+          hdrs.forEach((h, i) => { obj[h] = cols[i] || '' })
+          return obj
+        }).filter(r => Object.values(r).some(v => v))
+      } else {
+        const XLSX = await import('xlsx')
+        const buf  = await f.arrayBuffer()
+        const wb   = XLSX.read(buf, { type: 'array' })
+        const ws   = wb.Sheets[wb.SheetNames[0]]
+        rows = XLSX.utils.sheet_to_json(ws, { defval: '' })
+        hdrs = rows.length ? Object.keys(rows[0]) : []
+      }
+      setHeaders(hdrs)
+      setGrid(rows.map(r => hdrs.map(h => String(r[h] ?? ''))))
+      setStep('grid')
+    } catch (err) {
+      setError('Erreur lecture: ' + err.message)
+    } finally { setLoading(false); setLoadingMsg('') }
+  }
+
+  // ── Cell editing ──
+  const startEdit = (row, col) => {
+    setEditingCell({ row, col }); setSelectedCell({ row, col })
+    setTimeout(() => inputRef.current?.focus(), 10)
+  }
+  const commitEdit = (row, col, value) => {
+    const g = grid.map(r => [...r])
+    g[row][col] = value; setGrid(g); setEditingCell(null)
+  }
+
+  // ── PHASE 1: Ask Claude to plan formulas from 5-row sample ──
+  const handlePlanFormulas = async () => {
+    if (!hasCredits(2)) { router.push('/pricing'); return }
+    setLoading(true)
+    setLoadingMsg('Claude analyse les 5 premières lignes...')
+    setError('')
+    try {
+      const sampleRows = grid.slice(0, 5).map(r => [...r])
+      const res = await fetch('/api/generer-excelai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          question,
-          analysis,
-          variables,
-          // ── KEY FIX: send real computed aggregates and raw rows ──
-          csvAggregates: csvData?.aggregates || null,
-          csvHeaders:    csvData?.headers    || null,
-          // Send first 50 rows as sample so Claude can see real data
-          csvSampleRows: csvData?.rows?.slice(0, 50) || null,
-          // Send full raw text (truncated to ~8000 chars to stay in context)
-          csvRawText:    csvText ? csvText.slice(0, 8000) : (manualData || null),
-          chatHistory:   chatMessages.filter(m => !m.loading).slice(-6),
+          step:       'plan',
+          fileName:   file.name,
+          headers,
+          rowCount:   grid.length,
+          sampleRows,
         })
       })
-
       const data = await res.json()
-      setChatMessages(prev => prev.map(m =>
-        m.id === loadingId
-          ? { role: 'assistant', blocks: data.blocks || [{ type: 'text', content: data.error || 'Erreur.' }] }
-          : m
-      ))
-      await deductCredits(1)
-    } catch {
-      setChatMessages(prev => prev.map(m =>
-        m.id === loadingId
-          ? { role: 'assistant', blocks: [{ type: 'text', content: 'Erreur de connexion. Réessayez.' }] }
-          : m
-      ))
-    } finally {
-      setChatLoading(false)
-    }
+      if (!res.ok) throw new Error(data.error)
+      await deductCredits(2)
+      setPlan(data)
+      setManualFormulas([])
+      setStep('planning')
+    } catch (err) {
+      setError(err.message)
+    } finally { setLoading(false); setLoadingMsg('') }
   }
 
-  const exportReport = () => {
-    const el = document.getElementById('finance-report')
-    if (!el) return
-    const clone = el.cloneNode(true)
-    clone.querySelectorAll('.no-print').forEach(e => e.remove())
-    const html = `<html><head><meta charset='utf-8'><style>body{font-family:Georgia,serif;padding:40px;color:#1a1a1a;line-height:1.6}h1,h2,h3{color:#0f1f3d}</style></head><body>${clone.innerHTML}</body></html>`
-    const blob = new Blob([html], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url; a.download = `FinanceAI_${Date.now()}.doc`
-    document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url)
+  // ── PHASE 2: JS computes all formula results ──
+  const handleComputeFormulas = async () => {
+    const allFormulas = [
+      ...(plan?.formulas || []),
+      ...manualFormulas.filter(f => f.formula.trim()),
+    ]
+    if (!allFormulas.length) return
+
+    setStep('computing')
+    setComputeProgress(0)
+
+    // Compute each formula in JS with progress
+    const results = []
+    for (let i = 0; i < allFormulas.length; i++) {
+      const f = allFormulas[i]
+      const raw = evalFormula(f.formula, grid)
+      const result = typeof raw === 'number' && !isNaN(raw)
+        ? Math.round(raw * 100) / 100
+        : raw
+      results.push({ ...f, result })
+      setComputeProgress(Math.round(((i + 1) / allFormulas.length) * 100))
+      // Small delay for visual effect
+      if (allFormulas.length > 10) await new Promise(r => setTimeout(r, 20))
+    }
+
+    setFormulaResults(results)
+    // Auto-proceed to interpretation after short pause
+    setTimeout(() => setStep('interpret'), 600)
+  }
+
+  // ── PHASE 3: Claude interprets results ──
+  const handleInterpret = async () => {
+    if (!hasCredits(3)) { router.push('/pricing'); return }
+    setLoading(true)
+    setActiveSection(0)
+    setError('')
+    const msgs = ['Claude lit les résultats calculés...', 'Analyse des tendances...', 'Génération des insights...', 'Rédaction des recommandations...']
+    let mi = 0; setLoadingMsg(msgs[0])
+    const iv = setInterval(() => { mi = (mi + 1) % msgs.length; setLoadingMsg(msgs[mi]) }, 2000)
+    try {
+      const res = await fetch('/api/generer-excelai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          step:           'interpret',
+          fileName:       file.name,
+          rowCount:       grid.length,
+          dataType:       plan?.dataType || 'Données',
+          analysisGoal:   plan?.analysisGoal || '',
+          formulaResults: formulaResults.filter(r => r.result !== '#ERR'),
+          analysisRequest,
+        })
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      await deductCredits(3)
+      setAnalysis(data)
+      setStep('result')
+    } catch (err) {
+      setError(err.message)
+    } finally { clearInterval(iv); setLoading(false); setLoadingMsg('') }
+  }
+
+  // ── Export ──
+  const handleExport = async () => {
+    try {
+      const XLSX = await import('xlsx')
+      const wb   = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([headers, ...grid]), 'Données')
+      const rows = [
+        ['RAPPORT EXCELAI — ' + (analysis?.title || file?.name)],
+        ['Généré le', new Date().toLocaleDateString('fr-FR')],
+        ['Lignes analysées', grid.length],
+        [],
+        ['── FORMULES CALCULÉES PAR JAVASCRIPT ──'],
+        ['Label', 'Formule', 'Résultat', 'Catégorie'],
+        ...formulaResults.map(f => [f.label, f.formula, f.result, f.category || '']),
+        [],
+        ['── CONSTATS CLÉS ──'],
+        ...(analysis?.summary?.keyFindings?.map((f, i) => [`${i+1}.`, f]) || []),
+        [],
+        ['── RECOMMANDATIONS ──'],
+        ...(analysis?.recommendations?.map(r => [r.priority === 'high' ? '🔴' : r.priority === 'medium' ? '🟡' : '🟢', r.action, r.impact]) || []),
+      ]
+      const ws = XLSX.utils.aoa_to_sheet(rows)
+      ws['!cols'] = [{ wch: 40 }, { wch: 30 }, { wch: 18 }, { wch: 15 }]
+      XLSX.utils.book_append_sheet(wb, ws, 'ExcelAI')
+      XLSX.writeFile(wb, `ExcelAI_${file?.name?.replace(/\.[^.]+$/, '')}_${Date.now()}.xlsx`)
+    } catch (err) { setError('Export: ' + err.message) }
+  }
+
+  const reset = () => {
+    setStep('upload'); setFile(null); setHeaders([]); setGrid([])
+    setPlan(null); setManualFormulas([]); setFormulaResults([]); setAnalysis(null)
+    setError(''); setAnalysisRequest('')
+    if (fileRef.current) fileRef.current.value = ''
+  }
+
+  const trendIcon = (t) => {
+    if (t === 'up')   return <TrendingUp   size={13} className="text-emerald-500"/>
+    if (t === 'down') return <TrendingDown size={13} className="text-red-400"/>
+    return <Minus size={13} className="text-slate-400"/>
   }
 
   if (!allowed) return (
-    <div className="min-h-screen bg-[#060d1f] flex items-center justify-center flex-col gap-4">
-      <div className="w-11 h-11 bg-blue-500 rounded-2xl flex items-center justify-center"><BarChart2 size={20} color="white"/></div>
-      <div className="w-6 h-6 border-2 border-white/10 border-t-blue-400 rounded-full animate-spin"/>
-      <p className="text-[10px] font-black uppercase tracking-widest text-white/30">Vérification du plan...</p>
+    <div className="min-h-screen bg-[#0a0f1e] flex items-center justify-center flex-col gap-4">
+      <div className="w-11 h-11 bg-emerald-600 rounded-2xl flex items-center justify-center">
+        <Zap size={20} color="white" fill="white"/>
+      </div>
+      <div className="w-6 h-6 border-2 border-slate-700 border-t-emerald-500 rounded-full animate-spin"/>
+      <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Vérification du plan...</p>
     </div>
   )
 
-  const STEPS_LABELS = ['Import', 'Variables', 'Analyse']
-  const stepIdx = ['upload','variables','analysis'].indexOf(step)
+  const stepIdx = STEPS_NAV.findIndex(s => s.id === step)
 
   return (
-    <main className="min-h-screen bg-[#f0f4f8] font-sans">
+    <main className="min-h-screen bg-[#0a0f1e] text-white font-sans flex flex-col">
 
-      {/* ══ TOP BAR ══════════════════════════════════════════════ */}
-      <header className="bg-[#0f1f3d] border-b border-white/5 px-6 py-4 flex items-center justify-between">
+      {/* ── Header ── */}
+      <header className="border-b border-white/5 px-6 py-4 flex items-center justify-between sticky top-0 bg-[#0a0f1e]/95 backdrop-blur-xl z-30 flex-shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-blue-500 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30">
-            <BarChart2 size={18} color="white"/>
+          <div className="w-9 h-9 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
+            <FileSpreadsheet size={18}/>
           </div>
           <div>
-            <h1 className="text-white font-black text-lg tracking-tight italic">Finance<span className="text-blue-400">AI</span></h1>
-            <p className="text-white/30 text-[9px] uppercase tracking-widest font-bold">Analyseur Financier Intelligent</p>
+            <span className="font-black text-lg tracking-tight">Excel</span>
+            <span className="text-emerald-400 font-black text-lg">AI</span>
+            <span className="ml-2 text-[9px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-full px-2 py-0.5 font-bold uppercase tracking-wider">Pro</span>
           </div>
         </div>
 
-        <div className="hidden md:flex items-center gap-2">
-          {STEPS_LABELS.map((s, i) => (
-            <div key={s} className="flex items-center gap-2">
-              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wide transition-all ${i <= stepIdx ? 'bg-blue-500 text-white' : 'bg-white/5 text-white/30'}`}>
-                <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] ${i < stepIdx ? 'bg-green-400 text-white' : i === stepIdx ? 'bg-white text-blue-600' : 'bg-white/10 text-white/30'}`}>
-                  {i < stepIdx ? '✓' : i + 1}
-                </span>
-                {s}
+        <div className="hidden md:flex items-center gap-1">
+          {STEPS_NAV.map((s, i) => (
+            <div key={s.id} className="flex items-center gap-1">
+              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                s.id === step
+                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                  : stepIdx > i ? 'text-emerald-500' : 'text-slate-600'
+              }`}>
+                <span>{s.icon}</span>{s.label}
               </div>
-              {i < 2 && <div className={`w-6 h-px ${i < stepIdx ? 'bg-blue-400' : 'bg-white/10'}`}/>}
+              {i < 4 && <ChevronRight size={11} className="text-slate-700"/>}
             </div>
           ))}
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5 bg-white/5 border border-white/10 rounded-full px-3 py-1.5">
-            <Zap size={11} className="text-blue-400" fill="currentColor"/>
-            <span className="text-xs font-black text-white/70">{credits}</span>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 bg-emerald-950/60 border border-emerald-500/20 rounded-full px-3 py-1.5">
+            <Zap size={11} className="text-emerald-400" fill="currentColor"/>
+            <span className="text-xs font-black text-emerald-300">{credits}</span>
           </div>
-          {analysis && (
-            <button onClick={() => setChatOpen(o => !o)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wide transition-all border ${
-                chatOpen ? 'bg-blue-500 text-white border-blue-400' : 'bg-white/10 text-white/70 border-white/10 hover:bg-white/15'
-              }`}>
-              <MessageSquare size={11}/>
-              Consultant IA
-              {chatMessages.filter(m => m.role === 'assistant' && !m.loading).length > 0 && !chatOpen && (
-                <span className="w-4 h-4 bg-blue-400 rounded-full text-[8px] font-black text-white flex items-center justify-center">
-                  {chatMessages.filter(m => m.role === 'assistant' && !m.loading).length}
-                </span>
-              )}
+          {step !== 'upload' && (
+            <button onClick={reset} className="h-8 w-8 flex items-center justify-center rounded-xl border border-white/10 hover:border-red-500/40 hover:text-red-400 transition-all">
+              <X size={14}/>
             </button>
           )}
-          {analysis && <>
-            <button onClick={exportReport} className="flex items-center gap-1.5 bg-blue-500 hover:bg-blue-400 text-white px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wide transition-all">
-              <FileText size={11}/> Word
-            </button>
-            <button onClick={() => window.print()} className="flex items-center gap-1.5 bg-white/10 hover:bg-white/15 text-white/70 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wide transition-all">
-              <Printer size={11}/> PDF
-            </button>
-          </>}
         </div>
       </header>
 
-      <div className="flex flex-col lg:flex-row min-h-[calc(100vh-65px)]">
+      <div className="flex-1 overflow-auto">
 
-        {/* ══ LEFT SIDEBAR ═════════════════════════════════════════ */}
-        <aside className="lg:w-[340px] bg-white border-r border-slate-200 flex flex-col p-6 gap-5 shrink-0">
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <div className="w-5 h-5 bg-blue-600 text-white rounded-full flex items-center justify-center text-[9px] font-black">1</div>
-              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Import des Données</label>
+        {error && (
+          <div className="max-w-4xl mx-auto mx-6 mt-4 bg-red-500/10 border border-red-500/20 rounded-2xl px-5 py-4 flex items-center gap-3 mx-6">
+            <AlertCircle size={16} className="text-red-400 flex-shrink-0"/>
+            <p className="text-xs text-red-400 font-medium">{error}</p>
+            <button onClick={() => setError('')} className="ml-auto"><X size={14} className="text-red-400"/></button>
+          </div>
+        )}
+
+        {/* ══ UPLOAD ══ */}
+        {step === 'upload' && (
+          <div className="max-w-3xl mx-auto px-6 py-12 space-y-8">
+            <div className="text-center space-y-3">
+              <div className="inline-flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-4 py-2 text-xs font-black text-emerald-300 uppercase tracking-widest">
+                <Sparkles size={12}/> Workflow intelligent en 3 phases
+              </div>
+              <h1 className="text-3xl font-black tracking-tight">
+                ExcelAI — Analyse rigoureuse<br/>
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-400">
+                  zéro hallucination
+                </span>
+              </h1>
+              <p className="text-slate-500 text-sm max-w-lg mx-auto">
+                Claude génère les formules pertinentes → JavaScript calcule les vrais résultats → Claude interprète uniquement ces chiffres exacts.
+              </p>
             </div>
-            <div onDrop={handleDrop} onDragOver={e => e.preventDefault()}
-              onClick={() => fileRef.current?.click()}
-              className={`border-2 border-dashed rounded-2xl p-5 text-center cursor-pointer transition-all ${file ? 'border-blue-300 bg-blue-50' : 'border-slate-200 hover:border-blue-300 hover:bg-blue-50/30'}`}>
-              <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" onChange={handleFileChange} className="hidden"/>
-              {file ? (
-                <div className="space-y-1">
-                  <CheckCircle size={20} className="text-blue-500 mx-auto"/>
-                  <p className="text-xs font-black text-blue-700 truncate">{file.name}</p>
-                  <p className="text-[10px] text-blue-400">{(file.size/1024).toFixed(1)} KB</p>
-                  {/* Show parsed summary if CSV */}
-                  {csvData?.aggregates && (
-                    <div className="mt-2 pt-2 border-t border-blue-100 text-left space-y-1">
-                      <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Données parsées ✓</p>
-                      <p className="text-[10px] text-blue-500">{csvData.aggregates.totalRows} lignes · {csvData.headers.length} colonnes</p>
-                      {csvData.aggregates.totalAmount && (
-                        <p className="text-[10px] text-blue-700 font-black">Total : {fmt(csvData.aggregates.totalAmount)}</p>
-                      )}
-                    </div>
-                  )}
+
+            {/* 3-phase explainer */}
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { phase: '01', icon: '🤖', title: 'Claude planifie', desc: 'Voit 5 lignes → génère toutes les formules Excel pertinentes', credit: '⚡2', color: 'blue' },
+                { phase: '02', icon: '⚙️', title: 'JS calcule', desc: 'Applique chaque formule sur 100% des lignes → résultats exacts', credit: 'gratuit', color: 'emerald' },
+                { phase: '03', icon: '📊', title: 'Claude interprète', desc: 'Reçoit uniquement les vrais résultats → rapport sans invention', credit: '⚡3', color: 'violet' },
+              ].map(f => (
+                <div key={f.phase} className="bg-white/3 border border-white/8 rounded-2xl p-5 space-y-3 relative overflow-hidden">
+                  <div className="absolute top-3 right-3 text-[10px] font-black text-slate-600">{f.phase}</div>
+                  <span className="text-2xl">{f.icon}</span>
+                  <div>
+                    <p className="text-sm font-black text-slate-200">{f.title}</p>
+                    <p className="text-xs text-slate-500 leading-relaxed mt-1">{f.desc}</p>
+                  </div>
+                  <span className="text-[9px] font-black text-slate-500 bg-white/5 px-2 py-1 rounded-full">{f.credit}</span>
                 </div>
-              ) : (
-                <div className="space-y-2">
-                  <Upload size={20} className="text-slate-300 mx-auto"/>
-                  <p className="text-xs font-bold text-slate-400">Glissez votre Excel / CSV</p>
-                  <p className="text-[10px] text-slate-300">.xlsx · .xls · .csv</p>
+              ))}
+            </div>
+
+            <label className="block cursor-pointer group">
+              <div className={`border-2 border-dashed rounded-3xl p-14 text-center transition-all ${
+                loading ? 'border-emerald-500/40 bg-emerald-500/5' : 'border-white/10 hover:border-emerald-500/40 hover:bg-white/2'
+              }`}>
+                {loading ? (
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="w-10 h-10 border-2 border-slate-700 border-t-emerald-500 rounded-full animate-spin"/>
+                    <p className="text-sm text-emerald-400 font-bold">{loadingMsg}</p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="w-16 h-16 bg-emerald-500/10 rounded-2xl flex items-center justify-center border border-emerald-500/20 group-hover:bg-emerald-500/20 transition-all">
+                      <Upload size={28} className="text-emerald-400"/>
+                    </div>
+                    <div>
+                      <p className="font-bold text-slate-200">Glissez ou cliquez pour uploader</p>
+                      <p className="text-xs text-slate-500 mt-1">Excel (.xlsx, .xls) · CSV</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <input ref={fileRef} type="file" hidden accept=".xlsx,.xls,.csv" onChange={handleFile} disabled={loading}/>
+            </label>
+          </div>
+        )}
+
+        {/* ══ GRID ══ */}
+        {step === 'grid' && grid.length > 0 && (
+          <div className="flex flex-col" style={{ height: 'calc(100vh - 73px)' }}>
+
+            {/* Toolbar */}
+            <div className="flex items-center gap-3 px-4 py-2 bg-[#0d1424] border-b border-white/5 flex-shrink-0 flex-wrap">
+              <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5">
+                <FileSpreadsheet size={12} className="text-emerald-400"/>
+                <span className="text-[10px] font-black text-slate-300 truncate max-w-[150px]">{file?.name}</span>
+                <span className="text-[9px] text-slate-500">{grid.length} lignes · {headers.length} col.</span>
+              </div>
+              {selectedCell && (
+                <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-1.5">
+                  <span className="text-[10px] font-black text-emerald-400">
+                    {colLetter(selectedCell.col)}{selectedCell.row + 2}
+                  </span>
+                  <span className="text-[10px] text-slate-400 max-w-[200px] truncate">
+                    {grid[selectedCell.row]?.[selectedCell.col] || ''}
+                  </span>
                 </div>
               )}
-            </div>
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-100"/></div>
-              <div className="relative text-center"><span className="bg-white px-2 text-[10px] text-slate-300 font-bold uppercase">ou saisie manuelle</span></div>
-            </div>
-            <textarea
-              value={manualData}
-              onChange={e => { setManualData(e.target.value); if (e.target.value.trim()) setStep('variables') }}
-              placeholder={"Ex:\nCA Annuel: 45 000 000 FCFA\nCharges: 32 000 000 FCFA\nMarge Brute: 29%\nEBITDA: 13 000 000 FCFA\nDettes: 8 000 000 FCFA"}
-              rows={6}
-              className="w-full text-xs text-slate-700 bg-slate-50 border border-slate-200 rounded-xl p-3 resize-none outline-none focus:border-blue-300 transition-all font-mono leading-relaxed placeholder-slate-300"
-            />
-          </div>
-
-          <div className={`space-y-4 transition-opacity duration-300 ${step !== 'upload' ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
-            <div className="flex items-center gap-2">
-              <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black ${step !== 'upload' ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-400'}`}>2</div>
-              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Variables & Hypothèses</label>
-            </div>
-            <div className="space-y-5 bg-slate-50 rounded-2xl p-4 border border-slate-100">
-              <VariableSlider label="Croissance Attendue"  value={variables.growthRate}    min={-20} max={50} step={1}   unit="%" onChange={v => updateVar('growthRate', v)}    description="CA" />
-              <VariableSlider label="Réduction des Coûts"  value={variables.costReduction} min={0}   max={30} step={0.5} unit="%" onChange={v => updateVar('costReduction', v)} description="Opex" />
-              <VariableSlider label="Taux d'Imposition"    value={variables.taxRate}       min={0}   max={45} step={1}   unit="%" onChange={v => updateVar('taxRate', v)}       description="IS" />
-              <VariableSlider label="Taux d'Actualisation" value={variables.discountRate}  min={1}   max={25} step={0.5} unit="%" onChange={v => updateVar('discountRate', v)}  description="WACC" />
-              <VariableSlider label="Inflation Prévue"     value={variables.inflationRate} min={0}   max={20} step={0.5} unit="%" onChange={v => updateVar('inflationRate', v)} description="Annuelle" />
-            </div>
-          </div>
-
-          {credits < 4 && (
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center justify-between">
-              <span className="text-amber-700 text-xs font-bold">⚠️ 4 crédits requis</span>
-              <button onClick={() => router.push('/pricing')} className="text-[10px] font-black uppercase bg-amber-500 text-white px-3 py-1 rounded-lg hover:bg-amber-400 transition-all">Recharger</button>
-            </div>
-          )}
-
-          <button onClick={handleAnalyze}
-            disabled={loading || !hasCredits(4) || step === 'upload'}
-            className={`w-full py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all duration-300 flex items-center justify-center gap-2 ${
-              loading || !hasCredits(4) || step === 'upload'
-                ? 'bg-slate-100 text-slate-300 cursor-not-allowed'
-                : 'bg-[#0f1f3d] text-white hover:bg-blue-700 hover:-translate-y-0.5 shadow-xl shadow-blue-900/20'
-            }`}>
-            {loading
-              ? <><div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"/> Analyse IA en cours...</>
-              : <><BarChart2 size={13}/> Lancer l'Analyse · ⚡4</>}
-          </button>
-
-          {analysis && (
-            <button onClick={handleRecalculate} disabled={loading}
-              className="w-full py-3 rounded-xl font-black text-xs uppercase tracking-wide flex items-center justify-center gap-2 bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 transition-all">
-              <RefreshCw size={12} className={loading ? 'animate-spin' : ''}/> Recalculer · ⚡2
-            </button>
-          )}
-
-          {analysis && !chatOpen && (
-            <button onClick={() => { setChatOpen(true); setTimeout(() => chatInputRef.current?.focus(), 100) }}
-              className="w-full py-3 rounded-xl font-black text-xs uppercase tracking-wide flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/20 hover:from-blue-500 hover:to-blue-400 transition-all">
-              <Sparkles size={12}/> Poser une question · ⚡1
-            </button>
-          )}
-        </aside>
-
-        {/* ══ MAIN PANEL ═══════════════════════════════════════════ */}
-        <div className="flex-1 overflow-y-auto relative">
-
-          {!analysis && (
-            <div className="flex flex-col items-center justify-center h-full min-h-[500px] gap-6 p-12 text-center">
-              <div className="w-24 h-24 bg-white rounded-3xl shadow-lg flex items-center justify-center">
-                <BarChart2 size={36} className="text-slate-200"/>
-              </div>
-              <div>
-                <h2 className="text-xl font-black text-slate-300 uppercase tracking-wider">Aucune Analyse</h2>
-                <p className="text-slate-400 text-sm mt-2 max-w-xs">Importez vos données et configurez vos hypothèses pour générer votre analyse IA.</p>
-              </div>
-              <div className="grid grid-cols-3 gap-4 max-w-lg w-full">
-                {[
-                  { label: 'Import', icon: Upload, desc: 'Excel ou saisie manuelle' },
-                  { label: 'Variables', icon: Target, desc: 'Ajustez les hypothèses' },
-                  { label: 'Analyse IA', icon: TrendingUp, desc: 'Rapport instantané' },
-                ].map(({ label, icon: I, desc }) => (
-                  <div key={label} className="bg-white rounded-2xl p-4 border border-slate-100 flex flex-col items-center gap-2">
-                    <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center"><I size={18} className="text-blue-500"/></div>
-                    <p className="text-xs font-black text-slate-600 uppercase tracking-wide text-center">{label}</p>
-                    <p className="text-[10px] text-slate-400 text-center">{desc}</p>
-                  </div>
-                ))}
+              <div className="ml-auto flex items-center gap-2">
+                <span className="text-[10px] text-slate-500 italic">Double-clic pour éditer une cellule</span>
+                <button
+                  onClick={handlePlanFormulas}
+                  disabled={loading || !hasCredits(2)}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white disabled:opacity-40 transition-all shadow-lg shadow-emerald-500/20">
+                  {loading
+                    ? <><Loader2 size={12} className="animate-spin"/> {loadingMsg}</>
+                    : <><Brain size={12}/> Phase 1 — Claude planifie · ⚡2</>
+                  }
+                </button>
               </div>
             </div>
-          )}
 
-          {analysis && (
-            <div id="finance-report" className="p-6 space-y-6">
-              <div className="bg-gradient-to-r from-[#0f1f3d] to-[#1e3a6b] rounded-2xl p-6 text-white flex flex-wrap justify-between items-start gap-4">
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-blue-300 mb-1">Rapport FinanceAI</p>
-                  <h2 className="text-2xl font-black tracking-tight">{analysis.companyName || 'Analyse Financière'}</h2>
-                  <p className="text-blue-200 text-sm mt-1">{analysis.reportDate || new Date().toLocaleDateString('fr-FR', {year:'numeric',month:'long',day:'numeric'})}</p>
-                </div>
-                <div className="text-right space-y-2">
-                  <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black ${
-                    analysis.healthScore >= 70 ? 'bg-green-400/20 text-green-300' :
-                    analysis.healthScore >= 40 ? 'bg-amber-400/20 text-amber-300' : 'bg-red-400/20 text-red-300'
-                  }`}>
-                    <Activity size={11}/> Score Santé : {analysis.healthScore}/100
-                  </div>
-                  <p className="text-blue-300 text-[10px] font-bold block">
-                    Croissance +{variables.growthRate}% · IS {variables.taxRate}% · WACC {variables.discountRate}%
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-1 bg-white border border-slate-200 rounded-2xl p-1 w-fit no-print">
-                {[
-                  { key: 'overview',    label: 'Vue Générale',  icon: PieChart      },
-                  { key: 'performance', label: 'Performance',   icon: TrendingUp    },
-                  { key: 'risks',       label: 'Risques',       icon: AlertTriangle },
-                  { key: 'projections', label: 'Projections',   icon: Target        },
-                ].map(({ key, label, icon: I }) => (
-                  <button key={key} onClick={() => setActiveTab(key)}
-                    className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wide transition-all ${
-                      activeTab === key ? 'bg-[#0f1f3d] text-white shadow-md' : 'text-slate-400 hover:text-slate-700'
-                    }`}>
-                    <I size={12}/> {label}
-                  </button>
-                ))}
-              </div>
-
-              {activeTab === 'overview' && (
-                <div className="space-y-5">
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                    <KpiCard label="Chiffre d'Affaires" value={analysis.kpis?.revenue   || '—'} trend={analysis.kpis?.revenueTrend}   trendLabel="vs N-1" icon={DollarSign} color="blue"  />
-                    <KpiCard label="Marge Nette"         value={analysis.kpis?.netMargin || '—'} trend={analysis.kpis?.netMarginTrend} trendLabel="pts"    icon={Percent}   color="green" />
-                    <KpiCard label="EBITDA"              value={analysis.kpis?.ebitda    || '—'} trend={analysis.kpis?.ebitdaTrend}    trendLabel="croiss" icon={BarChart2}  color="indigo"/>
-                    <KpiCard label="BFR"                 value={analysis.kpis?.bfr       || '—'} trend={analysis.kpis?.bfrTrend}       trendLabel="jours"  icon={Activity}  color={analysis.kpis?.bfrTrend > 0 ? 'red' : 'green'} />
-                  </div>
-                  <div className="bg-white rounded-2xl border border-slate-100 p-6">
-                    <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-3">Synthèse Exécutive</h3>
-                    <p className="text-sm text-slate-700 leading-relaxed">{analysis.summary}</p>
-                  </div>
-                  <div className="grid lg:grid-cols-2 gap-4">
-                    {analysis.revenueChart && <div className="bg-white rounded-2xl border border-slate-100 p-6"><MiniBarChart data={analysis.revenueChart} color="#3b82f6" label="Évolution du Chiffre d'Affaires"/></div>}
-                    {analysis.marginChart  && <div className="bg-white rounded-2xl border border-slate-100 p-6"><MiniBarChart data={analysis.marginChart}  color="#10b981" label="Évolution des Marges (%)"/></div>}
-                  </div>
-                </div>
-              )}
-
-              {activeTab === 'performance' && (
-                <div className="bg-white rounded-2xl border border-slate-100 p-6 space-y-1">
-                  <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-4">Indicateurs de Performance</h3>
-                  {analysis.performance?.map((item, i) => (
-                    <div key={i} className="flex items-center justify-between py-3 border-b border-slate-50 last:border-0">
-                      <div>
-                        <p className="text-sm font-black text-slate-800">{item.metric}</p>
-                        <p className="text-xs text-slate-400">{item.description}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-lg font-black text-slate-900">{item.value}</p>
-                        <p className={`text-[10px] font-bold ${item.status === 'good' ? 'text-green-500' : item.status === 'warning' ? 'text-amber-500' : 'text-red-500'}`}>
-                          {item.status === 'good' ? '✓ Bon' : item.status === 'warning' ? '⚠ Attention' : '✗ Critique'}
-                        </p>
-                      </div>
-                    </div>
+            {/* Spreadsheet */}
+            <div className="flex-1 overflow-auto">
+              <table className="border-collapse text-xs" style={{ minWidth: headers.length * 120 + 40 }}>
+                <thead className="sticky top-0 z-20">
+                  <tr>
+                    <th className="w-10 bg-[#0d1424] border-b border-r border-white/10 text-slate-600 text-[9px] font-black sticky left-0">#</th>
+                    {headers.map((h, i) => (
+                      <th key={i} className="bg-[#0d1424] border-b border-r border-white/10 px-3 py-2 text-left min-w-[110px]">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[9px] font-black text-emerald-500/50">{colLetter(i)}</span>
+                          <span className="text-[10px] font-black text-slate-300 truncate max-w-[90px]">{h}</span>
+                        </div>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {grid.slice(0, visibleRows).map((row, ri) => (
+                    <tr key={ri} className={`${ri < 5 ? 'bg-emerald-500/5' : ri % 2 === 0 ? 'bg-white/2' : ''} hover:bg-white/5 group`}>
+                      <td className="w-10 text-center text-[9px] font-bold bg-[#0d1424]/80 border-r border-white/5 select-none sticky left-0">
+                        <span className={ri < 5 ? 'text-emerald-400' : 'text-slate-600'}>{ri + 2}</span>
+                        {ri < 5 && <span className="ml-1 text-[7px] text-emerald-500/60">AI</span>}
+                      </td>
+                      {row.map((cell, ci) => {
+                        const isSel = selectedCell?.row === ri && selectedCell?.col === ci
+                        const isEdt = editingCell?.row  === ri && editingCell?.col  === ci
+                        return (
+                          <td key={ci}
+                            onClick={() => setSelectedCell({ row: ri, col: ci })}
+                            onDoubleClick={() => startEdit(ri, ci)}
+                            className={`border-b border-r border-white/5 px-3 py-1.5 cursor-cell transition-colors ${
+                              isSel ? 'outline outline-2 outline-emerald-500/60 bg-emerald-500/10' : ''
+                            } ${ci === 0 ? 'font-bold text-slate-200' : 'text-slate-400'}`}
+                            style={{ minWidth: 110, maxWidth: 200 }}>
+                            {isEdt ? (
+                              <input ref={inputRef} defaultValue={cell}
+                                onBlur={e => commitEdit(ri, ci, e.target.value)}
+                                onKeyDown={e => { if (e.key === 'Enter' || e.key === 'Tab') commitEdit(ri, ci, e.target.value); if (e.key === 'Escape') setEditingCell(null) }}
+                                className="w-full bg-emerald-950/80 text-emerald-200 outline-none px-1 font-mono text-xs" autoFocus/>
+                            ) : (
+                              <span className="block truncate">{cell}</span>
+                            )}
+                          </td>
+                        )
+                      })}
+                    </tr>
                   ))}
+                </tbody>
+              </table>
+              {visibleRows < grid.length && (
+                <div className="flex justify-center py-4 border-t border-white/5">
+                  <button onClick={() => setVisibleRows(v => Math.min(v + 100, grid.length))}
+                    className="text-xs text-slate-400 hover:text-emerald-400 font-bold transition-colors">
+                    + 100 lignes ({grid.length - visibleRows} restantes)
+                  </button>
                 </div>
               )}
+            </div>
 
-              {activeTab === 'risks' && (
-                <div className="space-y-4">
-                  <div className="bg-white rounded-2xl border border-slate-100 p-6 space-y-3">
-                    <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-2">Alertes & Risques</h3>
-                    {analysis.alerts?.map((a, i) => <AlertBadge key={i} type={a.type} message={a.message}/>)}
-                  </div>
-                  {analysis.recommendations && (
-                    <div className="bg-white rounded-2xl border border-slate-100 p-6 space-y-1">
-                      <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-3">Recommandations Stratégiques</h3>
-                      {analysis.recommendations.map((rec, i) => (
-                        <div key={i} className="flex gap-3 py-3 border-b border-slate-50 last:border-0">
-                          <span className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5">{i+1}</span>
-                          <p className="text-sm text-slate-700 leading-relaxed">{rec}</p>
+            {/* Bottom hint */}
+            <div className="flex-shrink-0 px-4 py-2 bg-[#0d1424] border-t border-white/5 flex items-center gap-3">
+              <div className="flex items-center gap-1.5 text-[10px] text-emerald-400/60">
+                <span className="w-2 h-2 rounded-sm bg-emerald-500/20 border border-emerald-500/30 inline-block"/>
+                5 premières lignes envoyées à Claude pour générer les formules
+              </div>
+              <span className="text-slate-700 text-[10px]">·</span>
+              <span className="text-[10px] text-slate-600">Les calculs couvriront toutes les {grid.length} lignes</span>
+            </div>
+          </div>
+        )}
+
+        {/* ══ PLANNING — Claude's formula plan ══ */}
+        {step === 'planning' && plan && (
+          <div className="max-w-4xl mx-auto px-6 py-10 space-y-6">
+
+            {/* Plan header */}
+            <div className="bg-white/3 border border-white/8 rounded-2xl p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-blue-500/20 border border-blue-500/30 rounded-xl flex items-center justify-center">
+                  <Brain size={18} className="text-blue-400"/>
+                </div>
+                <div>
+                  <p className="text-sm font-black text-white">Plan de formules généré par Claude</p>
+                  <p className="text-xs text-blue-400">{plan.dataType} · {plan.formulas?.length} formules · {plan.analysisGoal}</p>
+                </div>
+                <div className="ml-auto text-[10px] text-slate-500 bg-white/5 px-3 py-1.5 rounded-full">
+                  Basé sur 5 lignes d'exemple · couvrir {grid.length} lignes
+                </div>
+              </div>
+
+              {/* Formulas by category */}
+              {['total', 'statut', 'catégorie', 'temporel', 'performance', 'ratio'].map(cat => {
+                const catFormulas = plan.formulas?.filter(f => f.category === cat) || []
+                if (!catFormulas.length) return null
+                const col = CATEGORY_COLORS[cat] || CATEGORY_COLORS.total
+                return (
+                  <div key={cat} className="mb-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className={`w-2 h-2 rounded-full ${col.dot}`}/>
+                      <span className={`text-[10px] font-black uppercase tracking-widest ${col.text}`}>{cat}</span>
+                      <span className="text-[9px] text-slate-600">({catFormulas.length})</span>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      {catFormulas.map(f => (
+                        <div key={f.id} className={`flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl border ${col.bg} ${col.border}`}>
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-xs font-bold ${col.text} truncate`}>{f.label}</p>
+                            <p className="text-[10px] font-mono text-slate-500 truncate mt-0.5">{f.formula}</p>
+                          </div>
+                          <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded ${
+                            f.priority === 'high' ? 'bg-red-500/20 text-red-400' :
+                            f.priority === 'medium' ? 'bg-amber-500/20 text-amber-400' :
+                            'bg-slate-500/20 text-slate-500'
+                          }`}>{f.priority}</span>
                         </div>
                       ))}
                     </div>
-                  )}
-                </div>
-              )}
-
-              {activeTab === 'projections' && (
-                <div className="space-y-4">
-                  <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 flex items-center gap-3">
-                    <Activity size={16} className="text-blue-600 shrink-0"/>
-                    <p className="text-xs text-blue-700 font-medium">
-                      Projections : Croissance <strong>{variables.growthRate}%</strong> · Réduction coûts <strong>{variables.costReduction}%</strong> · IS <strong>{variables.taxRate}%</strong> · WACC <strong>{variables.discountRate}%</strong>
-                    </p>
                   </div>
-                  {analysis.projections && (
-                    <div className="bg-white rounded-2xl border border-slate-100 p-6">
-                      <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-4">Projections sur 3 Ans</h3>
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                          <thead>
-                            <tr className="border-b border-slate-100">
-                              <th className="text-left py-2 text-[10px] font-black uppercase tracking-widest text-slate-400">Indicateur</th>
-                              {['Année 1','Année 2','Année 3'].map(y => <th key={y} className="text-right py-2 text-[10px] font-black uppercase tracking-widest text-slate-400">{y}</th>)}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {analysis.projections.map((row, i) => (
-                              <tr key={i} className="border-b border-slate-50 last:border-0">
-                                <td className="py-3 font-bold text-slate-700">{row.label}</td>
-                                {row.values.map((v, j) => (
-                                  <td key={j} className={`py-3 text-right font-black ${String(v).startsWith('-') ? 'text-red-600' : 'text-slate-900'}`}>{v}</td>
-                                ))}
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )}
-                  {analysis.projectionChart && (
-                    <div className="bg-white rounded-2xl border border-slate-100 p-6">
-                      <MiniBarChart data={analysis.projectionChart} color="#6366f1" label="Projection Résultat Net"/>
-                    </div>
-                  )}
-                </div>
-              )}
+                )
+              })}
             </div>
-          )}
 
-          {/* ══ CONSULTANT CHAT PANEL ════════════════════════════ */}
-          {analysis && chatOpen && (
-            <div className="sticky bottom-0 left-0 right-0 bg-white border-t-2 border-blue-200 flex flex-col shadow-2xl shadow-blue-900/20 no-print"
-              style={{ height: '420px' }}>
-              <div className="flex items-center justify-between px-5 py-3 bg-[#0f1f3d] border-b border-white/10">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 bg-blue-500 rounded-lg flex items-center justify-center">
-                    <Bot size={14} color="white"/>
-                  </div>
-                  <div>
-                    <p className="text-white text-xs font-black">Consultant Financier IA</p>
-                    <div className="flex items-center gap-1">
-                      <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"/>
-                      <span className="text-[9px] text-white/40 font-bold">
-                        Calculs sur données brutes · ⚡1 crédit/question
-                        {csvData && <span className="text-green-400/70"> · {csvData.aggregates.totalRows} lignes chargées</span>}
+            {/* Add manual formulas */}
+            <div className="bg-white/3 border border-white/8 rounded-2xl p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Ajouter des formules manuelles</p>
+                <button
+                  onClick={() => setManualFormulas(prev => [...prev, { id: Date.now(), label: '', formula: '', category: 'total', priority: 'medium' }])}
+                  className="flex items-center gap-1 text-[10px] font-black text-emerald-400 hover:text-emerald-300 transition-colors">
+                  <Plus size={11}/> Ajouter
+                </button>
+              </div>
+              {manualFormulas.map(f => (
+                <div key={f.id} className="flex items-center gap-2">
+                  <input
+                    value={f.label}
+                    onChange={e => setManualFormulas(prev => prev.map(r => r.id === f.id ? { ...r, label: e.target.value } : r))}
+                    placeholder="Label"
+                    className="w-32 bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-slate-300 outline-none focus:border-emerald-500/40"
+                  />
+                  <span className="text-emerald-400 font-mono text-xs">=</span>
+                  <input
+                    value={f.formula.startsWith('=') ? f.formula.slice(1) : f.formula}
+                    onChange={e => setManualFormulas(prev => prev.map(r => r.id === f.id ? { ...r, formula: '=' + e.target.value } : r))}
+                    placeholder={`SUM(B2:B${grid.length + 1})`}
+                    className="flex-1 bg-white/5 border border-white/10 rounded-lg px-2 py-1.5 text-xs font-mono text-emerald-300 outline-none focus:border-emerald-500/40 placeholder-slate-700"
+                  />
+                  <button onClick={() => setManualFormulas(prev => prev.filter(r => r.id !== f.id))}>
+                    <Trash2 size={12} className="text-slate-600 hover:text-red-400 transition-colors"/>
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* CTA */}
+            <button
+              onClick={handleComputeFormulas}
+              className="w-full py-4 rounded-2xl font-black text-sm bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 flex items-center justify-center gap-3 transition-all active:scale-[0.98] shadow-lg shadow-emerald-500/20">
+              <Calculator size={18}/>
+              Phase 2 — JavaScript calcule {(plan.formulas?.length || 0) + manualFormulas.length} formules sur {grid.length} lignes
+              <ArrowRight size={16}/>
+            </button>
+          </div>
+        )}
+
+        {/* ══ COMPUTING — live progress ══ */}
+        {step === 'computing' && (
+          <div className="max-w-2xl mx-auto px-6 py-16 flex flex-col items-center gap-8">
+            <div className="w-16 h-16 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-center justify-center">
+              <Calculator size={28} className="text-emerald-400"/>
+            </div>
+            <div className="text-center space-y-2">
+              <h2 className="text-xl font-black text-white">JavaScript calcule les formules</h2>
+              <p className="text-sm text-slate-500">Chaque formule est appliquée ligne par ligne sur les {grid.length} lignes réelles</p>
+            </div>
+
+            {/* Progress bar */}
+            <div className="w-full space-y-3">
+              <div className="flex justify-between text-xs text-slate-500 font-bold">
+                <span>Progression</span>
+                <span>{computeProgress}%</span>
+              </div>
+              <div className="w-full bg-white/5 rounded-full h-2 overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full transition-all duration-200"
+                  style={{ width: `${computeProgress}%` }}/>
+              </div>
+              <p className="text-[10px] text-slate-600 text-center">
+                {Math.round(((computeProgress / 100) * (plan?.formulas?.length || 1)))} / {plan?.formulas?.length || 0} formules calculées
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 text-xs text-emerald-400/60">
+              <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"/>
+              Aucun appel API — calcul local uniquement
+            </div>
+          </div>
+        )}
+
+        {/* ══ INTERPRET — Send to Claude ══ */}
+        {step === 'interpret' && formulaResults.length > 0 && (
+          <div className="max-w-4xl mx-auto px-6 py-10 space-y-6">
+
+            {/* Results preview */}
+            <div className="bg-white/3 border border-white/8 rounded-2xl overflow-hidden">
+              <div className="px-5 py-3 border-b border-white/8 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <CheckCircle size={14} className="text-emerald-400"/>
+                  <span className="text-xs font-black text-slate-300 uppercase tracking-widest">
+                    {formulaResults.filter(r => r.result !== '#ERR').length} formules calculées — prêtes pour Claude
+                  </span>
+                </div>
+                <span className="text-[9px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded-full font-black">
+                  100% JS — zéro hallucination
+                </span>
+              </div>
+
+              {/* Group by category */}
+              <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-2 max-h-[400px] overflow-y-auto">
+                {formulaResults.map((f, i) => {
+                  const col = CATEGORY_COLORS[f.category] || CATEGORY_COLORS.total
+                  const isErr = f.result === '#ERR'
+                  return (
+                    <div key={i} className={`flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl border ${
+                      isErr ? 'bg-red-500/10 border-red-500/20' : `${col.bg} ${col.border}`
+                    }`}>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-xs font-bold truncate ${isErr ? 'text-red-400' : col.text}`}>{f.label}</p>
+                        <p className="text-[9px] font-mono text-slate-600 truncate">{f.formula}</p>
+                      </div>
+                      <span className={`text-sm font-black flex-shrink-0 ${isErr ? 'text-red-400' : 'text-white'}`}>
+                        {typeof f.result === 'number' ? f.result.toLocaleString('fr-FR') : f.result}
                       </span>
                     </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {chatMessages.length > 0 && (
-                    <button onClick={() => { setChatMessages([]); setShowSuggestions(true) }}
-                      className="text-[9px] font-black uppercase tracking-wide text-white/30 hover:text-white/60 px-2 py-1">
-                      Effacer
-                    </button>
-                  )}
-                  <button onClick={() => setChatOpen(false)}
-                    className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center">
-                    <ChevronDown size={14} color="white"/>
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4 bg-slate-50/80">
-                {showSuggestions && chatMessages.length <= 1 && (
-                  <div className="space-y-2">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Questions suggérées</p>
-                    <div className="flex flex-wrap gap-2">
-                      {SUGGESTED_QUESTIONS.map((q, i) => (
-                        <button key={i} onClick={() => sendChatMessage(q.text)} disabled={chatLoading}
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-full text-xs font-medium text-slate-600 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50 transition-all disabled:opacity-40">
-                          <span>{q.icon}</span>{q.text}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {chatMessages.map((msg, i) => <ChatMessage key={i} msg={msg}/>)}
-                <div ref={chatEndRef}/>
-              </div>
-
-              <div className="px-4 py-3 bg-white border-t border-slate-100">
-                {credits < 1 && (
-                  <div className="flex items-center justify-between mb-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
-                    <span className="text-xs text-amber-700 font-bold">⚠️ Crédits insuffisants</span>
-                    <button onClick={() => router.push('/pricing')} className="text-[10px] font-black text-amber-600 underline">Recharger</button>
-                  </div>
-                )}
-                <div className="flex gap-2 items-end">
-                  <textarea ref={chatInputRef} value={chatInput}
-                    onChange={e => setChatInput(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage() } }}
-                    placeholder="Posez une question sur vos données... (Entrée pour envoyer)"
-                    rows={2} disabled={chatLoading || credits < 1}
-                    className="flex-1 text-sm text-slate-700 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 resize-none outline-none focus:border-blue-300 transition-colors placeholder-slate-300 disabled:opacity-40"
-                  />
-                  <button onClick={() => sendChatMessage()}
-                    disabled={chatLoading || !chatInput.trim() || credits < 1}
-                    className="w-10 h-10 bg-blue-600 hover:bg-blue-500 disabled:opacity-30 text-white rounded-xl flex items-center justify-center flex-shrink-0 transition-all shadow-md shadow-blue-500/20">
-                    {chatLoading
-                      ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>
-                      : <Send size={15}/>}
-                  </button>
-                </div>
-                <p className="text-[9px] text-slate-300 mt-1.5 font-medium">Les chiffres sont calculés directement depuis vos données brutes</p>
+                  )
+                })}
               </div>
             </div>
-          )}
-        </div>
-      </div>
 
-      <style jsx global>{`
-        @media print {
-          .no-print { display: none !important; }
-          aside { display: none !important; }
-          header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-        }
-        input[type='range']::-webkit-slider-thumb {
-          -webkit-appearance: none; width: 16px; height: 16px;
-          border-radius: 50%; background: #2563eb; cursor: pointer;
-          border: 2px solid white; box-shadow: 0 1px 4px rgba(37,99,235,.4);
-        }
-      `}</style>
+            {/* Analysis request */}
+            <div className="space-y-3">
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                Votre demande spécifique (optionnel)
+              </label>
+              <textarea
+                value={analysisRequest}
+                onChange={e => setAnalysisRequest(e.target.value)}
+                placeholder="Ex: Concentre-toi sur les écarts entre statuts et identifie les anomalies..."
+                rows={2}
+                className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-sm text-white placeholder-slate-600 resize-none focus:outline-none focus:border-emerald-500/40 transition-all"
+              />
+            </div>
+
+            <button
+              onClick={handleInterpret}
+              disabled={loading || !hasCredits(3)}
+              className="w-full py-5 rounded-2xl font-black text-sm bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 disabled:opacity-40 flex items-center justify-center gap-3 transition-all active:scale-[0.98] shadow-lg shadow-violet-500/20">
+              {loading
+                ? <><div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"/> {loadingMsg}</>
+                : <><Sparkles size={18}/> Phase 3 — Claude interprète les résultats · ⚡3</>
+              }
+            </button>
+
+            {credits < 3 && (
+              <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl px-4 py-3 text-xs text-amber-400 font-medium text-center">
+                ⚠️ 3 crédits requis —{' '}
+                <button onClick={() => router.push('/pricing')} className="underline font-black">Recharger</button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ══ RESULT ══ */}
+        {step === 'result' && analysis && (
+          <div className="max-w-5xl mx-auto px-6 py-10 space-y-6">
+
+            <div className="bg-gradient-to-r from-emerald-900/40 to-teal-900/40 border border-emerald-500/20 rounded-3xl p-8">
+              <div className="flex items-start justify-between gap-4 flex-wrap">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-emerald-400 mb-2">Rapport ExcelAI</p>
+                  <h2 className="text-2xl font-black text-white">{analysis.title}</h2>
+                  <p className="text-sm text-slate-400 mt-1">
+                    {file?.name} · {grid.length} lignes · {formulaResults.length} formules calculées · {analysis.generatedAt}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => setStep('interpret')}
+                    className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/15 rounded-xl text-xs font-black transition-all">
+                    <RefreshCw size={13}/> Ré-interpréter
+                  </button>
+                  <button onClick={handleExport}
+                    className="flex items-center gap-2 px-5 py-3 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-sm font-black transition-all shadow-lg shadow-emerald-500/20">
+                    <Download size={16}/> Exporter Excel
+                  </button>
+                </div>
+              </div>
+
+              {/* Top formula results pinned */}
+              <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3">
+                {formulaResults
+                  .filter(f => f.priority === 'high' && f.result !== '#ERR')
+                  .slice(0, 4)
+                  .map((f, i) => {
+                    const col = CATEGORY_COLORS[f.category] || CATEGORY_COLORS.total
+                    return (
+                      <div key={i} className={`rounded-xl p-3 border ${col.bg} ${col.border}`}>
+                        <p className={`text-[9px] font-black uppercase tracking-widest ${col.text} truncate`}>∑ {f.label}</p>
+                        <p className="text-lg font-black text-white mt-1">
+                          {typeof f.result === 'number' ? f.result.toLocaleString('fr-FR') : f.result}
+                        </p>
+                        <p className="text-[9px] font-mono text-slate-600 truncate">{f.formula}</p>
+                      </div>
+                    )
+                  })}
+              </div>
+
+              {/* Key findings */}
+              <div className="mt-5 space-y-2">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Constats clés</p>
+                {analysis.summary?.keyFindings?.map((f, i) => (
+                  <div key={i} className="flex items-start gap-2 text-sm text-slate-300">
+                    <span className="text-emerald-400 font-black flex-shrink-0">{i + 1}.</span> {f}
+                  </div>
+                ))}
+              </div>
+              {analysis.summary?.overallScore && (
+                <div className="mt-4 bg-white/5 rounded-xl px-4 py-3 text-xs text-slate-400 italic">
+                  💡 {analysis.summary.overallScore}
+                </div>
+              )}
+            </div>
+
+            {/* Sections */}
+            {analysis.sections?.length > 0 && (
+              <div className="space-y-4">
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {analysis.sections.map((s, i) => (
+                    <button key={i} onClick={() => setActiveSection(i)}
+                      className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                        activeSection === i
+                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                          : 'bg-white/5 text-slate-400 border border-white/8 hover:border-white/15'
+                      }`}>
+                      <span>{s.icon}</span>{s.title}
+                    </button>
+                  ))}
+                </div>
+                {(() => {
+                  const section = analysis.sections[activeSection]
+                  if (!section) return null
+                  return (
+                    <div className="bg-white/3 border border-white/8 rounded-2xl p-6 space-y-4 animate-in fade-in duration-300">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">{section.icon}</span>
+                        <h3 className="text-base font-black text-white">{section.title}</h3>
+                      </div>
+                      {section.data?.map((d, i) => (
+                        <div key={i} className="flex items-center justify-between gap-4 p-3 bg-white/3 rounded-xl border border-white/5 hover:border-white/10 transition-all">
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            {trendIcon(d.trend)}
+                            <span className="text-sm text-slate-300 truncate">{d.label}</span>
+                          </div>
+                          <div className="flex items-center gap-3 flex-shrink-0">
+                            <span className="text-sm font-black text-white">{d.value}</span>
+                            {d.note && <span className="text-xs text-slate-500 max-w-[200px] truncate hidden md:block">{d.note}</span>}
+                          </div>
+                        </div>
+                      ))}
+                      {section.insight && (
+                        <div className="flex items-start gap-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-3">
+                          <Lightbulb size={14} className="text-emerald-400 flex-shrink-0 mt-0.5"/>
+                          <p className="text-xs text-emerald-300 leading-relaxed">{section.insight}</p>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
+              </div>
+            )}
+
+            {/* Recommendations */}
+            {analysis.recommendations?.length > 0 && (
+              <div className="space-y-3">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Recommandations</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {analysis.recommendations.map((r, i) => (
+                    <div key={i} className={`p-4 rounded-xl border space-y-2 ${
+                      r.priority === 'high'   ? 'bg-red-500/10 border-red-500/20' :
+                      r.priority === 'medium' ? 'bg-amber-500/10 border-amber-500/20' :
+                                                'bg-emerald-500/10 border-emerald-500/20'
+                    }`}>
+                      <div className="flex items-center gap-2">
+                        <span>{r.priority === 'high' ? '🔴' : r.priority === 'medium' ? '🟡' : '🟢'}</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                          {r.priority === 'high' ? 'Priorité haute' : r.priority === 'medium' ? 'Priorité moyenne' : 'Priorité faible'}
+                        </span>
+                      </div>
+                      <p className="text-sm font-bold text-white">{r.action}</p>
+                      <p className="text-xs text-slate-400">{r.impact}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-3 flex-wrap">
+              <button onClick={handleExport}
+                className="flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-sm font-black transition-all">
+                <Download size={16}/> Exporter avec feuille ExcelAI
+              </button>
+              <button onClick={() => { setStep('interpret'); setAnalysis(null) }}
+                className="flex items-center gap-2 px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm font-bold text-slate-400 transition-all">
+                <RefreshCw size={14}/> Nouvelle analyse
+              </button>
+              <button onClick={reset}
+                className="flex items-center gap-2 px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm font-bold text-slate-400 transition-all">
+                Nouveau fichier
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </main>
   )
 }
