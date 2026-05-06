@@ -8,70 +8,60 @@ import { useState, useEffect } from 'react'
 const USD_TO_CFA = 620
 const EUR_TO_CFA = 655
 
-// Currency config per region
 const CURRENCY_CONFIG = {
-  // West/Central Africa (FCFA zone)
   CFA: {
     code: 'CFA', symbol: 'FCFA', fromUSD: USD_TO_CFA,
     round: (v) => Math.round(v / 100) * 100,
     format: (v) => v.toLocaleString('fr-FR'),
     countries: ['SN','ML','BF','CI','BJ','TG','NE','GN','CM','CF','TD','CG','GA','GQ','CD'],
   },
-  // Nigeria
   NGN: {
     code: 'NGN', symbol: '₦', fromUSD: 1600,
     round: (v) => Math.round(v / 100) * 100,
     format: (v) => v.toLocaleString('fr-FR'),
     countries: ['NG'],
   },
-  // Ghana
   GHS: {
     code: 'GHS', symbol: 'GHS', fromUSD: 15,
     round: (v) => Math.round(v * 10) / 10,
     format: (v) => v.toFixed(2),
     countries: ['GH'],
   },
-  // Kenya / East Africa
   KES: {
     code: 'KES', symbol: 'KSh', fromUSD: 130,
     round: (v) => Math.round(v),
     format: (v) => v.toLocaleString('fr-FR'),
     countries: ['KE','TZ','UG','RW','ET'],
   },
-  // Morocco / Maghreb
   MAD: {
     code: 'MAD', symbol: 'MAD', fromUSD: 10,
     round: (v) => Math.round(v * 10) / 10,
     format: (v) => v.toFixed(2),
     countries: ['MA','DZ','TN'],
   },
-  // Europe
   EUR: {
     code: 'EUR', symbol: '€', fromUSD: 0.92,
     round: (v) => Math.round(v * 100) / 100,
     format: (v) => v.toFixed(2),
     countries: ['FR','BE','DE','ES','IT','PT','NL','CH','LU','MC','RE','GP','MQ','GF','PM','YT'],
   },
-  // UK
   GBP: {
     code: 'GBP', symbol: '£', fromUSD: 0.79,
     round: (v) => Math.round(v * 100) / 100,
     format: (v) => v.toFixed(2),
     countries: ['GB'],
   },
-  // Canada
   CAD: {
     code: 'CAD', symbol: 'CA$', fromUSD: 1.36,
     round: (v) => Math.round(v * 100) / 100,
     format: (v) => v.toFixed(2),
     countries: ['CA'],
   },
-  // Default USD
   USD: {
     code: 'USD', symbol: '$', fromUSD: 1,
     round: (v) => Math.round(v * 100) / 100,
     format: (v) => v.toFixed(2),
-    countries: [], // fallback
+    countries: [],
   },
 }
 
@@ -123,9 +113,197 @@ const PLANS = [
 
 const WHATSAPP_NUMBER = '447897037884'
 
+// ── NEW: Promo Banner Component ──
+function PromoBanner({ onWhatsApp }) {
+  const [visible, setVisible] = useState(true)
+  const [pulse, setPulse] = useState(false)
+
+  useEffect(() => {
+    const interval = setInterval(() => setPulse(p => !p), 1200)
+    return () => clearInterval(interval)
+  }, [])
+
+  if (!visible) return null
+
+  const handlePromo = () => {
+    const message = encodeURIComponent(
+      `🔥 PROMO MAI-JUIN 2026 🔥\n\n` +
+      `Je souhaite profiter de l'offre exceptionnelle :\n` +
+      `✅ Souscrire au forfait *Starter* et recevoir le forfait *Premium* activé !\n\n` +
+      `📧 Mon email : (à préciser)\n\n` +
+      `Merci de me confirmer les modalités.`
+    )
+    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${message}`, '_blank')
+  }
+
+  return (
+    <div className="relative z-10 max-w-6xl mx-auto px-6 md:px-12 mb-10">
+      <div className="relative overflow-hidden rounded-3xl"
+        style={{
+          background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 40%, #4c1d95 70%, #7c3aed 100%)',
+          boxShadow: '0 25px 60px rgba(124,58,237,0.4)',
+        }}>
+
+        {/* Animated background particles */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          {[...Array(6)].map((_, i) => (
+            <div key={i}
+              className="absolute rounded-full opacity-20"
+              style={{
+                width: `${60 + i * 30}px`,
+                height: `${60 + i * 30}px`,
+                background: i % 2 === 0 ? '#a78bfa' : '#f59e0b',
+                top: `${10 + i * 12}%`,
+                left: `${5 + i * 15}%`,
+                animation: `float${i % 3} ${3 + i}s ease-in-out infinite alternate`,
+                filter: 'blur(20px)',
+              }}
+            />
+          ))}
+          {/* Stars */}
+          {[...Array(12)].map((_, i) => (
+            <div key={`star-${i}`}
+              className="absolute text-yellow-300"
+              style={{
+                fontSize: `${8 + (i % 4) * 4}px`,
+                top: `${Math.random() * 80 + 10}%`,
+                left: `${Math.random() * 90 + 5}%`,
+                animation: `twinkle ${1.5 + (i % 3) * 0.5}s ease-in-out infinite alternate`,
+                opacity: 0.6 + (i % 3) * 0.2,
+              }}>
+              ★
+            </div>
+          ))}
+        </div>
+
+        {/* Close button */}
+        <button onClick={() => setVisible(false)}
+          className="absolute top-4 right-4 z-20 w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/60 hover:text-white transition-all text-sm">
+          ✕
+        </button>
+
+        <div className="relative z-10 px-8 py-10 md:px-14 md:py-12 flex flex-col md:flex-row items-center gap-8">
+
+          {/* Left — Text */}
+          <div className="flex-1 text-center md:text-left">
+
+            {/* Badge */}
+            <div className="inline-flex items-center gap-2 bg-yellow-400/20 border border-yellow-400/40 rounded-full px-4 py-1.5 mb-5">
+              <span className="text-yellow-300 text-[10px] font-black uppercase tracking-[0.3em] animate-pulse">
+                🔥 Offre Limitée · Mai — Juin 2026
+              </span>
+            </div>
+
+            {/* Title */}
+            <h2 className="text-3xl md:text-4xl font-black text-white leading-tight mb-3">
+              Promotion{' '}
+              <span className="text-transparent bg-clip-text"
+                style={{ backgroundImage: 'linear-gradient(90deg, #fbbf24, #f59e0b, #fbbf24)', backgroundSize: '200%', animation: 'shimmer 2s linear infinite' }}>
+                Exceptionnelle
+              </span>
+            </h2>
+
+            {/* Offer */}
+            <div className="flex flex-col md:flex-row items-center md:items-start gap-3 mb-6">
+              <div className="flex items-center gap-2 bg-white/10 rounded-2xl px-5 py-3">
+                <span className="text-2xl">⚡</span>
+                <div>
+                  <p className="text-white font-black text-sm">Forfait Starter</p>
+                  <p className="text-violet-300 text-xs font-bold">Vous payez</p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-center w-10 h-10 rounded-full bg-yellow-400 text-slate-900 font-black text-lg flex-shrink-0">
+                →
+              </div>
+
+              <div className="flex items-center gap-2 bg-yellow-400/20 border-2 border-yellow-400/60 rounded-2xl px-5 py-3 relative">
+                <div className="absolute -top-2.5 -right-2.5 bg-yellow-400 text-slate-900 text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest">
+                  Vous recevez
+                </div>
+                <span className="text-2xl">👑</span>
+                <div>
+                  <p className="text-white font-black text-sm">Forfait Premium</p>
+                  <p className="text-yellow-300 text-xs font-bold">Activé gratuitement !</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Countdown text */}
+            <p className="text-violet-300 text-xs font-medium">
+              ⏳ Offre valable jusqu'au <strong className="text-white">30 Juin 2026</strong> · Places limitées
+            </p>
+          </div>
+
+          {/* Right — CTA */}
+          <div className="flex flex-col items-center gap-4 flex-shrink-0">
+
+            {/* Price badge */}
+            <div className="text-center">
+              <div className="text-slate-400 line-through text-sm font-bold">Valeur : 39$/mois</div>
+              <div className="text-white font-black text-3xl">9$ <span className="text-violet-300 text-lg font-bold">/mois</span></div>
+              <div className="text-yellow-300 text-xs font-black uppercase tracking-widest mt-1">Économisez 77% 🎉</div>
+            </div>
+
+            {/* CTA Button */}
+            <button
+              onClick={handlePromo}
+              className="relative group px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest text-slate-900 overflow-hidden transition-all hover:scale-105 active:scale-95"
+              style={{ background: 'linear-gradient(135deg, #fbbf24, #f59e0b)' }}>
+              <span className="relative z-10 flex items-center gap-2">
+                📱 Souscrire maintenant
+              </span>
+              <div className="absolute inset-0 bg-white/0 group-hover:bg-white/20 transition-all"/>
+            </button>
+
+            <p className="text-violet-300 text-[10px] font-medium text-center max-w-[200px]">
+              Via WhatsApp · Activation sous 2h · Paiement Wave / Orange Money / PayPal
+            </p>
+          </div>
+        </div>
+
+        {/* Bottom ticker */}
+        <div className="relative z-10 border-t border-white/10 px-8 py-3 overflow-hidden">
+          <div className="flex items-center gap-8 animate-marquee whitespace-nowrap">
+            {[...Array(4)].map((_, i) => (
+              <span key={i} className="text-[10px] font-black text-violet-300 uppercase tracking-widest flex items-center gap-4">
+                <span className="text-yellow-400">★</span> Starter payé → Premium activé
+                <span className="text-yellow-400 mx-4">·</span> Offre Mai-Juin 2026
+                <span className="text-yellow-400 mx-4">·</span> 500 crédits inclus
+                <span className="text-yellow-400 mx-4">·</span> Tous outils débloqués
+                <span className="text-yellow-400 mx-4">·</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <style jsx>{`
+        @keyframes shimmer {
+          0% { background-position: 0% }
+          100% { background-position: 200% }
+        }
+        @keyframes twinkle {
+          0% { opacity: 0.3; transform: scale(0.8); }
+          100% { opacity: 1; transform: scale(1.2); }
+        }
+        @keyframes float0 { from { transform: translateY(0px) } to { transform: translateY(-15px) } }
+        @keyframes float1 { from { transform: translateY(0px) } to { transform: translateY(-25px) } }
+        @keyframes float2 { from { transform: translateY(0px) } to { transform: translateY(-10px) } }
+        @keyframes marquee {
+          0% { transform: translateX(0%) }
+          100% { transform: translateX(-50%) }
+        }
+        .animate-marquee {
+          animation: marquee 18s linear infinite;
+        }
+      `}</style>
+    </div>
+  )
+}
+
 function PlanCard({ plan, onWhatsApp, onCard, currency }) {
   const priceFormatted = formatPrice(plan.priceUSD, currency)
-  // Always show USD equivalent if not already USD
   const usdLabel = currency.code !== 'USD' ? `$${plan.priceUSD} USD` : null
 
   return (
@@ -139,7 +317,6 @@ function PlanCard({ plan, onWhatsApp, onCard, currency }) {
         </div>
       )}
 
-      {/* Header */}
       <div className="mb-6">
         <div className="text-3xl mb-3">{plan.emoji}</div>
         <h3 className="text-xl font-black text-slate-900">Niveau {plan.name}</h3>
@@ -159,7 +336,6 @@ function PlanCard({ plan, onWhatsApp, onCard, currency }) {
         </div>
       </div>
 
-      {/* Features */}
       <div className="flex-1 space-y-3 mb-8">
         {plan.features.map(f => (
           <div key={f} className="flex items-start gap-2.5">
@@ -179,9 +355,7 @@ function PlanCard({ plan, onWhatsApp, onCard, currency }) {
         ))}
       </div>
 
-      {/* ── TWO BUTTONS ── */}
       <div className="flex flex-col gap-3">
-        {/* Carte Visa — CinetPay */}
         <button
           onClick={() => onCard(plan)}
           className={`w-full py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${
@@ -194,7 +368,6 @@ function PlanCard({ plan, onWhatsApp, onCard, currency }) {
           <CreditCard size={14}/> Payer par carte Visa
         </button>
 
-        {/* WhatsApp */}
         <button
           onClick={() => onWhatsApp(plan)}
           className="w-full py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20">
@@ -208,15 +381,13 @@ function PlanCard({ plan, onWhatsApp, onCard, currency }) {
 export default function PricingPage() {
   const { user, logout } = useAuth()
   const router = useRouter()
-  const [currency, setCurrency] = useState(CURRENCY_CONFIG.CFA) // default CFA while loading
+  const [currency, setCurrency] = useState(CURRENCY_CONFIG.CFA)
   const [countryCode, setCountryCode] = useState(null)
   const [loadingGeo, setLoadingGeo] = useState(true)
 
-  // Detect country via IP on mount
   useEffect(() => {
     async function detectCountry() {
       try {
-        // ipapi.co — free, no key needed, 1000 req/day
         const res = await fetch('https://ipapi.co/json/')
         const data = await res.json()
         const code = data.country_code
@@ -300,7 +471,6 @@ export default function PricingPage() {
           Prix en {currency.code} · Paiement par carte Visa, Wave ou Orange Money. Activation automatique.
         </p>
 
-        {/* Currency info bar */}
         <div className="mt-6 inline-flex items-center gap-4 bg-white border border-slate-200 rounded-2xl px-6 py-3 shadow-sm">
           {loadingGeo ? (
             <span className="text-xs text-slate-400 font-bold animate-pulse">Détection de votre devise…</span>
@@ -321,6 +491,9 @@ export default function PricingPage() {
           )}
         </div>
       </section>
+
+      {/* ── NEW: Promo Banner inserted here ── */}
+      <PromoBanner onWhatsApp={handleWhatsApp} />
 
       <section className="relative z-10 max-w-6xl mx-auto px-6 md:px-12 pb-24">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
