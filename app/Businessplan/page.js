@@ -1,298 +1,611 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useCredits } from '@/hooks/useCredits'
 import { usePlanGuard } from '@/hooks/usePlanGuard'
 import { useRouter } from 'next/navigation'
-import { Zap } from 'lucide-react'
+import { Zap, Plus, Trash2, Type, Table2, FileDown, Printer, Sparkles, ImagePlus } from 'lucide-react'
 
+// ─── Design tokens ────────────────────────────────────────────────────────────
+const C = {
+  navy:   '#0F2540',
+  blue:   '#1A5276',
+  accent: '#D4790A',
+  accentL:'#F0A030',
+  silver: '#F2F4F7',
+  border: '#DDE2EA',
+  muted:  '#6B7A90',
+  text:   '#1C2534',
+  white:  '#FFFFFF',
+  danger: '#EF4444',
+  green:  '#059669',
+  stripe: '#F7F9FC',
+}
+
+const btnBase = {
+  display: 'inline-flex', alignItems: 'center', gap: 6,
+  padding: '7px 14px', borderRadius: 6, border: 'none',
+  fontSize: 13, fontWeight: 600, cursor: 'pointer',
+  fontFamily: 'inherit', transition: 'opacity .15s',
+}
+
+// ─── Shared button components ─────────────────────────────────────────────────
+function Btn({ onClick, style = {}, children, disabled }) {
+  return (
+    <button onClick={onClick} disabled={disabled}
+      style={{ ...btnBase, background: C.navy, color: C.white,
+        opacity: disabled ? 0.45 : 1,
+        cursor: disabled ? 'not-allowed' : 'pointer', ...style }}>
+      {children}
+    </button>
+  )
+}
+
+function GhostBtn({ onClick, style = {}, children }) {
+  return (
+    <button onClick={onClick}
+      style={{ ...btnBase, background: 'transparent', color: C.muted,
+        border: `1px solid ${C.border}`, ...style }}>
+      {children}
+    </button>
+  )
+}
+
+// ─── Block: Text ─────────────────────────────────────────────────────────────
+function TextBlock({ block, sectionId, onUpdate }) {
+  return (
+    <div
+      contentEditable suppressContentEditableWarning
+      onBlur={e => onUpdate(sectionId, block.id, { content: e.currentTarget.innerText })}
+      style={{
+        minHeight: 40, color: C.text, lineHeight: 1.8, fontSize: 14,
+        outline: 'none', padding: '6px 2px',
+        borderBottom: `1px dashed ${C.border}`,
+        whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+      }}>
+      {block.content}
+    </div>
+  )
+}
+
+// ─── Block: Table ─────────────────────────────────────────────────────────────
+function TableBlock({ block, sectionId, onUpdate, onAddRow, onAddCol }) {
+  const { headers, rows } = block.content
+
+  const updateHeader = (idx, value) => {
+    const newHeaders = headers.map((h, i) => i === idx ? value : h)
+    onUpdate(sectionId, block.id, { content: { headers: newHeaders, rows } })
+  }
+
+  const updateCell = (ri, ci, value) => {
+    const newRows = rows.map((row, r) =>
+      r === ri ? row.map((cell, c) => c === ci ? value : cell) : row
+    )
+    onUpdate(sectionId, block.id, { content: { headers, rows: newRows } })
+  }
+
+  return (
+    <div>
+      <div className="no-print" style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+        <GhostBtn onClick={() => onAddRow(sectionId, block.id)} style={{ fontSize: 12 }}>
+          <Plus size={12} /> Ligne
+        </GhostBtn>
+        <GhostBtn onClick={() => onAddCol(sectionId, block.id)} style={{ fontSize: 12 }}>
+          <Plus size={12} /> Colonne
+        </GhostBtn>
+      </div>
+      <div style={{ overflowX: 'auto', borderRadius: 8, border: `1px solid ${C.border}` }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+          <thead>
+            <tr style={{ background: C.navy }}>
+              {headers.map((h, i) => (
+                <th key={i} contentEditable suppressContentEditableWarning
+                  onBlur={e => updateHeader(i, e.currentTarget.innerText)}
+                  style={{
+                    padding: '10px 14px', color: C.white, fontWeight: 600,
+                    textAlign: 'left', outline: 'none',
+                    borderRight: i < headers.length - 1 ? '1px solid rgba(255,255,255,.12)' : 'none',
+                  }}>
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, ri) => (
+              <tr key={ri} style={{ background: ri % 2 === 0 ? C.white : C.stripe }}>
+                {row.map((cell, ci) => (
+                  <td key={ci} contentEditable suppressContentEditableWarning
+                    onBlur={e => updateCell(ri, ci, e.currentTarget.innerText)}
+                    style={{
+                      padding: '9px 14px', color: C.text, outline: 'none',
+                      borderTop: `1px solid ${C.border}`,
+                      borderRight: ci < row.length - 1 ? `1px solid ${C.border}` : 'none',
+                    }}>
+                    {cell}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+// ─── Block: Image ─────────────────────────────────────────────────────────────
+function ImageBlock({ block, sectionId, onUpload }) {
+  return (
+    <div style={{
+      textAlign: 'center',
+      padding: block.content ? 0 : '32px 0',
+      border: block.content ? 'none' : `2px dashed ${C.border}`,
+      borderRadius: 8,
+      background: block.content ? 'transparent' : C.silver,
+    }}>
+      {block.content ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={block.content} alt="Illustration"
+          style={{ maxWidth: '100%', borderRadius: 8, display: 'block', margin: '0 auto' }} />
+      ) : (
+        <label style={{ cursor: 'pointer', color: C.muted, fontSize: 13, display: 'block' }}>
+          <ImagePlus size={28} color={C.muted}
+            style={{ display: 'block', margin: '0 auto 10px' }} />
+          Cliquer pour ajouter une image
+          <input type="file" accept="image/*" className="no-print"
+            style={{ display: 'none' }}
+            onChange={e => onUpload(e, sectionId, block.id)} />
+        </label>
+      )}
+    </div>
+  )
+}
+
+// ─── Block wrapper (label + delete) ──────────────────────────────────────────
+const TYPE_LABELS = { text: 'Paragraphe', table: 'Tableau', image: 'Image' }
+
+function BlockWrapper({ block, sectionId, onDelete, onUpdate, onAddRow, onAddCol, onUpload }) {
+  return (
+    <div style={{ position: 'relative' }}>
+      {/* Meta bar */}
+      <div className="no-print" style={{
+        display: 'flex', alignItems: 'center',
+        justifyContent: 'space-between', marginBottom: 6,
+      }}>
+        <span style={{
+          fontSize: 10, fontWeight: 700, letterSpacing: 0.8,
+          color: C.muted, textTransform: 'uppercase',
+        }}>
+          {TYPE_LABELS[block.type] ?? block.type}
+        </span>
+        <button onClick={() => onDelete(sectionId, block.id)}
+          style={{ ...btnBase, padding: '2px 8px', fontSize: 11,
+            background: 'transparent', color: C.danger, border: '1px solid #FEE2E2' }}>
+          <Trash2 size={10} /> Supprimer
+        </button>
+      </div>
+
+      {block.type === 'text' && (
+        <TextBlock block={block} sectionId={sectionId} onUpdate={onUpdate} />
+      )}
+      {block.type === 'table' && (
+        <TableBlock block={block} sectionId={sectionId}
+          onUpdate={onUpdate} onAddRow={onAddRow} onAddCol={onAddCol} />
+      )}
+      {block.type === 'image' && (
+        <ImageBlock block={block} sectionId={sectionId} onUpload={onUpload} />
+      )}
+    </div>
+  )
+}
+
+// ─── Section card ─────────────────────────────────────────────────────────────
+function Section({ section, index, onDeleteSection, onAddBlock, onDeleteBlock,
+  onUpdateBlock, onAddRow, onAddCol, onUpload }) {
+
+  const [hovered, setHovered] = useState(false)
+
+  return (
+    <div
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        marginBottom: 28, borderRadius: 12,
+        border: `1px solid ${hovered ? C.blue : C.border}`,
+        overflow: 'hidden', transition: 'border-color .2s',
+        background: C.white,
+      }}>
+
+      {/* Section header bar */}
+      <div style={{ background: C.navy, padding: '13px 20px',
+        display: 'flex', alignItems: 'center', gap: 12 }}>
+        <span style={{
+          background: C.accent, color: C.white, borderRadius: 6,
+          width: 26, height: 26, flexShrink: 0,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 12, fontWeight: 700,
+        }}>
+          {index + 1}
+        </span>
+        <h2 contentEditable suppressContentEditableWarning
+          style={{ flex: 1, color: C.white, fontSize: 15, fontWeight: 700,
+            margin: 0, outline: 'none', letterSpacing: 0.3 }}>
+          {section.title}
+        </h2>
+        <button className="no-print" onClick={() => onDeleteSection(section.id)}
+          style={{ ...btnBase, padding: '4px 8px',
+            background: 'rgba(255,255,255,.08)', color: 'rgba(255,255,255,.65)',
+            border: '1px solid rgba(255,255,255,.12)' }}>
+          <Trash2 size={13} />
+        </button>
+      </div>
+
+      {/* Add-block toolbar */}
+      <div className="no-print" style={{
+        background: C.silver, padding: '9px 20px', display: 'flex', gap: 8,
+        borderBottom: `1px solid ${C.border}`,
+      }}>
+        <GhostBtn onClick={() => onAddBlock(section.id, 'text')} style={{ fontSize: 12 }}>
+          <Type size={13} /> Texte
+        </GhostBtn>
+        <GhostBtn onClick={() => onAddBlock(section.id, 'table')} style={{ fontSize: 12 }}>
+          <Table2 size={13} /> Tableau
+        </GhostBtn>
+        <GhostBtn onClick={() => onAddBlock(section.id, 'image')} style={{ fontSize: 12 }}>
+          <ImagePlus size={13} /> Image
+        </GhostBtn>
+      </div>
+
+      {/* Block list */}
+      <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+        {section.blocks.length === 0 && (
+          <p style={{ color: C.muted, fontSize: 13, textAlign: 'center', padding: '12px 0', margin: 0 }}>
+            Section vide — utilisez la barre ci-dessus pour ajouter du contenu.
+          </p>
+        )}
+        {section.blocks.map(block => (
+          <BlockWrapper key={block.id} block={block} sectionId={section.id}
+            onDelete={onDeleteBlock} onUpdate={onUpdateBlock}
+            onAddRow={onAddRow} onAddCol={onAddCol} onUpload={onUpload} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ─── Main page ────────────────────────────────────────────────────────────────
 export default function BusinessPlanPage() {
   const allowed = usePlanGuard('pro')
   const { deductCredits, hasCredits, credits } = useCredits()
   const router = useRouter()
 
-  const [prompt, setPrompt] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [prompt, setPrompt]     = useState('')
+  const [loading, setLoading]   = useState(false)
   const [sections, setSections] = useState([])
   const [docTitle, setDocTitle] = useState('MON BUSINESS PLAN')
 
+  // ── AI generation ──────────────────────────────────────────────────────────
   const handleGenerate = async () => {
-    if (!prompt) return alert("Veuillez entrer une description.")
-
-    if (!hasCredits(5)) {
-      router.push('/pricing')
-      return
-    }
+    if (!prompt.trim()) return alert('Veuillez entrer une description.')
+    if (!hasCredits(5)) { router.push('/pricing'); return }
 
     setLoading(true)
     try {
-      const response = await fetch('/api/generer-businessplan', {
+      const res = await fetch('/api/generer-businessplan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt }),
       })
-
-      if (!response.ok) throw new Error(`Erreur : ${response.status}`)
-
-      const data = await response.json()
+      if (!res.ok) throw new Error(`Erreur serveur ${res.status}`)
+      const data = await res.json()
       if (data.sections) {
         await deductCredits(5)
         setSections(data.sections)
+        document.getElementById('bp-doc')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
       }
     } catch (err) {
-      alert("Erreur de génération. Vérifie ta console.")
+      alert('Erreur de génération. Vérifie la console.')
       console.error(err)
     } finally {
       setLoading(false)
     }
   }
 
-  const addSection = () => {
-    setSections([...sections, {
-      id: Date.now(),
-      title: "Nouvelle Section",
-      blocks: [{ id: Date.now() + 1, type: 'text', content: 'Contenu...' }]
+  // ── Section ops ────────────────────────────────────────────────────────────
+  const addSection = useCallback(() => {
+    const now = Date.now()
+    setSections(prev => [...prev, {
+      id: now, title: 'Nouvelle Section',
+      blocks: [{ id: now + 1, type: 'text', content: 'Contenu de la section...' }],
     }])
-  }
+  }, [])
 
-  const deleteSection = (id) => setSections(sections.filter(s => s.id !== id))
+  const deleteSection = useCallback(id => {
+    setSections(prev => prev.filter(s => s.id !== id))
+  }, [])
 
-  const addBlock = (sectionId, type) => {
-    let content = 'Nouveau texte...'
-    if (type === 'table') content = { headers: ['Titre 1', 'Titre 2'], rows: [['-', '-']] }
-    if (type === 'image') content = null
-    const newBlock = { id: Date.now(), type, content }
-    setSections(sections.map(s => s.id === sectionId ? { ...s, blocks: [...s.blocks, newBlock] } : s))
-  }
+  // ── Block ops ──────────────────────────────────────────────────────────────
+  const addBlock = useCallback((sectionId, type) => {
+    const content =
+      type === 'table' ? { headers: ['Colonne A', 'Colonne B', 'Colonne C'], rows: [['-', '-', '-']] }
+      : type === 'image' ? null
+      : 'Saisissez votre texte ici...'
+    setSections(prev => prev.map(s =>
+      s.id === sectionId
+        ? { ...s, blocks: [...s.blocks, { id: Date.now(), type, content }] }
+        : s
+    ))
+  }, [])
 
-  const deleteBlock = (sectionId, blockId) => {
-    setSections(sections.map(s => s.id === sectionId ? { ...s, blocks: s.blocks.filter(b => b.id !== blockId) } : s))
-  }
+  const deleteBlock = useCallback((sectionId, blockId) => {
+    setSections(prev => prev.map(s =>
+      s.id === sectionId
+        ? { ...s, blocks: s.blocks.filter(b => b.id !== blockId) }
+        : s
+    ))
+  }, [])
 
-  const addRow = (sectionId, blockId) => {
-    setSections(sections.map(s => s.id === sectionId ? {
-      ...s,
-      blocks: s.blocks.map(b => b.id === blockId ? {
-        ...b,
-        content: { ...b.content, rows: [...b.content.rows, new Array(b.content.headers.length).fill('-')] }
-      } : b)
-    } : s))
-  }
+  // Generic updater — merges patch into block (handles both text content and table content)
+  const updateBlock = useCallback((sectionId, blockId, patch) => {
+    setSections(prev => prev.map(s =>
+      s.id === sectionId
+        ? { ...s, blocks: s.blocks.map(b => b.id === blockId ? { ...b, ...patch } : b) }
+        : s
+    ))
+  }, [])
 
-  const addColumn = (sectionId, blockId) => {
-    setSections(sections.map(s => s.id === sectionId ? {
-      ...s,
-      blocks: s.blocks.map(b => b.id === blockId ? {
-        ...b,
-        content: {
-          headers: [...b.content.headers, 'Nouveau'],
-          rows: b.content.rows.map(r => [...r, '-'])
-        }
-      } : b)
-    } : s))
-  }
+  const addRow = useCallback((sectionId, blockId) => {
+    setSections(prev => prev.map(s =>
+      s.id === sectionId ? {
+        ...s,
+        blocks: s.blocks.map(b => b.id === blockId ? {
+          ...b,
+          content: {
+            ...b.content,
+            rows: [...b.content.rows, new Array(b.content.headers.length).fill('-')],
+          },
+        } : b),
+      } : s
+    ))
+  }, [])
 
-  const handleImageUpload = (e, sectionId, blockId) => {
+  const addCol = useCallback((sectionId, blockId) => {
+    setSections(prev => prev.map(s =>
+      s.id === sectionId ? {
+        ...s,
+        blocks: s.blocks.map(b => b.id === blockId ? {
+          ...b,
+          content: {
+            headers: [...b.content.headers, 'Nouveau'],
+            rows: b.content.rows.map(r => [...r, '-']),
+          },
+        } : b),
+      } : s
+    ))
+  }, [])
+
+  const handleImageUpload = useCallback((e, sectionId, blockId) => {
     const file = e.target.files[0]
-    if (file) {
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setSections(sections.map(s => s.id === sectionId ? {
-          ...s,
-          blocks: s.blocks.map(b => b.id === blockId ? { ...b, content: reader.result } : b)
-        } : s))
-      }
-      reader.readAsDataURL(file)
-    }
-  }
+    if (!file) return
+    const reader = new FileReader()
+    reader.onloadend = () => updateBlock(sectionId, blockId, { content: reader.result })
+    reader.readAsDataURL(file)
+  }, [updateBlock])
 
+  // ── Export Word ────────────────────────────────────────────────────────────
   const exportToWord = () => {
-    const originalElement = document.getElementById('business-plan-document')
-    const tempClone = originalElement.cloneNode(true)
-    const elementsToRemove = tempClone.querySelectorAll('.no-print')
-    elementsToRemove.forEach(el => el.remove())
-    const cleanContent = tempClone.innerHTML
-    const header = `
-      <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+    const el = document.getElementById('bp-doc')
+    if (!el) return
+    const clone = el.cloneNode(true)
+    clone.querySelectorAll('.no-print').forEach(n => n.remove())
+    const html = `
+      <html xmlns:o='urn:schemas-microsoft-com:office:office'
+            xmlns:w='urn:schemas-microsoft-com:office:word'
+            xmlns='http://www.w3.org/TR/REC-html40'>
       <head><meta charset='utf-8'><style>
-        body { font-family: 'Segoe UI', Arial, sans-serif; padding: 20px; }
-        table { border-collapse: collapse; width: 100%; margin: 10px 0; }
-        th, td { border: 1px solid #000; padding: 8px; text-align: left; }
-        th { background-color: #f2f2f2; font-weight: bold; }
-        h1 { color: #2c3e50; text-align: center; border-bottom: 2px solid #e67e22; }
-        h2 { color: #e67e22; margin-top: 20px; border-bottom: 1px solid #eee; }
-        img { max-width: 100%; height: auto; display: block; margin: 10px auto; }
-        .block-wrapper { margin-bottom: 15px; }
-      </style></head><body>`
-    const footer = "</body></html>"
-    const source = header + cleanContent + footer
-    const blob = new Blob(['\ufeff', source], {
-      type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        body  { font-family: Arial, sans-serif; padding: 24px; color: #1C2534; }
+        h1    { color: #0F2540; text-align: center; border-bottom: 3px solid #D4790A; padding-bottom: 10px; }
+        h2    { color: #D4790A; margin-top: 28px; }
+        table { border-collapse: collapse; width: 100%; margin: 12px 0; }
+        th    { background: #0F2540; color: #fff; padding: 9px 13px; text-align: left; font-weight: 700; }
+        td    { border: 1px solid #DDE2EA; padding: 8px 13px; }
+        tr:nth-child(even) td { background: #F7F9FC; }
+        img   { max-width: 100%; border-radius: 6px; display: block; margin: 8px auto; }
+      </style></head>
+      <body>${clone.innerHTML}</body></html>`
+    const blob = new Blob(['\ufeff', html], { type: 'application/vnd.ms-word' })
+    const a = Object.assign(document.createElement('a'), {
+      href: URL.createObjectURL(blob),
+      download: `${docTitle.replace(/\s+/g, '_')}.doc`,
     })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `${docTitle.replace(/\s+/g, '_')}.doc`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
+    document.body.appendChild(a); a.click(); document.body.removeChild(a)
+    URL.revokeObjectURL(a.href)
   }
 
-  // ── Loading screen while plan is verified ──
+  // ── Plan guard ─────────────────────────────────────────────────────────────
   if (!allowed) return (
-    <div className="min-h-screen bg-[#f4f7f6] flex items-center justify-center flex-col gap-4">
-      <div className="w-11 h-11 bg-slate-900 rounded-2xl flex items-center justify-center">
-        <Zap size={20} color="white" fill="white"/>
+    <div style={{ minHeight: '100vh', background: C.silver,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      flexDirection: 'column', gap: 18 }}>
+      <div style={{ width: 44, height: 44, background: C.navy, borderRadius: 12,
+        display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Zap size={20} color="white" fill="white" />
       </div>
-      <div className="w-6 h-6 border-2 border-slate-200 border-t-orange-500 rounded-full animate-spin"/>
-      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Vérification du plan...</p>
+      <div style={{ width: 24, height: 24, border: `2px solid ${C.border}`,
+        borderTopColor: C.accent, borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+      <p style={{ fontSize: 10, fontWeight: 800, letterSpacing: '2px',
+        color: C.muted, textTransform: 'uppercase', margin: 0 }}>
+        Vérification du plan…
+      </p>
+      <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
     </div>
   )
 
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <main style={{ background: '#f4f7f6', minHeight: '100vh', padding: '20px' }}>
+    <main style={{ background: C.silver, minHeight: '100vh', padding: '28px 20px',
+      fontFamily: "'DM Sans', 'Segoe UI', system-ui, sans-serif" }}>
 
-      {/* HEADER IA */}
-      <div className="no-print" style={{ maxWidth: '1000px', margin: '0 auto 30px', background: 'white', padding: '20px', borderRadius: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
-
-        {/* Credits badge */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-          <h2 style={{ fontSize: '18px', color: '#2c3e50', margin: 0 }}>Générateur IA & Éditeur Premium</h2>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#eef2ff', border: '1px solid #c7d2fe', borderRadius: 20, padding: '6px 14px' }}>
-            <Zap size={13} color="#4f46e5" fill="#4f46e5"/>
-            <span style={{ fontSize: 13, fontWeight: 700, color: '#4338ca' }}>{credits} crédits</span>
+      {/* ── Generator panel ── */}
+      <div className="no-print" style={{
+        maxWidth: 960, margin: '0 auto 24px',
+        background: C.white, borderRadius: 14,
+        border: `1px solid ${C.border}`, overflow: 'hidden',
+      }}>
+        {/* Panel header */}
+        <div style={{ background: C.navy, padding: '15px 24px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Sparkles size={17} color={C.accentL} />
+            <span style={{ color: C.white, fontWeight: 700, fontSize: 15 }}>
+              Générateur IA · Business Plan
+            </span>
+          </div>
+          {/* Credits badge */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6,
+            background: 'rgba(255,255,255,.10)', border: '1px solid rgba(255,255,255,.15)',
+            borderRadius: 20, padding: '5px 13px' }}>
+            <Zap size={13} color={C.accentL} fill={C.accentL} />
+            <span style={{ fontSize: 13, fontWeight: 700, color: C.white }}>{credits} crédits</span>
           </div>
         </div>
 
-        {/* Low credits warning */}
-        {credits < 5 && (
-          <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: '10px 14px', marginBottom: 12, fontSize: 13, color: '#92400e' }}>
-            ⚠️ Crédits insuffisants (5 requis) —{' '}
-            <button onClick={() => router.push('/pricing')} style={{ background: 'none', border: 'none', color: '#d97706', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}>
-              Recharger
-            </button>
-          </div>
-        )}
+        <div style={{ padding: '20px 24px' }}>
+          {/* Low-credit warning */}
+          {credits < 5 && (
+            <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A',
+              borderRadius: 8, padding: '10px 14px', marginBottom: 14,
+              fontSize: 13, color: '#92400E', display: 'flex', alignItems: 'center', gap: 8 }}>
+              ⚠️ Crédits insuffisants (5 requis) —
+              <button onClick={() => router.push('/pricing')}
+                style={{ background: 'none', border: 'none', cursor: 'pointer',
+                  color: '#D97706', fontWeight: 700, textDecoration: 'underline', padding: 0 }}>
+                Recharger
+              </button>
+            </div>
+          )}
 
-        <textarea
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          placeholder="Ex: Business plan pour un salon de coiffure moderne aux Almadies..."
-          style={{ width: '100%', height: '80px', padding: '12px', borderRadius: '8px', border: '1px solid #ddd', marginBottom: '10px' }}
-        />
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button
-            onClick={handleGenerate}
-            disabled={loading || !hasCredits(5)}
-            style={{ flex: 2, background: loading || !hasCredits(5) ? '#94a3b8' : '#2c3e50', color: 'white', padding: '12px', border: 'none', borderRadius: '8px', cursor: loading || !hasCredits(5) ? 'not-allowed' : 'pointer', fontWeight: 'bold' }}>
-            {loading ? 'Rédaction en cours...' : '🚀 Générer avec sumuria · ⚡5'}
-          </button>
-          <button
-            onClick={exportToWord}
-            style={{ flex: 1, background: '#2980b9', color: 'white', padding: '12px', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
-            📝 Export Word
-          </button>
-          <button
-            onClick={() => window.print()}
-            style={{ flex: 1, background: '#e67e22', color: 'white', padding: '12px', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
-            📥 Télécharger PDF
-          </button>
+          {/* Prompt input */}
+          <textarea value={prompt} onChange={e => setPrompt(e.target.value)}
+            placeholder="Ex : Business plan pour une agence de marketing digital à Dakar ciblant les PME locales…"
+            style={{ width: '100%', height: 82, padding: '11px 14px', resize: 'vertical',
+              borderRadius: 8, border: `1px solid ${C.border}`, fontSize: 14,
+              fontFamily: 'inherit', color: C.text, background: C.silver,
+              lineHeight: 1.6, outline: 'none', boxSizing: 'border-box' }} />
+
+          {/* Action buttons */}
+          <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
+            <Btn onClick={handleGenerate} disabled={loading || !hasCredits(5)}
+              style={{ flex: 3, justifyContent: 'center', padding: '12px 18px',
+                fontSize: 14, borderRadius: 8,
+                background: loading ? C.blue : !hasCredits(5) ? '#94A3B8' : C.navy }}>
+              {loading ? (
+                <>
+                  <span style={{ width: 14, height: 14, border: '2px solid rgba(255,255,255,.3)',
+                    borderTopColor: 'white', borderRadius: '50%',
+                    animation: 'spin 1s linear infinite', display: 'inline-block', flexShrink: 0 }} />
+                  Rédaction en cours…
+                </>
+              ) : (
+                <>
+                  <Sparkles size={15} />
+                  Générer avec sumuria
+                  <span style={{ opacity: 0.55, fontSize: 12, marginLeft: 2 }}>· ⚡5</span>
+                </>
+              )}
+            </Btn>
+            <Btn onClick={exportToWord}
+              style={{ flex: 1, justifyContent: 'center', borderRadius: 8, background: C.blue }}>
+              <FileDown size={15} /> Word
+            </Btn>
+            <Btn onClick={() => window.print()}
+              style={{ flex: 1, justifyContent: 'center', borderRadius: 8, background: C.accent }}>
+              <Printer size={15} /> PDF
+            </Btn>
+          </div>
         </div>
       </div>
 
-      {/* DOCUMENT — structure completely unchanged */}
-      <div id="business-plan-document" className="container" style={{ maxWidth: '1000px', margin: '0 auto', background: 'white', padding: '60px', borderRadius: '4px', boxShadow: '0 0 20px rgba(0,0,0,0.1)' }}>
-
-        <h1 contentEditable suppressContentEditableWarning style={{ color: '#2c3e50', borderBottom: '3px solid #e67e22', textAlign: 'center', marginBottom: '40px' }}>
-          {docTitle}
-        </h1>
-
-        {sections.map((section) => (
-          <div key={section.id} style={{ marginBottom: '40px', padding: '20px', border: '1px solid #eee', position: 'relative' }}>
-
-            <div className="no-print" style={{ background: '#f8f9fa', padding: '10px', marginBottom: '20px', borderRadius: '6px', display: 'flex', gap: '10px' }}>
-              <button onClick={() => addBlock(section.id, 'text')} className="btn-tool">📝 + Texte</button>
-              <button onClick={() => addBlock(section.id, 'table')} className="btn-tool">📊 + Tableau</button>
-              <button onClick={() => addBlock(section.id, 'image')} className="btn-tool">🖼️ + Image</button>
-              <button onClick={() => deleteSection(section.id)} className="btn-tool btn-danger" style={{ marginLeft: 'auto' }}>🗑️</button>
-            </div>
-
-            <h2 contentEditable suppressContentEditableWarning style={{ color: '#e67e22' }}>{section.title}</h2>
-
-            {section.blocks.map((block) => (
-              <div key={block.id} className="block-wrapper" style={{ position: 'relative', margin: '20px 0' }}>
-                <span className="delete-block no-print" onClick={() => deleteBlock(section.id, block.id)}>×</span>
-
-                {block.type === 'text' && (
-                  <div contentEditable suppressContentEditableWarning style={{ minHeight: '30px', color: '#334155', lineHeight: '1.7', outline: 'none' }}>
-                    {block.content}
-                  </div>
-                )}
-
-                {block.type === 'image' && (
-                  <div style={{ textAlign: 'center', padding: '20px', border: block.content ? 'none' : '2px dashed #ccc' }}>
-                    {block.content ? (
-                      <img src={block.content} style={{ maxWidth: '100%', borderRadius: '8px' }} alt="Upload" />
-                    ) : (
-                      <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, section.id, block.id)} className="no-print" />
-                    )}
-                  </div>
-                )}
-
-                {block.type === 'table' && (
-                  <div>
-                    <div className="no-print" style={{ marginBottom: '5px' }}>
-                      <button onClick={() => addRow(section.id, block.id)} className="btn-mini">+ Ligne</button>
-                      <button onClick={() => addColumn(section.id, block.id)} className="btn-mini">+ Colonne</button>
-                    </div>
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                      <thead>
-                        <tr>
-                          {block.content.headers.map((h, i) => (
-                            <th key={i} contentEditable suppressContentEditableWarning style={{ border: '1px solid #ddd', padding: '12px', background: '#f1f5f9' }}>{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {block.content.rows.map((row, i) => (
-                          <tr key={i}>
-                            {row.map((cell, j) => (
-                              <td key={j} contentEditable suppressContentEditableWarning style={{ border: '1px solid #ddd', padding: '12px' }}>{cell}</td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            ))}
+      {/* ── Document ── */}
+      <div id="bp-doc" style={{
+        maxWidth: 960, margin: '0 auto',
+        background: C.white, borderRadius: 14,
+        border: `1px solid ${C.border}`, overflow: 'hidden',
+      }}>
+        {/* Document cover */}
+        <div style={{ background: C.navy, padding: '44px 52px 36px', textAlign: 'center' }}>
+          <div style={{ display: 'inline-block', background: C.accent,
+            borderRadius: 6, padding: '3px 14px', fontSize: 11,
+            fontWeight: 800, letterSpacing: 1.5, color: C.white,
+            textTransform: 'uppercase', marginBottom: 18 }}>
+            Business Plan
           </div>
-        ))}
+          <h1 contentEditable suppressContentEditableWarning
+            onBlur={e => setDocTitle(e.currentTarget.innerText)}
+            style={{ color: C.white, fontSize: 30, fontWeight: 800,
+              margin: '0 0 12px', outline: 'none', letterSpacing: 0.4, lineHeight: 1.2 }}>
+            {docTitle}
+          </h1>
+          <p style={{ color: 'rgba(255,255,255,.45)', fontSize: 13, margin: 0 }}>
+            Cliquez sur les titres et contenus pour les modifier directement
+          </p>
+        </div>
 
-        <div className="no-print" style={{ textAlign: 'center' }}>
-          <button onClick={addSection} style={{ background: '#27ae60', color: 'white', padding: '12px 25px', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
-            ➕ Ajouter une Section
-          </button>
+        {/* Sections body */}
+        <div style={{ padding: '36px 48px' }}>
+          {sections.length === 0 && (
+            <div style={{ textAlign: 'center', padding: '64px 0', color: C.muted }}>
+              <Sparkles size={32} color={C.border}
+                style={{ display: 'block', margin: '0 auto 16px' }} />
+              <p style={{ fontSize: 15, fontWeight: 600, marginBottom: 6, color: C.text }}>
+                Aucune section pour le moment
+              </p>
+              <p style={{ fontSize: 13, margin: 0 }}>
+                Utilisez le générateur IA ci-dessus ou ajoutez une section manuellement.
+              </p>
+            </div>
+          )}
+
+          {sections.map((section, i) => (
+            <Section key={section.id} section={section} index={i}
+              onDeleteSection={deleteSection}
+              onAddBlock={addBlock}
+              onDeleteBlock={deleteBlock}
+              onUpdateBlock={updateBlock}
+              onAddRow={addRow}
+              onAddCol={addCol}
+              onUpload={handleImageUpload}
+            />
+          ))}
+
+          {/* Add section button */}
+          <div className="no-print" style={{ textAlign: 'center', paddingTop: 8 }}>
+            <Btn onClick={addSection}
+              style={{ background: C.green, padding: '11px 28px',
+                fontSize: 14, borderRadius: 8, justifyContent: 'center' }}>
+              <Plus size={16} /> Ajouter une section
+            </Btn>
+          </div>
         </div>
       </div>
 
       <style jsx global>{`
+        @keyframes spin { to { transform: rotate(360deg) } }
         @media print {
           .no-print { display: none !important; }
-          .container { box-shadow: none !important; padding: 0 !important; }
+          #bp-doc {
+            box-shadow: none !important;
+            border: none !important;
+            border-radius: 0 !important;
+          }
         }
-        .btn-tool { background: white; border: 1px solid #cbd5e1; cursor: pointer; padding: 6px 12px; font-size: 13px; border-radius: 4px; transition: all 0.2s; }
-        .btn-tool:hover { background: #e2e8f0; border-color: #94a3b8; }
-        .btn-mini { background: #f1f5f9; border: 1px solid #ddd; cursor: pointer; padding: 2px 8px; font-size: 11px; margin-right: 5px; border-radius: 3px; }
-        .btn-mini:hover { background: #e67e22; color: white; }
-        .block-wrapper { transition: background 0.2s; padding: 10px; border-radius: 6px; border: 1px solid transparent; }
-        .block-wrapper:hover { background: #f8fafc; border-color: #e2e8f0; }
-        .delete-block { position: absolute; right: 5px; top: 5px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: #fee2e2; color: #ef4444; border-radius: 50%; cursor: pointer; font-size: 16px; opacity: 0; transition: opacity 0.2s, transform 0.2s; z-index: 10; }
-        .block-wrapper:hover .delete-block { opacity: 1; }
-        .delete-block:hover { background: #ef4444; color: white; transform: scale(1.1); }
-        .container { font-family: 'Segoe UI', system-ui, sans-serif; }
+        * { box-sizing: border-box; }
+        [contenteditable]:focus {
+          outline: 2px solid ${C.blue} !important;
+          outline-offset: 2px;
+          border-radius: 3px;
+        }
       `}</style>
     </main>
   )
