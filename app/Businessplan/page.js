@@ -186,7 +186,7 @@ export default function BusinessPlanPage() {
             onClick={handleGenerate}
             disabled={loading || !hasCredits(5)}
             style={{ flex: 2, background: loading || !hasCredits(5) ? '#94a3b8' : '#2c3e50', color: 'white', padding: '12px', border: 'none', borderRadius: '8px', cursor: loading || !hasCredits(5) ? 'not-allowed' : 'pointer', fontWeight: 'bold' }}>
-            {loading ? 'Rédaction en cours...' : '🚀 Générer avec Claude · ⚡5'}
+            {loading ? 'Rédaction en cours...' : '🚀 Générer avec sumuria · ⚡5'}
           </button>
           <button
             onClick={exportToWord}
