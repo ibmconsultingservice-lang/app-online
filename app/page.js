@@ -29,6 +29,7 @@ const TOOLS = [
   { icon: '🔥', name: 'Finance Analysis',    desc: 'Faites une analyse de vos chiffres',    path: '/FinanceAi',     img: '/images/tools/tool-01-finance.png',        plan: 'pro'     },
   { icon: '🔍', name: 'Document Analyser',   desc: 'Analyse approfondie de document',       path: '/docanalyser',   img: '/images/tools/tool-01-analyser.png',      plan: 'pro'     },
   { icon: '⚖️', name: 'Contract Generator',  desc: 'Générer tout type de contrat',          path: '/Contract',      img: '/images/tools/tool-01-contract.png',      plan: 'pro'     },
+  { icon: '🔥', name: 'PPM',      desc: 'Personal Project Mapper Ai',                       path: '/ppm', img: '/images/tools/tool-01-ppm.png',          plan: 'pro' },
 
   // ── Premium ───────────────────────────────────────────────────────────────
   { icon: '🔥', name: 'Dashboard Ai',        desc: 'Créer un tableau de bord personalisé',  path: '/DashboardAi',   img: '/images/tools/tool-01-dashboard.png',     plan: 'premium' },
@@ -36,6 +37,7 @@ const TOOLS = [
   { icon: '🤳', name: 'Capture Me',          desc: 'Take your image and make it beautiful', path: '/Capture',       img: '/images/tools/tool-01-capture.png',       plan: 'premium' },
   { icon: '🚀', name: 'Workflow',            desc: 'Générer workflow',                      path: '/workflow',      img: '/images/tools/tool-01-workflow.png',      plan: 'premium' },
   { icon: '🔥', name: 'Post Generator',      desc: 'Générer un post',                       path: '/PostGenerator', img: '/images/tools/tool-01-post.png',          plan: 'premium' },
+  
 ]
 
 const PLAN_BADGE = {
