@@ -1,6 +1,10 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { useCredits }   from '@/hooks/useCredits'
+import { usePlanGuard } from '@/hooks/usePlanGuard'
+import { useRouter }    from 'next/navigation'
+import { Zap }          from 'lucide-react'
 
 const COLORS = {
   center: { bg: '#1a0533', border: '#7c3aed', text: '#e9d5ff' },
@@ -190,32 +194,37 @@ export default function MindMapPage() {
   const svgRef   = useRef(null);
   const importRef = useRef(null);
   const dragOffset = useRef({ x: 0, y: 0 });
+  const allowed = usePlanGuard('starter')
+  const { deductCredits, hasCredits, credits } = useCredits()
+  const router = useRouter()
 
   const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 2500); };
   const generateFromAI = async () => {
-    if (!aiPrompt.trim()) return showToast('❌ Entre un sujet pour générer');
-    setAiLoading(true);
+    if (!aiPrompt.trim()) return showToast('❌ Entre un sujet pour générer')
+    if (!hasCredits(2)) { router.push('/pricing'); return }  // ← added
+    setAiLoading(true)
     try {
       const res = await fetch('/api/generer-ppm', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt: aiPrompt }),
-      });
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      setNodes(data.nodes);
-      setEdges(data.edges);
-      setPan({ x: 0, y: 0 });
-      setZoom(1);
-      setSelected(null);
-      setShowPanel(null);
-      showToast('✅ Mind map généré par IA');
+      })
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      setNodes(data.nodes)
+      setEdges(data.edges)
+      setPan({ x: 0, y: 0 })
+      setZoom(1)
+      setSelected(null)
+      setShowPanel(null)
+      await deductCredits(2)                                  // ← added
+      showToast('✅ Mind map généré par IA')
     } catch (err) {
-      showToast('❌ ' + err.message);
+      showToast('❌ ' + err.message)
     } finally {
-      setAiLoading(false);
+      setAiLoading(false)
     }
-  };
+  }
 
   // ── Export JSON ──
   const exportJSON = () => {
@@ -437,6 +446,20 @@ export default function MindMapPage() {
 
   const resetView = () => { setPan({ x: 0, y: 0 }); setZoom(1); };
 
+  if (!allowed) return (
+    <div className="min-h-screen bg-[#0f1117] flex items-center
+      justify-center flex-col gap-4">
+      <div className="w-11 h-11 bg-white rounded-2xl flex
+        items-center justify-center">
+        <Zap size={20} color="#0f1117" fill="#0f1117" />
+      </div>
+      <div className="w-6 h-6 border-2 border-white/10
+        border-t-white rounded-full animate-spin" />
+      <p className="text-[10px] font-black uppercase tracking-widest
+        text-white/30">Vérification du plan...</p>
+    </div>
+  )  
+
   return (
     <>
       <style>{`
@@ -504,6 +527,45 @@ export default function MindMapPage() {
         {/* Toolbar */}
         <div className="toolbar">
           <span style={{ fontFamily: "'Fraunces', serif", fontSize: 14, color: '#c4b5fd', marginRight: 4 }}>MindMap</span>
+        {/* ⚡ Credit pill */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          background: 'rgba(255,255,255,0.05)',
+          border: '1px solid rgba(255,255,255,0.1)',
+          borderRadius: 999, padding: '4px 12px',
+        }}>
+          <Zap size={11} color="#fbbf24" fill="#fbbf24" />
+          <span style={{ fontSize: 12, fontWeight: 800,
+            color: 'rgba(255,255,255,0.7)' }}>
+            {credits}
+          </span>
+        </div>
+
+        {/* ⚠️ Low-credit warning */}
+        {credits < 2 && (
+          <div style={{
+            background: 'rgba(245,158,11,0.1)',
+            border: '1px solid rgba(245,158,11,0.2)',
+            borderRadius: 12, padding: '4px 12px',
+            display: 'flex', alignItems: 'center', gap: 8,
+          }}>
+            <span style={{ color: '#fcd34d', fontSize: 12,
+              fontWeight: 700 }}>
+              ⚠️ 2 crédits requis
+            </span>
+            <button
+              onClick={() => router.push('/pricing')}
+              style={{
+                fontSize: 10, fontWeight: 800,
+                textTransform: 'uppercase', letterSpacing: '0.1em',
+                background: '#f59e0b', color: 'black',
+                border: 'none', borderRadius: 8,
+                padding: '4px 10px', cursor: 'pointer',
+              }}>
+              Recharger
+            </button>
+          </div>
+        )}          
           <div className="sep" />
           <button className={`tool-btn ${mode === 'select' ? 'active' : ''}`} onClick={() => { setMode('select'); setConnectFrom(null); }}>⊹ Sélect</button>
           <button className={`tool-btn ${mode === 'add' ? 'active' : ''}`} onClick={() => setMode(m => m === 'add' ? 'select' : 'add')}>+ Ajouter</button>
