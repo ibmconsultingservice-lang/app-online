@@ -250,6 +250,14 @@ export default function MindMapPage() {
         if (data.zoom) setZoom(data.zoom);
         if (data.bgThemeId) { const th = BG_THEMES.find(t => t.id === data.bgThemeId); if (th) setBgTheme(th); }
         setSelected(null); setShowPanel(null);
+
+        // ← FIX: recaler idCounter sur le max des IDs importés
+        const maxId = data.nodes.reduce((max, n) => {
+          const num = parseInt(String(n.id).replace(/\D/g, ''), 10);
+          return isNaN(num) ? max : Math.max(max, num);
+        }, idCounter);
+        idCounter = maxId;
+
         showToast('✅ Projet importé avec succès');
       } catch { showToast('❌ Fichier JSON invalide'); }
     };
@@ -709,21 +717,24 @@ export default function MindMapPage() {
           borderRadius: 16, padding: 16, zIndex: 200,
           backdropFilter: 'blur(16px)', width: 320,
         }}>
-          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 10, color: '#7c3aed', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
-            ✦ Générer avec l'IA
+          <div style={{ fontFamily: "'DM Mono', monospace", fontSize: 9, color: 'rgba(167,139,250,0.4)', marginTop: 6 }}>
+            Entrée = générer · Shift+Entrée = saut de ligne · Redimensionnable ↕
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <input
+            <textarea
               value={aiPrompt}
               onChange={e => setAiPrompt(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && generateFromAI()}
+              onKeyDown={e => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), generateFromAI())}
               placeholder="Ex: Plan marketing startup…"
+              rows={2}
               style={{
                 flex: 1, background: 'rgba(139,92,246,0.08)',
                 border: '1px solid rgba(139,92,246,0.25)',
                 borderRadius: 8, color: '#e9d5ff',
                 fontFamily: "'Fraunces', serif", fontSize: 13,
                 padding: '8px 10px', outline: 'none',
+                resize: 'vertical', minHeight: 38, maxHeight: 160,
+                lineHeight: 1.5,
               }}
             />
             <button
