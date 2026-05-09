@@ -29,7 +29,7 @@ const NODE_TYPES = [
 // ── Background themes ──
 const BG_THEMES = [
   { id: 'default',   label: 'Cosmos',    bg: '#050510',  dot: 'rgba(139,92,246,0.18)',  grad: 'radial-gradient(ellipse at 20% 20%, rgba(124,58,237,0.08) 0%, transparent 60%), radial-gradient(ellipse at 80% 80%, rgba(59,130,246,0.06) 0%, transparent 60%)' },
-  { id: 'midnight',  label: 'Minuit',    bg: '#0a0a0a',  dot: 'rgba(255,255,255,0.08)', grad: 'none' },
+  { id: 'Jour',  label: 'Jour',    bg: '#ffffff',  dot: 'rgba(255,255,255,0.08)', grad: 'none' },
   { id: 'ocean',     label: 'Océan',     bg: '#020e1a',  dot: 'rgba(6,182,212,0.15)',   grad: 'radial-gradient(ellipse at 30% 70%, rgba(6,182,212,0.1) 0%, transparent 60%)' },
   { id: 'forest',    label: 'Forêt',     bg: '#040f08',  dot: 'rgba(34,197,94,0.15)',   grad: 'radial-gradient(ellipse at 70% 30%, rgba(34,197,94,0.08) 0%, transparent 60%)' },
   { id: 'ember',     label: 'Braise',    bg: '#120604',  dot: 'rgba(239,68,68,0.15)',   grad: 'radial-gradient(ellipse at 50% 50%, rgba(239,68,68,0.1) 0%, transparent 60%), radial-gradient(ellipse at 80% 20%, rgba(245,158,11,0.08) 0%, transparent 50%)' },
