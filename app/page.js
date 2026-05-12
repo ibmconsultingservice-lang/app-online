@@ -30,7 +30,6 @@ const GLOBAL_STYLE = `
 .bub-out { animation: bubOut 0.34s cubic-bezier(0.55,0,1,0.45) forwards; }
 `
 
-/* ─── Hero slides ────────────────────────────────────────────────────────── */
 const HERO_SLIDES = [
   {
     phrase:    "L'intelligence qui",
@@ -41,7 +40,14 @@ const HERO_SLIDES = [
     badgeBg:   '#4f46e5',
     IllustrationJSX: () => (
       <div style={{ background:'#fff', borderRadius:14, padding:'12px 14px', boxShadow:'0 4px 18px rgba(0,0,0,0.10)', width:170 }}>
-        <div style={{ height:68, borderRadius:8, marginBottom:8, background:'linear-gradient(135deg,#c7d2fe,#818cf8)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:28 }}>🧠</div>
+        <div style={{ width:'100%', height:68, borderRadius:8, marginBottom:8, overflow:'hidden', background:'linear-gradient(135deg,#c7d2fe,#818cf8)' }}>
+          <img
+            src="/images/tools/tool-01-analysis.png"
+            alt="Business IA"
+            style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}
+            onError={e => { e.currentTarget.style.display='none' }}
+          />
+        </div>
         <p style={{ margin:'0 0 3px', fontSize:12, fontWeight:700, color:'#1e1b4b' }}>Stratégie & Négociation</p>
         <p style={{ margin:0, fontSize:10, color:'#6366f1' }}>sumur.IA · Business IA</p>
       </div>
@@ -56,7 +62,14 @@ const HERO_SLIDES = [
     badgeBg:   '#0ea5e9',
     IllustrationJSX: () => (
       <div style={{ background:'#fff', borderRadius:14, padding:'12px 14px', boxShadow:'0 4px 18px rgba(0,0,0,0.10)', width:170 }}>
-        <div style={{ height:68, borderRadius:8, marginBottom:8, background:'linear-gradient(135deg,#bae6fd,#38bdf8)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:28 }}>🚀</div>
+        <div style={{ width:'100%', height:68, borderRadius:8, marginBottom:8, overflow:'hidden', background:'linear-gradient(135deg,#bae6fd,#38bdf8)' }}>
+          <img
+            src="/images/tools/tool-02-analysis.png"
+            alt="Workflow IA"
+            style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}
+            onError={e => { e.currentTarget.style.display='none' }}
+          />
+        </div>
         <p style={{ margin:'0 0 3px', fontSize:12, fontWeight:700, color:'#0c4a6e' }}>Workflow automatisé</p>
         <p style={{ margin:0, fontSize:10, color:'#0ea5e9' }}>sumur.IA · Workflow</p>
       </div>
@@ -71,7 +84,14 @@ const HERO_SLIDES = [
     badgeBg:   '#10b981',
     IllustrationJSX: () => (
       <div style={{ background:'#fff', borderRadius:14, padding:'12px 14px', boxShadow:'0 4px 18px rgba(0,0,0,0.10)', width:170 }}>
-        <div style={{ height:68, borderRadius:8, marginBottom:8, background:'linear-gradient(135deg,#a7f3d0,#34d399)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:28 }}>📄</div>
+        <div style={{ width:'100%', height:68, borderRadius:8, marginBottom:8, overflow:'hidden', background:'linear-gradient(135deg,#a7f3d0,#34d399)' }}>
+          <img
+            src="/images/tools/tool-03-analysis.png"
+            alt="CV Builder"
+            style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}
+            onError={e => { e.currentTarget.style.display='none' }}
+          />
+        </div>
         <p style={{ margin:'0 0 3px', fontSize:12, fontWeight:700, color:'#064e3b' }}>CV professionnel PDF</p>
         <p style={{ margin:0, fontSize:10, color:'#10b981' }}>sumur.IA · CV Builder</p>
       </div>
@@ -86,7 +106,14 @@ const HERO_SLIDES = [
     badgeBg:   '#f59e0b',
     IllustrationJSX: () => (
       <div style={{ background:'#fff', borderRadius:14, padding:'12px 14px', boxShadow:'0 4px 18px rgba(0,0,0,0.10)', width:170 }}>
-        <div style={{ height:68, borderRadius:8, marginBottom:8, background:'linear-gradient(135deg,#fde68a,#fbbf24)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:28 }}>📊</div>
+        <div style={{ width:'100%', height:68, borderRadius:8, marginBottom:8, overflow:'hidden', background:'linear-gradient(135deg,#fde68a,#fbbf24)' }}>
+          <img
+            src="/images/tools/tool-04-analysis.png"
+            alt="Finance AI"
+            style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}
+            onError={e => { e.currentTarget.style.display='none' }}
+          />
+        </div>
         <p style={{ margin:'0 0 3px', fontSize:12, fontWeight:700, color:'#78350f' }}>Analyse financière IA</p>
         <p style={{ margin:0, fontSize:10, color:'#f59e0b' }}>sumur.IA · Finance</p>
       </div>
@@ -114,6 +141,7 @@ const TOOLS = [
   { icon: '📊', name: 'Business Plan',      desc: "Plan d'affaires complet",               path: '/Businessplan', img: '/images/tools/tool-06-business-plan.png', plan: 'pro'     },
   { icon: '📅', name: 'Project Planner',    desc: 'Planifier votre projet',                path: '/Planner',      img: '/images/tools/tool-01-planner.png',       plan: 'pro'     },
   { icon: '🔥', name: 'Finance Analysis',   desc: 'Faites une analyse de vos chiffres',    path: '/FinanceAi',    img: '/images/tools/tool-01-finance.png',        plan: 'pro'     },
+  { icon: '🔍', name: 'Data Analysis',  desc: 'Faites une analyse poussée de vos données',       path: '/Analysis',  img: '/images/tools/tool-01-analysis.png',      plan: 'pro'     },
   { icon: '🔍', name: 'Document Analyser',  desc: 'Analyse approfondie de document',       path: '/docanalyser',  img: '/images/tools/tool-01-analyser.png',      plan: 'pro'     },
   { icon: '⚖️', name: 'Contract Generator', desc: 'Générer tout type de contrat',          path: '/Contract',     img: '/images/tools/tool-01-contract.png',      plan: 'pro'     },
   { icon: '🔥', name: 'PPM',               desc: 'Personal Project Mapper Ai',             path: '/ppm',          img: '/images/tools/tool-01-ppm.png',           plan: 'pro'     },
