@@ -108,7 +108,7 @@ const HERO_SLIDES = [
       <div style={{ background:'#fff', borderRadius:14, padding:'12px 14px', boxShadow:'0 4px 18px rgba(0,0,0,0.10)', width:170 }}>
         <div style={{ width:'100%', height:68, borderRadius:8, marginBottom:8, overflow:'hidden', background:'linear-gradient(135deg,#fde68a,#fbbf24)' }}>
           <img
-            src="/images/tools/tool-04-analysis.png"
+            src="/images/tools/tool-05-analysis.png"
             alt="Finance AI"
             style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}
             onError={e => { e.currentTarget.style.display='none' }}
@@ -141,7 +141,7 @@ const TOOLS = [
   { icon: '📊', name: 'Business Plan',      desc: "Plan d'affaires complet",               path: '/Businessplan', img: '/images/tools/tool-06-business-plan.png', plan: 'pro'     },
   { icon: '📅', name: 'Project Planner',    desc: 'Planifier votre projet',                path: '/Planner',      img: '/images/tools/tool-01-planner.png',       plan: 'pro'     },
   { icon: '🔥', name: 'Finance Analysis',   desc: 'Faites une analyse de vos chiffres',    path: '/FinanceAi',    img: '/images/tools/tool-01-finance.png',        plan: 'pro'     },
-  { icon: '🔍', name: 'Data Analysis',  desc: 'Faites une analyse poussée de vos données',       path: '/Analysis',  img: '/images/tools/tool-01-analysis.png',      plan: 'pro'     },
+  { icon: '🔍', name: 'Data Analysis',  desc: 'Faites une analyse poussée de vos données',       path: '/Analysis',  img: '/images/tools/tool-04-analysis.png',      plan: 'pro'     },
   { icon: '🔍', name: 'Document Analyser',  desc: 'Analyse approfondie de document',       path: '/docanalyser',  img: '/images/tools/tool-01-analyser.png',      plan: 'pro'     },
   { icon: '⚖️', name: 'Contract Generator', desc: 'Générer tout type de contrat',          path: '/Contract',     img: '/images/tools/tool-01-contract.png',      plan: 'pro'     },
   { icon: '🔥', name: 'PPM',               desc: 'Personal Project Mapper Ai',             path: '/ppm',          img: '/images/tools/tool-01-ppm.png',           plan: 'pro'     },
