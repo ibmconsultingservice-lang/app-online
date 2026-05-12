@@ -227,7 +227,6 @@ export default function VidEditor() {
 
   // ── Build FFmpeg command per tool ──
   const buildCommand = useCallback(() => {
-    const n = grid?.length + 1  // placeholder, not used here
     const inFile  = 'input.' + (file?.name?.split('.').pop() || 'mp4')
     const outFile = 'output.' + outputFmt
 
