@@ -260,7 +260,7 @@ export default function DataAnalysisPage() {
 
   // ── Shared inline style tokens ──────────────────────────────────────────────
   const S = {
-    label: { fontSize: 9, letterSpacing: 3, color: '#374151', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, fontFamily: "'Courier Prime', monospace' },
+    label: { fontSize: 9, letterSpacing: 3, color: '#374151', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, fontFamily: "'Courier Prime', monospace" },
     stepNum: { color: '#4ade80', fontWeight: 700, fontFamily: "'Courier Prime', monospace" },
     section: { marginBottom: 32 },
   }
