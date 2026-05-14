@@ -208,7 +208,7 @@ export default function ImageReducer() {
           </div>
           <div>
             <span className="font-black text-lg tracking-tight text-slate-900">Image</span>
-            <span className="text-indigo-600 font-black text-lg">Reducer</span>
+            <span className="text-indigo-600 font-black text-lg">Manager</span>
             <span className="ml-2 text-[9px] bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-full px-2 py-0.5 font-bold uppercase tracking-wider">Gratuit</span>
           </div>
         </div>
