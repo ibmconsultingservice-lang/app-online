@@ -54,7 +54,7 @@ const HERO_SLIDES = [
     phrase: "L'intelligence qui", highlight: 'travaille pour vous.',
     color: '#4f46e5', bubbleBg: '#eef2ff', badgeLabel: 'Business IA', badgeBg: '#4f46e5',
     IllustrationJSX: (priority) => (
-      <SlideCard src="/images/tools/tool-01-analysis.png" alt="Business IA"
+      <SlideCard src="/images/tools/tool-01-analysis.jpg" alt="Business IA"
         gradientFrom="#c7d2fe" gradientTo="#818cf8"
         title="Stratégie & Négociation" subtitle={{ text: 'sumur.IA · Business IA', color: '#6366f1' }}
         priority={priority} />
@@ -64,7 +64,7 @@ const HERO_SLIDES = [
     phrase: 'Automatisez tout,', highlight: 'gagnez du temps.',
     color: '#0ea5e9', bubbleBg: '#e0f2fe', badgeLabel: 'Workflow IA', badgeBg: '#0ea5e9',
     IllustrationJSX: (priority) => (
-      <SlideCard src="/images/tools/tool-02-analysis.png" alt="Workflow IA"
+      <SlideCard src="/images/tools/tool-02-analysis.jpg" alt="Workflow IA"
         gradientFrom="#bae6fd" gradientTo="#38bdf8"
         title="Workflow automatisé" subtitle={{ text: 'sumur.IA · Workflow', color: '#0ea5e9' }}
         priority={priority} />
@@ -74,7 +74,7 @@ const HERO_SLIDES = [
     phrase: 'Des documents pro,', highlight: 'en quelques secondes.',
     color: '#10b981', bubbleBg: '#d1fae5', badgeLabel: 'CV Builder', badgeBg: '#10b981',
     IllustrationJSX: (priority) => (
-      <SlideCard src="/images/tools/tool-03-analysis.png" alt="CV Builder"
+      <SlideCard src="/images/tools/tool-03-analysis.jpg" alt="CV Builder"
         gradientFrom="#a7f3d0" gradientTo="#34d399"
         title="CV professionnel PDF" subtitle={{ text: 'sumur.IA · CV Builder', color: '#10b981' }}
         priority={priority} />
@@ -84,7 +84,7 @@ const HERO_SLIDES = [
     phrase: 'Analysez, décidez,', highlight: 'performez mieux.',
     color: '#f59e0b', bubbleBg: '#fef3c7', badgeLabel: 'Finance AI', badgeBg: '#f59e0b',
     IllustrationJSX: (priority) => (
-      <SlideCard src="/images/tools/tool-05-analysis.png" alt="Finance AI"
+      <SlideCard src="/images/tools/tool-05-analysis.jpg" alt="Finance AI"
         gradientFrom="#fde68a" gradientTo="#fbbf24"
         title="Analyse financière IA" subtitle={{ text: 'sumur.IA · Finance', color: '#f59e0b' }}
         priority={priority} />
@@ -96,31 +96,31 @@ const SLIDE_DURATION = 3800
 
 /* ─── Tools & plans ──────────────────────────────────────────────────────── */
 const TOOLS = [
-  { icon: '📎', name: 'PDF Merger',         desc: 'Fusionner vos fichiers PDF',                  path: '/pdfmerger',    img: '/images/tools/tool-10-pdf-merger.png',    plan: 'free'    },
-  { icon: '📤', name: 'Office to PDF',      desc: 'Convertir Word/Excel en PDF',                 path: '/office2pdf',   img: '/images/tools/tool-11-office-to-pdf.png', plan: 'free'    },
-  { icon: '🧠', name: 'Business IA',        desc: 'Stratégie & négociation IA',                  path: '/business-ia',  img: '/images/tools/tool-01-business-ia.png',   plan: 'starter' },
-  { icon: '📄', name: 'CV Builder',         desc: 'CV professionnel en PDF',                     path: '/cv',           img: '/images/tools/tool-02-cv-builder.png',    plan: 'starter' },
-  { icon: '🎙️', name: 'Audio Trans',        desc: 'Transcription audio précise',                 path: '/AudioTrans',   img: '/images/tools/tool-03-audio-trans.png',   plan: 'starter' },
-  { icon: '🧾', name: 'Facture',            desc: 'Génération de factures pro',                  path: '/facture',      img: '/images/tools/tool-05-facture.png',       plan: 'starter' },
-  { icon: '📝', name: 'Lettres',            desc: 'Rédiger votre lettre',                        path: '/letter',       img: '/images/tools/tool-01-letter.png',        plan: 'starter' },
-  { icon: '📧', name: 'Email',              desc: 'Email Writer Professional',                   path: '/email',        img: '/images/tools/tool-01-email.png',         plan: 'starter' },
-  { icon: '💳', name: 'Modern Card',        desc: 'Carte de visite moderne',                     path: '/CVisite',      img: '/images/tools/tool-01-visite.png',        plan: 'starter' },
-  { icon: '🔧', name: 'Doc Repairer',       desc: 'Correction & réparation de docs',             path: '/docrepairer',  img: '/images/tools/tool-07-doc-repairer.png',  plan: 'starter' },
-  { icon: '🔍', name: 'OCR Vision',         desc: 'Extraction de texte depuis image',            path: '/ocr-vision',   img: '/images/tools/tool-08-ocr-vision.png',    plan: 'starter' },
-  { icon: '📑', name: 'Pdf Convert',        desc: 'Convertisseur de pdf en fichier',             path: '/pdfconvert',   img: '/images/tools/tool-01-pdfconvert.png',    plan: 'starter' },
-  { icon: '🖥️', name: 'PPTX Genius',       desc: 'Présentations PowerPoint IA',                 path: '/pptxgenius',   img: '/images/tools/tool-04-pptx-genius.png',   plan: 'pro'     },
-  { icon: '📊', name: 'Business Plan',      desc: "Plan d'affaires complet",                     path: '/Businessplan', img: '/images/tools/tool-06-business-plan.png', plan: 'pro'     },
-  { icon: '📅', name: 'Project Planner',    desc: 'Planifier votre projet',                      path: '/Planner',      img: '/images/tools/tool-01-planner.png',       plan: 'pro'     },
-  { icon: '🔥', name: 'Finance Analysis',   desc: 'Faites une analyse de vos chiffres',          path: '/FinanceAi',    img: '/images/tools/tool-01-finance.png',        plan: 'pro'     },
-  { icon: '🔍', name: 'Data Analysis',      desc: 'Faites une analyse poussée de vos données',   path: '/Analysis',     img: '/images/tools/tool-04-analysis.png',      plan: 'pro'     },
-  { icon: '🔍', name: 'Document Analyser',  desc: 'Analyse approfondie de document',             path: '/docanalyser',  img: '/images/tools/tool-01-analyser.png',      plan: 'pro'     },
-  { icon: '⚖️', name: 'Contract Generator', desc: 'Générer tout type de contrat',                path: '/Contract',     img: '/images/tools/tool-01-contract.png',      plan: 'pro'     },
-  { icon: '🔥', name: 'PPM',               desc: 'Personal Project Mapper Ai',                   path: '/ppm',          img: '/images/tools/tool-01-ppm.png',           plan: 'pro'     },
-  { icon: '🔥', name: 'Dashboard Ai',       desc: 'Créer un tableau de bord personalisé',        path: '/DashboardAi',  img: '/images/tools/tool-01-dashboard.png',     plan: 'premium' },
+  { icon: '📎', name: 'PDF Merger',         desc: 'Fusionner vos fichiers PDF',                  path: '/pdfmerger',    img: '/images/tools/tool-10-pdf-merger.jpg',    plan: 'free'    },
+  { icon: '📤', name: 'Office to PDF',      desc: 'Convertir Word/Excel en PDF',                 path: '/office2pdf',   img: '/images/tools/tool-11-office-to-pdf.jpg', plan: 'free'    },
+  { icon: '🧠', name: 'Business IA',        desc: 'Stratégie & négociation IA',                  path: '/business-ia',  img: '/images/tools/tool-01-business-ia.jpg',   plan: 'starter' },
+  { icon: '📄', name: 'CV Builder',         desc: 'CV professionnel en PDF',                     path: '/cv',           img: '/images/tools/tool-02-cv-builder.jpg',    plan: 'starter' },
+  { icon: '🎙️', name: 'Audio Trans',        desc: 'Transcription audio précise',                 path: '/AudioTrans',   img: '/images/tools/tool-03-audio-trans.jpg',   plan: 'starter' },
+  { icon: '🧾', name: 'Facture',            desc: 'Génération de factures pro',                  path: '/facture',      img: '/images/tools/tool-05-facture.jpg',       plan: 'starter' },
+  { icon: '📝', name: 'Lettres',            desc: 'Rédiger votre lettre',                        path: '/letter',       img: '/images/tools/tool-01-letter.jpg',        plan: 'starter' },
+  { icon: '📧', name: 'Email',              desc: 'Email Writer Professional',                   path: '/email',        img: '/images/tools/tool-01-email.jpg',         plan: 'starter' },
+  { icon: '💳', name: 'Modern Card',        desc: 'Carte de visite moderne',                     path: '/CVisite',      img: '/images/tools/tool-01-visite.jpg',        plan: 'starter' },
+  { icon: '🔧', name: 'Doc Repairer',       desc: 'Correction & réparation de docs',             path: '/docrepairer',  img: '/images/tools/tool-07-doc-repairer.jpg',  plan: 'starter' },
+  { icon: '🔍', name: 'OCR Vision',         desc: 'Extraction de texte depuis image',            path: '/ocr-vision',   img: '/images/tools/tool-08-ocr-vision.jpg',    plan: 'starter' },
+  { icon: '📑', name: 'Pdf Convert',        desc: 'Convertisseur de pdf en fichier',             path: '/pdfconvert',   img: '/images/tools/tool-01-pdfconvert.jpg',    plan: 'starter' },
+  { icon: '🖥️', name: 'PPTX Genius',       desc: 'Présentations PowerPoint IA',                 path: '/pptxgenius',   img: '/images/tools/tool-04-pptx-genius.jpg',   plan: 'pro'     },
+  { icon: '📊', name: 'Business Plan',      desc: "Plan d'affaires complet",                     path: '/Businessplan', img: '/images/tools/tool-06-business-plan.jpg', plan: 'pro'     },
+  { icon: '📅', name: 'Project Planner',    desc: 'Planifier votre projet',                      path: '/Planner',      img: '/images/tools/tool-01-planner.jpg',       plan: 'pro'     },
+  { icon: '🔥', name: 'Finance Analysis',   desc: 'Faites une analyse de vos chiffres',          path: '/FinanceAi',    img: '/images/tools/tool-01-finance.jpg',        plan: 'pro'     },
+  { icon: '🔍', name: 'Data Analysis',      desc: 'Faites une analyse poussée de vos données',   path: '/Analysis',     img: '/images/tools/tool-04-analysis.jpg',      plan: 'pro'     },
+  { icon: '🔍', name: 'Document Analyser',  desc: 'Analyse approfondie de document',             path: '/docanalyser',  img: '/images/tools/tool-01-analyser.jpg',      plan: 'pro'     },
+  { icon: '⚖️', name: 'Contract Generator', desc: 'Générer tout type de contrat',                path: '/Contract',     img: '/images/tools/tool-01-contract.jpg',      plan: 'pro'     },
+  { icon: '🔥', name: 'PPM',               desc: 'Personal Project Mapper Ai',                   path: '/ppm',          img: '/images/tools/tool-01-ppm.jpg',           plan: 'pro'     },
+  { icon: '🔥', name: 'Dashboard Ai',       desc: 'Créer un tableau de bord personalisé',        path: '/DashboardAi',  img: '/images/tools/tool-01-dashboard.jpg',     plan: 'premium' },
   { icon: '👩‍🦰', name: 'Image Generator',   desc: "Générateur d'image",                         path: '/Imagegen',     img: '/images/tools/tool-01-image.jpg',         plan: 'premium' },
-  { icon: '🤳', name: 'Capture Me',         desc: 'Take your image and make it beautiful',       path: '/Capture',      img: '/images/tools/tool-01-capture.png',       plan: 'premium' },
-  { icon: '🚀', name: 'Workflow',           desc: 'Générer workflow',                            path: '/workflow',     img: '/images/tools/tool-01-workflow.png',      plan: 'premium' },
-  { icon: '🔥', name: 'Post Generator',     desc: 'Générer un post',                             path: '/PostGenerator',img: '/images/tools/tool-01-post.png',          plan: 'premium' },
+  { icon: '🤳', name: 'Capture Me',         desc: 'Take your image and make it beautiful',       path: '/Capture',      img: '/images/tools/tool-01-capture.jpg',       plan: 'premium' },
+  { icon: '🚀', name: 'Workflow',           desc: 'Générer workflow',                            path: '/workflow',     img: '/images/tools/tool-01-workflow.jpg',      plan: 'premium' },
+  { icon: '🔥', name: 'Post Generator',     desc: 'Générer un post',                             path: '/PostGenerator',img: '/images/tools/tool-01-post.jpg',          plan: 'premium' },
 ]
 
 const PLAN_BADGE = {

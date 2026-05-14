@@ -6,9 +6,8 @@ import { usePlanGuard } from '@/hooks/usePlanGuard'
 import { useRouter } from 'next/navigation'
 import {
   Zap, Upload, Video, Music, FileVideo, Scissors,
-  Volume2, VolumeX, Download, X, Play, Pause,
-  RefreshCw, ChevronRight, AlertCircle, CheckCircle,
-  Loader2, Film, Wand2, Image, Crop, RotateCcw
+  Download, X, RefreshCw, ChevronRight, AlertCircle, CheckCircle,
+  Loader2, Film, Image, Crop
 } from 'lucide-react'
 
 // ── Tools catalog ──────────────────────────────────────────────
@@ -34,16 +33,6 @@ const TOOLS = [
     outputFormats: ['mp3', 'wav'],
   },
   {
-    id: 'extract-music',
-    icon: <Volume2 size={22}/>,
-    title: 'Séparateur Musique / Voix',
-    desc: 'Isole la musique de fond d\'une vidéo → .mp3',
-    color: 'violet',
-    cost: 2,
-    accepts: 'video/*',
-    outputFormats: ['mp3'],
-  },
-  {
     id: 'compress',
     icon: <Crop size={22}/>,
     title: 'Compresseur Vidéo',
@@ -59,16 +48,6 @@ const TOOLS = [
     title: 'Découpe Vidéo',
     desc: 'Coupe précisément un segment entre deux timestamps',
     color: 'rose',
-    cost: 1,
-    accepts: 'video/*',
-    outputFormats: ['mp4'],
-  },
-  {
-    id: 'mute',
-    icon: <VolumeX size={22}/>,
-    title: 'Supprimer le son',
-    desc: 'Retire entièrement la piste audio d\'une vidéo',
-    color: 'slate',
     cost: 1,
     accepts: 'video/*',
     outputFormats: ['mp4'],
@@ -93,39 +72,15 @@ const TOOLS = [
     accepts: 'video/*',
     outputFormats: ['gif'],
   },
-  {
-    id: 'reverse',
-    icon: <RotateCcw size={22}/>,
-    title: 'Vidéo en Miroir',
-    desc: 'Inverse la vidéo (reverse) ou la retourne horizontalement',
-    color: 'orange',
-    cost: 2,
-    accepts: 'video/*',
-    outputFormats: ['mp4'],
-  },
-  {
-    id: 'speed',
-    icon: <Wand2 size={22}/>,
-    title: 'Vitesse Vidéo',
-    desc: 'Accélère ou ralentit la vidéo (x0.25 à x4)',
-    color: 'cyan',
-    cost: 2,
-    accepts: 'video/*',
-    outputFormats: ['mp4'],
-  },
 ]
 
 const COLOR_MAP = {
   emerald: { bg: 'bg-emerald-500/15', border: 'border-emerald-500/30', text: 'text-emerald-400', glow: 'shadow-emerald-500/20', btn: 'bg-emerald-600 hover:bg-emerald-500' },
   blue:    { bg: 'bg-blue-500/15',    border: 'border-blue-500/30',    text: 'text-blue-400',    glow: 'shadow-blue-500/20',    btn: 'bg-blue-600 hover:bg-blue-500'    },
-  violet:  { bg: 'bg-violet-500/15',  border: 'border-violet-500/30',  text: 'text-violet-400',  glow: 'shadow-violet-500/20',  btn: 'bg-violet-600 hover:bg-violet-500' },
   amber:   { bg: 'bg-amber-500/15',   border: 'border-amber-500/30',   text: 'text-amber-400',   glow: 'shadow-amber-500/20',   btn: 'bg-amber-600 hover:bg-amber-500'   },
   rose:    { bg: 'bg-rose-500/15',    border: 'border-rose-500/30',    text: 'text-rose-400',    glow: 'shadow-rose-500/20',    btn: 'bg-rose-600 hover:bg-rose-500'     },
-  slate:   { bg: 'bg-slate-500/15',   border: 'border-slate-500/30',   text: 'text-slate-400',   glow: 'shadow-slate-500/20',   btn: 'bg-slate-600 hover:bg-slate-500'   },
   teal:    { bg: 'bg-teal-500/15',    border: 'border-teal-500/30',    text: 'text-teal-400',    glow: 'shadow-teal-500/20',    btn: 'bg-teal-600 hover:bg-teal-500'     },
   pink:    { bg: 'bg-pink-500/15',    border: 'border-pink-500/30',    text: 'text-pink-400',    glow: 'shadow-pink-500/20',    btn: 'bg-pink-600 hover:bg-pink-500'     },
-  orange:  { bg: 'bg-orange-500/15',  border: 'border-orange-500/30',  text: 'text-orange-400',  glow: 'shadow-orange-500/20',  btn: 'bg-orange-600 hover:bg-orange-500' },
-  cyan:    { bg: 'bg-cyan-500/15',    border: 'border-cyan-500/30',    text: 'text-cyan-400',    glow: 'shadow-cyan-500/20',    btn: 'bg-cyan-600 hover:bg-cyan-500'     },
 }
 
 function fmtSize(bytes) {
@@ -141,22 +96,78 @@ function fmtDur(secs) {
   return `${m}:${String(s).padStart(2, '0')}`
 }
 
-// ── FFmpeg loader ──────────────────────────────────────────────
-let ffmpegInstance = null
+// ── FFmpeg singleton — stable across re-renders ────────────────
+let ffmpegSingleton = null
+let ffmpegLoading   = false
+let ffmpegCallbacks = []
 
-async function loadFFmpeg(onProgress) {
-  if (ffmpegInstance) return ffmpegInstance
-  const { FFmpeg } = await import('@ffmpeg/ffmpeg')
-  const { fetchFile, toBlobURL } = await import('@ffmpeg/util')
-  const ff = new FFmpeg()
-  ff.on('progress', ({ progress }) => onProgress && onProgress(Math.round(progress * 100)))
-  const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd'
-  await ff.load({
-    coreURL:   await toBlobURL(`${baseURL}/ffmpeg-core.js`,   'text/javascript'),
-    wasmURL:   await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
-  })
-  ffmpegInstance = { ff, fetchFile }
-  return ffmpegInstance
+async function getFFmpeg(onProgress) {
+  if (ffmpegSingleton) return ffmpegSingleton
+
+  if (ffmpegLoading) {
+    return new Promise((resolve, reject) => {
+      ffmpegCallbacks.push({ resolve, reject })
+    })
+  }
+
+  ffmpegLoading = true
+  try {
+    const { FFmpeg }           = await import('@ffmpeg/ffmpeg')
+    const { fetchFile, toBlobURL } = await import('@ffmpeg/util')
+    const ff = new FFmpeg()
+    ff.on('progress', ({ progress }) => onProgress && onProgress(Math.round(progress * 100)))
+    const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd'
+    await ff.load({
+      coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`,   'text/javascript'),
+      wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+    })
+    ffmpegSingleton = { ff, fetchFile }
+    ffmpegCallbacks.forEach(cb => cb.resolve(ffmpegSingleton))
+    ffmpegCallbacks = []
+    return ffmpegSingleton
+  } catch (err) {
+    ffmpegLoading = false
+    ffmpegCallbacks.forEach(cb => cb.reject(err))
+    ffmpegCallbacks = []
+    throw err
+  }
+}
+
+// ── Starfield component ────────────────────────────────────────
+function Starfield() {
+  const stars = Array.from({ length: 120 }, (_, i) => ({
+    id: i,
+    top:  Math.random() * 100,
+    left: Math.random() * 100,
+    size: Math.random() * 2 + 0.5,
+    dur:  Math.random() * 4 + 2,
+    delay: Math.random() * 5,
+    opacity: Math.random() * 0.6 + 0.2,
+  }))
+  return (
+    <div className="fixed inset-0 pointer-events-none overflow-hidden z-0" aria-hidden="true">
+      {stars.map(s => (
+        <span
+          key={s.id}
+          className="absolute rounded-full bg-white"
+          style={{
+            top:    `${s.top}%`,
+            left:   `${s.left}%`,
+            width:  `${s.size}px`,
+            height: `${s.size}px`,
+            opacity: s.opacity,
+            animation: `twinkle ${s.dur}s ease-in-out ${s.delay}s infinite`,
+          }}
+        />
+      ))}
+      <style>{`
+        @keyframes twinkle {
+          0%,100% { opacity: var(--tw-opacity, 0.3); transform: scale(1); }
+          50%      { opacity: 0.05; transform: scale(0.6); }
+        }
+      `}</style>
+    </div>
+  )
 }
 
 // ── Main component ─────────────────────────────────────────────
@@ -168,42 +179,42 @@ export default function VidEditor() {
   const [activeTool, setActiveTool] = useState(null)
   const [file, setFile]             = useState(null)
   const [fileURL, setFileURL]       = useState(null)
-  const [fileMeta, setFileMeta]     = useState(null)  // { duration, size }
+  const [fileMeta, setFileMeta]     = useState(null)
   const [outputFmt, setOutputFmt]   = useState(null)
   const [processing, setProcessing] = useState(false)
   const [progress, setProgress]     = useState(0)
   const [stage, setStage]           = useState('')
-  const [result, setResult]         = useState(null)  // { url, name, size }
+  const [result, setResult]         = useState(null)
   const [error, setError]           = useState('')
-  const [ffLoaded, setFfLoaded]     = useState(false)
+  const [ffReady, setFfReady]       = useState(!!ffmpegSingleton)
   const [ffLoading, setFfLoading]   = useState(false)
 
   // Tool-specific options
-  const [trimStart, setTrimStart]   = useState('00:00:00')
-  const [trimEnd, setTrimEnd]       = useState('00:00:10')
-  const [thumbTime, setThumbTime]   = useState('00:00:01')
-  const [thumbFmt, setThumbFmt]     = useState('jpg')
-  const [speed, setSpeed]           = useState(1)
-  const [quality, setQuality]       = useState('medium')  // low | medium | high
-  const [gifFps, setGifFps]         = useState(10)
-  const [reverseMode, setReverseMode] = useState('reverse')  // reverse | hflip | vflip
+  const [trimStart, setTrimStart] = useState('00:00:00')
+  const [trimEnd, setTrimEnd]     = useState('00:00:10')
+  const [thumbTime, setThumbTime] = useState('00:00:01')
+  const [thumbFmt, setThumbFmt]   = useState('jpg')
+  const [gifFps, setGifFps]       = useState(10)
+  const [quality, setQuality]     = useState('medium')
 
-  const videoRef  = useRef(null)
-  const fileRef   = useRef(null)
+  const videoRef = useRef(null)
+  const fileRef  = useRef(null)
+  const progressRef = useRef(setProgress) // stable ref to avoid stale closure
+  progressRef.current = setProgress
 
   const tool = TOOLS.find(t => t.id === activeTool)
   const col  = tool ? COLOR_MAP[tool.color] : null
 
-  // ── Pre-load FFmpeg in background when tool is selected ──
+  // ── Pre-load FFmpeg once when a tool is selected ──
   useEffect(() => {
-    if (!activeTool || ffLoaded || ffLoading) return
+    if (!activeTool || ffReady || ffLoading) return
     setFfLoading(true)
     setStage('Chargement de FFmpeg.wasm...')
-    loadFFmpeg(setProgress)
-      .then(() => { setFfLoaded(true); setStage('') })
-      .catch(e  => setError('FFmpeg non disponible: ' + e.message))
+    getFFmpeg(p => progressRef.current(p))
+      .then(() => { setFfReady(true); setStage('') })
+      .catch(e  => setError('FFmpeg non disponible : ' + e.message))
       .finally(() => setFfLoading(false))
-  }, [activeTool])
+  }, [activeTool]) // intentionally omit ffReady/ffLoading — we only want this to run on tool select
 
   // ── File selection ──
   const handleFile = (e) => {
@@ -216,34 +227,34 @@ export default function VidEditor() {
     setFileURL(url)
     setOutputFmt(tool?.outputFormats[0] || 'mp4')
 
-    // Get video metadata
     const vid = document.createElement('video')
     vid.src = url
     vid.onloadedmetadata = () => {
       setFileMeta({ duration: vid.duration, size: f.size })
-      setTrimEnd(fmtDur(Math.min(vid.duration, 30)).replace(':', ':').padStart(8, '0:'))
+      const end = Math.min(vid.duration, 30)
+      const m = Math.floor(end / 60), s = Math.floor(end % 60)
+      setTrimEnd(`00:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`)
     }
   }
 
   // ── Build FFmpeg command per tool ──
   const buildCommand = useCallback(() => {
-    const inFile  = 'input.' + (file?.name?.split('.').pop() || 'mp4')
-    const outFile = 'output.' + outputFmt
+    const ext    = file?.name?.split('.').pop()?.toLowerCase() || 'mp4'
+    const inFile = 'input.' + ext
+    const fmt    = activeTool === 'thumbnail' ? thumbFmt : outputFmt
+    const outFile = 'output.' + fmt
 
     const CRF = { low: '28', medium: '23', high: '18' }
 
     switch (activeTool) {
       case 'convert':
-        if (outputFmt === 'gif') return { args: ['-i', inFile, '-vf', 'fps=10,scale=480:-1:flags=lanczos', '-loop', '0', outFile], inFile, outFile }
-        return { args: ['-i', inFile, '-c:v', 'libx264', '-c:a', 'aac', '-preset', 'fast', outFile], inFile, outFile }
+        if (fmt === 'gif')  return { args: ['-i', inFile, '-vf', 'fps=10,scale=480:-1:flags=lanczos', '-loop', '0', outFile], inFile, outFile }
+        if (fmt === 'webm') return { args: ['-i', inFile, '-c:v', 'libvpx-vp9', '-c:a', 'libopus', '-b:v', '1M', outFile], inFile, outFile }
+        return { args: ['-i', inFile, '-c:v', 'libx264', '-preset', 'fast', '-crf', '23', '-c:a', 'aac', '-movflags', '+faststart', outFile], inFile, outFile }
 
       case 'extract-audio':
-        if (outputFmt === 'mp3') return { args: ['-i', inFile, '-q:a', '0', '-map', 'a', outFile], inFile, outFile }
-        return { args: ['-i', inFile, '-map', 'a', outFile], inFile, outFile }
-
-      case 'extract-music':
-        // Extracts audio track (music) — full audio pipeline
-        return { args: ['-i', inFile, '-q:a', '2', '-map', 'a', outFile], inFile, outFile: 'output.mp3' }
+        if (fmt === 'mp3') return { args: ['-i', inFile, '-vn', '-q:a', '0', '-map', 'a', outFile], inFile, outFile }
+        return { args: ['-i', inFile, '-vn', '-map', 'a', outFile], inFile, outFile }
 
       case 'compress':
         return { args: ['-i', inFile, '-vcodec', 'libx264', '-crf', CRF[quality], '-preset', 'slow', '-acodec', 'aac', '-b:a', '128k', outFile], inFile, outFile }
@@ -251,37 +262,30 @@ export default function VidEditor() {
       case 'trim':
         return { args: ['-i', inFile, '-ss', trimStart, '-to', trimEnd, '-c', 'copy', outFile], inFile, outFile }
 
-      case 'mute':
-        return { args: ['-i', inFile, '-an', outFile], inFile, outFile }
-
       case 'thumbnail':
-        return { args: ['-i', inFile, '-ss', thumbTime, '-vframes', '1', '-q:v', '2', 'output.' + thumbFmt], inFile, outFile: 'output.' + thumbFmt }
+        return { args: ['-i', inFile, '-ss', thumbTime, '-vframes', '1', '-q:v', '2', outFile], inFile, outFile }
 
       case 'gif':
-        return { args: ['-i', inFile, '-vf', `fps=${gifFps},scale=480:-1:flags=lanczos`, '-loop', '0', outFile], inFile, outFile }
-
-      case 'reverse':
-        if (reverseMode === 'reverse') return { args: ['-i', inFile, '-vf', 'reverse', '-af', 'areverse', outFile], inFile, outFile }
-        if (reverseMode === 'hflip')  return { args: ['-i', inFile, '-vf', 'hflip', '-c:a', 'copy', outFile], inFile, outFile }
-        return { args: ['-i', inFile, '-vf', 'vflip', '-c:a', 'copy', outFile], inFile, outFile }
-
-      case 'speed':
         return {
-          args: ['-i', inFile, '-filter:v', `setpts=${(1/speed).toFixed(2)}*PTS`, '-filter:a', `atempo=${Math.min(Math.max(speed, 0.5), 2)}`, outFile],
+          args: [
+            '-i', inFile,
+            '-ss', trimStart, '-to', trimEnd,
+            '-vf', `fps=${gifFps},scale=480:-1:flags=lanczos`,
+            '-loop', '0', outFile
+          ],
           inFile, outFile
         }
 
       default:
         return null
     }
-  }, [activeTool, file, outputFmt, trimStart, trimEnd, thumbTime, thumbFmt, speed, quality, gifFps, reverseMode])
+  }, [activeTool, file, outputFmt, trimStart, trimEnd, thumbTime, thumbFmt, gifFps, quality])
 
   // ── Run FFmpeg ──
   const handleProcess = async () => {
-    if (!file || !hasCredits(tool.cost)) {
-      if (!hasCredits(tool.cost)) router.push('/pricing')
-      return
-    }
+    if (!file) return
+    if (!hasCredits(tool.cost)) { router.push('/pricing'); return }
+
     setProcessing(true)
     setProgress(0)
     setError('')
@@ -289,14 +293,14 @@ export default function VidEditor() {
 
     try {
       setStage('Chargement de FFmpeg...')
-      const { ff, fetchFile } = await loadFFmpeg(p => setProgress(p))
-      setFfLoaded(true)
+      const { ff, fetchFile } = await getFFmpeg(p => setProgress(p))
+      setFfReady(true)
 
-      setStage('Lecture du fichier...')
       const cmd = buildCommand()
       if (!cmd) throw new Error('Commande invalide')
-
       const { inFile, outFile, args } = cmd
+
+      setStage('Lecture du fichier...')
       await ff.writeFile(inFile, await fetchFile(file))
 
       setStage('Traitement en cours...')
@@ -316,12 +320,11 @@ export default function VidEditor() {
       })
       setStage('')
 
-      // Cleanup
       await ff.deleteFile(inFile).catch(() => {})
       await ff.deleteFile(outFile).catch(() => {})
 
     } catch (err) {
-      setError('Erreur: ' + (err.message || 'Traitement échoué'))
+      setError('Erreur : ' + (err.message || 'Traitement échoué'))
       console.error(err)
     } finally {
       setProcessing(false)
@@ -331,25 +334,37 @@ export default function VidEditor() {
 
   const getMimeType = (filename) => {
     const ext = filename.split('.').pop()
-    const map = { mp4: 'video/mp4', webm: 'video/webm', mp3: 'audio/mp3', wav: 'audio/wav', gif: 'image/gif', jpg: 'image/jpeg', png: 'image/png' }
+    const map = { mp4: 'video/mp4', webm: 'video/webm', mp3: 'audio/mpeg', wav: 'audio/wav', gif: 'image/gif', jpg: 'image/jpeg', png: 'image/png' }
     return map[ext] || 'application/octet-stream'
   }
 
   const isAudioResult = result && ['mp3', 'wav'].includes(result.type)
   const isImageResult = result && ['jpg', 'png'].includes(result.type)
 
+  const resetTool = () => {
+    setActiveTool(null)
+    setFile(null)
+    setFileURL(null)
+    setFileMeta(null)
+    setResult(null)
+    setError('')
+    setStage('')
+  }
+
   if (!allowed) return (
     <div className="min-h-screen bg-[#080c18] flex items-center justify-center flex-col gap-4">
-      <div className="w-11 h-11 bg-violet-600 rounded-2xl flex items-center justify-center">
+      <Starfield/>
+      <div className="w-11 h-11 bg-violet-600 rounded-2xl flex items-center justify-center z-10">
         <Video size={20} color="white"/>
       </div>
-      <div className="w-6 h-6 border-2 border-slate-700 border-t-violet-500 rounded-full animate-spin"/>
-      <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Vérification du plan...</p>
+      <div className="w-6 h-6 border-2 border-slate-700 border-t-violet-500 rounded-full animate-spin z-10"/>
+      <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 z-10">Vérification du plan...</p>
     </div>
   )
 
   return (
-    <main className="min-h-screen bg-[#080c18] text-white font-sans">
+    <main className="min-h-screen bg-[#080c18] text-white font-sans relative">
+      <Starfield/>
 
       {/* ── Header ── */}
       <header className="border-b border-white/5 px-6 py-4 flex items-center justify-between sticky top-0 bg-[#080c18]/95 backdrop-blur-xl z-30">
@@ -366,8 +381,7 @@ export default function VidEditor() {
 
         <div className="flex items-center gap-3">
           {activeTool && (
-            <button onClick={() => { setActiveTool(null); setFile(null); setResult(null); setError('') }}
-              className="flex items-center gap-1.5 text-[10px] font-black text-slate-400 hover:text-white transition-colors">
+            <button onClick={resetTool} className="flex items-center gap-1.5 text-[10px] font-black text-slate-400 hover:text-white transition-colors">
               ← Tous les outils
             </button>
           )}
@@ -380,7 +394,7 @@ export default function VidEditor() {
 
       {/* ══ TOOL GRID ══ */}
       {!activeTool && (
-        <div className="max-w-5xl mx-auto px-6 py-12 space-y-10">
+        <div className="relative z-10 max-w-5xl mx-auto px-6 py-12 space-y-10">
           <div className="text-center space-y-3">
             <div className="inline-flex items-center gap-2 bg-violet-500/10 border border-violet-500/20 rounded-full px-4 py-2 text-xs font-black text-violet-300 uppercase tracking-widest">
               <Film size={12}/> Traitement 100% local · FFmpeg.wasm
@@ -392,7 +406,7 @@ export default function VidEditor() {
               </span>
             </h1>
             <p className="text-slate-500 text-sm max-w-md mx-auto">
-              Aucun upload serveur — vos vidéos restent sur votre machine. FFmpeg.wasm tourne entièrement dans le browser.
+              Aucun upload serveur — vos vidéos restent sur votre machine. FFmpeg.wasm (~32MB) se charge une seule fois dans le navigateur.
             </p>
           </div>
 
@@ -401,7 +415,7 @@ export default function VidEditor() {
               const c = COLOR_MAP[t.color]
               return (
                 <button key={t.id} onClick={() => { setActiveTool(t.id); setFile(null); setResult(null); setError('') }}
-                  className={`text-left bg-white/3 border border-white/8 rounded-2xl p-6 hover:border-white/20 hover:bg-white/5 transition-all group space-y-4`}>
+                  className="text-left bg-white/3 border border-white/8 rounded-2xl p-6 hover:border-white/20 hover:bg-white/5 transition-all group space-y-4">
                   <div className={`w-12 h-12 ${c.bg} ${c.border} border rounded-2xl flex items-center justify-center ${c.text} group-hover:scale-110 transition-transform`}>
                     {t.icon}
                   </div>
@@ -434,7 +448,7 @@ export default function VidEditor() {
 
       {/* ══ TOOL WORKSPACE ══ */}
       {activeTool && tool && (
-        <div className="max-w-4xl mx-auto px-6 py-10 space-y-6">
+        <div className="relative z-10 max-w-4xl mx-auto px-6 py-10 space-y-6">
 
           {/* Tool header */}
           <div className={`${col.bg} ${col.border} border rounded-2xl p-5 flex items-center gap-4`}>
@@ -481,9 +495,7 @@ export default function VidEditor() {
               {/* File drop zone */}
               <label className="block cursor-pointer group">
                 <div className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all ${
-                  file
-                    ? `${col.border} ${col.bg}`
-                    : 'border-white/10 hover:border-white/20 hover:bg-white/2'
+                  file ? `${col.border} ${col.bg}` : 'border-white/10 hover:border-white/20 hover:bg-white/2'
                 }`}>
                   {file ? (
                     <div className="space-y-2">
@@ -506,14 +518,9 @@ export default function VidEditor() {
               </label>
 
               {/* Video preview */}
-              {fileURL && activeTool !== 'extract-audio' && activeTool !== 'extract-music' && (
+              {fileURL && activeTool !== 'extract-audio' && (
                 <div className="bg-black rounded-2xl overflow-hidden border border-white/8">
-                  <video
-                    ref={videoRef}
-                    src={fileURL}
-                    controls
-                    className="w-full max-h-[200px] object-contain"
-                  />
+                  <video ref={videoRef} src={fileURL} controls className="w-full max-h-[200px] object-contain"/>
                 </div>
               )}
 
@@ -585,7 +592,7 @@ export default function VidEditor() {
                   </div>
                 )}
 
-                {/* Thumbnail time */}
+                {/* Thumbnail options */}
                 {activeTool === 'thumbnail' && (
                   <div className="space-y-3">
                     <div className="space-y-1">
@@ -637,60 +644,20 @@ export default function VidEditor() {
                   </div>
                 )}
 
-                {/* Speed */}
-                {activeTool === 'speed' && (
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <p className="text-[10px] text-slate-500 font-bold">Vitesse</p>
-                      <span className="text-xs font-black text-cyan-400">×{speed}</span>
-                    </div>
-                    <input type="range" min={0.25} max={4} step={0.25} value={speed}
-                      onChange={e => setSpeed(Number(e.target.value))}
-                      className="w-full h-1.5 bg-white/10 rounded-full appearance-none accent-cyan-500"/>
-                    <div className="flex justify-between text-[9px] text-slate-600 font-bold">
-                      <span>×0.25 (ralenti)</span><span>×1 (normal)</span><span>×4 (accéléré)</span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Reverse mode */}
-                {activeTool === 'reverse' && (
-                  <div className="space-y-2">
-                    <p className="text-xs font-bold text-slate-400">Mode</p>
-                    <div className="space-y-2">
-                      {[
-                        { k: 'reverse', l: '⏪ Inverser la vidéo',       sub: 'Lecture à l\'envers' },
-                        { k: 'hflip',   l: '↔ Miroir horizontal',        sub: 'Flip gauche-droite'  },
-                        { k: 'vflip',   l: '↕ Miroir vertical',          sub: 'Flip haut-bas'       },
-                      ].map(m => (
-                        <button key={m.k} onClick={() => setReverseMode(m.k)}
-                          className={`w-full text-left px-4 py-3 rounded-xl text-xs font-bold transition-all border ${
-                            reverseMode === m.k
-                              ? `${col.bg} ${col.text} ${col.border}`
-                              : 'bg-white/5 text-slate-400 border-white/10 hover:border-white/20'
-                          }`}>
-                          <span className="block">{m.l}</span>
-                          <span className="text-[10px] opacity-60">{m.sub}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
                 {/* No extra options */}
-                {['extract-audio', 'extract-music', 'mute', 'convert'].includes(activeTool) && tool.outputFormats.length <= 1 && (
-                  <p className="text-xs text-slate-600 italic">Aucune option supplémentaire requise.</p>
+                {activeTool === 'extract-audio' && (
+                  <p className="text-xs text-slate-600 italic">Choisissez le format de sortie ci-dessus.</p>
                 )}
               </div>
 
               {/* Process button */}
               <button
                 onClick={handleProcess}
-                disabled={!file || processing || !ffLoaded || !hasCredits(tool.cost)}
+                disabled={!file || processing || !ffReady || !hasCredits(tool.cost)}
                 className={`w-full py-4 rounded-2xl font-black text-sm ${col.btn} disabled:opacity-40 flex items-center justify-center gap-3 transition-all active:scale-[0.98] shadow-lg ${col.glow}`}>
                 {processing ? (
                   <><Loader2 size={18} className="animate-spin"/> {stage} {progress > 0 ? `${progress}%` : ''}</>
-                ) : !ffLoaded ? (
+                ) : !ffReady ? (
                   <><Loader2 size={18} className="animate-spin"/> Chargement FFmpeg...</>
                 ) : (
                   <>{tool.icon} Lancer le traitement · ⚡{tool.cost}</>
@@ -701,11 +668,13 @@ export default function VidEditor() {
               {processing && progress > 0 && (
                 <div className="space-y-2">
                   <div className="w-full bg-white/5 rounded-full h-2 overflow-hidden">
-                    <div className={`h-full rounded-full transition-all duration-300 bg-gradient-to-r ${
-                      tool.color === 'emerald' ? 'from-emerald-500 to-teal-500' :
-                      tool.color === 'blue'    ? 'from-blue-500 to-cyan-500'    :
-                      tool.color === 'violet'  ? 'from-violet-500 to-purple-500':
-                      'from-violet-500 to-purple-500'
+                    <div className={`h-full rounded-full transition-all duration-300 ${
+                      tool.color === 'emerald' ? 'bg-gradient-to-r from-emerald-500 to-teal-500' :
+                      tool.color === 'blue'    ? 'bg-gradient-to-r from-blue-500 to-cyan-500'    :
+                      tool.color === 'amber'   ? 'bg-gradient-to-r from-amber-500 to-yellow-500' :
+                      tool.color === 'rose'    ? 'bg-gradient-to-r from-rose-500 to-pink-500'    :
+                      tool.color === 'teal'    ? 'bg-gradient-to-r from-teal-500 to-cyan-500'    :
+                      'bg-gradient-to-r from-pink-500 to-violet-500'
                     }`} style={{ width: `${progress}%` }}/>
                   </div>
                   <p className="text-[10px] text-slate-500 text-center">{stage}</p>
@@ -723,7 +692,6 @@ export default function VidEditor() {
                       <p className="text-sm font-black text-white">Traitement terminé ✓</p>
                     </div>
 
-                    {/* Result preview */}
                     {!isAudioResult && !isImageResult && (
                       <video src={result.url} controls className="w-full rounded-xl bg-black max-h-[250px] object-contain"/>
                     )}
@@ -731,7 +699,7 @@ export default function VidEditor() {
                       <div className="bg-black/40 rounded-xl p-4">
                         <div className="flex items-center gap-3 mb-3">
                           <Music size={20} className={col.text}/>
-                          <span className="text-sm font-bold text-white">{result.name}</span>
+                          <span className="text-sm font-bold text-white truncate">{result.name}</span>
                         </div>
                         <audio src={result.url} controls className="w-full"/>
                       </div>
@@ -740,21 +708,18 @@ export default function VidEditor() {
                       <img src={result.url} alt="thumbnail" className="w-full rounded-xl object-contain max-h-[250px] bg-black/40"/>
                     )}
 
-                    {/* File info */}
                     <div className="flex items-center justify-between text-[10px] text-slate-500">
-                      <span>{result.name}</span>
-                      <span>{fmtSize(result.size)}</span>
+                      <span className="truncate">{result.name}</span>
+                      <span className="flex-shrink-0 ml-2">{fmtSize(result.size)}</span>
                     </div>
 
-                    {/* Download */}
                     <a href={result.url} download={result.name}
                       className={`w-full py-3 rounded-xl font-black text-sm ${col.btn} text-white flex items-center justify-center gap-2 transition-all`}>
                       <Download size={16}/> Télécharger · .{result.type}
                     </a>
                   </div>
 
-                  {/* Process another */}
-                  <button onClick={() => { setResult(null); setFile(null) }}
+                  <button onClick={() => { setResult(null); setFile(null); setFileURL(null) }}
                     className="w-full py-3 rounded-xl font-black text-xs text-slate-400 bg-white/5 border border-white/10 hover:bg-white/8 transition-all flex items-center justify-center gap-2">
                     <RefreshCw size={13}/> Traiter un autre fichier
                   </button>
@@ -768,7 +733,6 @@ export default function VidEditor() {
                     <p className="text-sm font-black text-slate-500">Résultat apparaîtra ici</p>
                     <p className="text-xs text-slate-600 mt-1">Sélectionnez un fichier et lancez le traitement</p>
                   </div>
-                  {/* Privacy note */}
                   <div className="mt-4 bg-white/3 border border-white/8 rounded-xl px-4 py-3 text-[10px] text-slate-600 leading-relaxed">
                     🔒 Traitement 100% local · Vos vidéos ne quittent pas votre navigateur
                   </div>
