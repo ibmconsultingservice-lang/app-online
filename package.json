@@ -6,13 +6,16 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "remotion:studio": "node_modules\\.bin\\remotion.cmd studio app/videogen/remotion/index.jsx",
+    "remotion:render": "node_modules\\.bin\\remotion.cmd render app/videogen/remotion/index.jsx VisualGen out/video.mp4 --codec=h264 --crf=18"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.86.0",
     "@ffmpeg/ffmpeg": "^0.12.10",
     "@ffmpeg/util": "^0.12.1",
     "@paypal/checkout-server-sdk": "^1.0.3",
+    "@remotion/player": "4.0.462",
     "docx": "^9.6.1",
     "file-saver": "^2.0.5",
     "firebase": "^12.11.0",
@@ -36,6 +39,7 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@remotion/cli": "^4.0.462",
     "@tailwindcss/postcss": "^4",
     "@types/file-saver": "^2.0.7",
     "@types/node": "^20",
@@ -43,6 +47,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.2",
+    "remotion": "^4.0.462",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

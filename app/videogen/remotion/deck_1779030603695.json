@@ -1,0 +1,170 @@
+{
+  "title": "L'intelligence artificielle : le pilier du changement moderne",
+  "description": "Explorer comment l'IA redéfinit les industries, transforme les métiers et façonne notre avenir collectif",
+  "theme": "obsidian",
+  "totalSlides": 10,
+  "slides": [
+    {
+      "type": "cover",
+      "title": "L'Intelligence  Artificielle",
+      "subtitle": "Le pilier du changement moderne",
+      "badge": "Vision 2030",
+      "presenter": "Direction Innovation",
+      "date": "Janvier 2025",
+      "pexelsKeywords": "futuristic dark technology neural network gold",
+      "accent": "#c9a84c",
+      "pexelsUrl": "https://images.pexels.com/photos/20858555/pexels-photo-20858555.jpeg?auto=compress&cs=tinysrgb&h=650&w=940"
+    },
+    {
+      "type": "agenda",
+      "title": "Notre Exploration",
+      "sectionTag": "Sommaire",
+      "bullets": [
+        "Comprendre la révolution IA en cours",
+        "Impacts concrets sur les industries clés",
+        "Enjeux éthiques et stratégies d'adoption",
+        "Préparer votre organisation pour demain"
+      ],
+      "pexelsKeywords": "elegant dark marble texture minimal",
+      "pexelsUrl": "https://images.pexels.com/photos/2117938/pexels-photo-2117938.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+    },
+    {
+      "type": "section",
+      "title": "L'Ère de l'Intelligence Augmentée",
+      "subtitle": "Une rupture technologique sans précédent depuis l'invention d'Internet",
+      "sectionNumber": "01",
+      "pexelsKeywords": "cinematic artificial intelligence circuit board dark",
+      "pexelsUrl": "https://images.pexels.com/photos/3520697/pexels-photo-3520697.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+    },
+    {
+      "type": "stats",
+      "title": "L'IA en Chiffres",
+      "stats": [
+        {
+          "value": "$15.7T",
+          "label": "Impact économique mondial d'ici 2030"
+        },
+        {
+          "value": "97M",
+          "label": "Nouveaux emplois créés par l'IA"
+        },
+        {
+          "value": "77%",
+          "label": "Entreprises utilisant ou explorant l'IA"
+        }
+      ],
+      "pexelsKeywords": "data analytics dark visualization gold accent",
+      "pexelsUrl": "https://images.pexels.com/photos/16902140/pexels-photo-16902140.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+    },
+    {
+      "type": "bullets",
+      "title": "Secteurs en Transformation Profonde",
+      "sectionTag": "Impact Industriel",
+      "bullets": [
+        "Santé : diagnostic assisté réduisant les erreurs médicales de 35% et accélérant la découverte de médicaments",
+        "Finance : détection de fraude en temps réel et trading algorithmique représentant 60% des transactions",
+        "Manufacturing : maintenance prédictive diminuant les temps d'arrêt de 45% et optimisant les chaînes logistiques",
+        "Retail : personnalisation client augmentant les conversions de 40% grâce à l'analyse comportementale"
+      ],
+      "pexelsKeywords": "modern dark corporate office technology",
+      "pexelsUrl": "https://images.pexels.com/photos/234527/pexels-photo-234527.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+    },
+    {
+      "type": "comparison",
+      "title": "Le Paradigme du Travail Réinventé",
+      "columns": [
+        {
+          "label": "Hier",
+          "items": [
+            "Tâches répétitives manuelles",
+            "Décisions basées sur l'intuition",
+            "Analyse de données limitée",
+            "Formation unique en début de carrière"
+          ]
+        },
+        {
+          "label": "Demain avec l'IA",
+          "items": [
+            "Automatisation intelligente des processus",
+            "Décisions augmentées par les données",
+            "Insights prédictifs en temps réel",
+            "Apprentissage continu et adaptatif"
+          ]
+        }
+      ],
+      "pexelsKeywords": "contrast transformation dark light professional",
+      "pexelsUrl": "https://images.pexels.com/photos/36799118/pexels-photo-36799118.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+    },
+    {
+      "type": "quote",
+      "title": "Vision",
+      "quote": "L'intelligence artificielle ne remplacera pas les humains. Mais les humains qui utilisent l'IA remplaceront ceux qui ne l'utilisent pas.",
+      "author": "Karim Lakhani, Harvard Business School",
+      "pexelsKeywords": "inspiring dark minimal elegant silhouette",
+      "pexelsUrl": "https://images.pexels.com/photos/34418454/pexels-photo-34418454.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+    },
+    {
+      "type": "timeline",
+      "title": "Évolution et Jalons Clés",
+      "timeline": [
+        {
+          "date": "2012",
+          "label": "Deep Learning révolutionne la vision par ordinateur"
+        },
+        {
+          "date": "2017",
+          "label": "Les Transformers redéfinissent le NLP"
+        },
+        {
+          "date": "2022",
+          "label": "ChatGPT démocratise l'IA générative"
+        },
+        {
+          "date": "2025",
+          "label": "Agents autonomes et IA multimodale"
+        }
+      ],
+      "pexelsKeywords": "timeline journey path evolution dark",
+      "pexelsUrl": "https://images.pexels.com/photos/29505140/pexels-photo-29505140.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+    },
+    {
+      "type": "bullets",
+      "title": "Réussir Votre Transformation IA",
+      "sectionTag": "Recommandations Stratégiques",
+      "bullets": [
+        "Établir une gouvernance IA claire avec des principes éthiques et une supervision humaine systématique",
+        "Investir dans la montée en compétences : former 100% des équipes aux fondamentaux de l'IA d'ici 18 mois",
+        "Commencer par des cas d'usage à fort ROI et faible risque pour construire la confiance organisationnelle",
+        "Créer un écosystème de partenaires technologiques et académiques pour rester à la pointe de l'innovation"
+      ],
+      "pexelsKeywords": "strategy planning dark luxury boardroom",
+      "pexelsUrl": "https://images.pexels.com/photos/6285073/pexels-photo-6285073.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+    },
+    {
+      "type": "cta",
+      "title": "Le Moment d'Agir, C'est Maintenant",
+      "subtitle": "Chaque jour sans stratégie IA est une opportunité offerte à vos concurrents",
+      "cta": "Lançons Votre Projet IA",
+      "sectionTag": "Prochaine Étape",
+      "pexelsKeywords": "inspiring future dark golden light breakthrough",
+      "pexelsUrl": "https://images.pexels.com/photos/7501392/pexels-photo-7501392.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+    },
+    {
+      "type": "bullets",
+      "title": "Le Changement dans le Monde Africain",
+      "subtitle": "L'IA comme catalyseur de transformation pour le continent",
+      "bullets": [
+        "Leapfrogging technologique : L'Afrique saute des étapes grâce aux solutions mobiles et IA",
+        "Fintech révolutionnaire : Services bancaires mobiles transformant l'inclusion financière",
+        "AgriTech intelligente : IA optimisant les rendements agricoles et la sécurité alimentaire",
+        "Santé connectée : Télémédecine et diagnostic IA comblant le déficit de soins",
+        "Éducation digitale : Plateformes d'apprentissage personnalisées démocratisant l'accès au savoir"
+      ],
+      "motion": "fade",
+      "accent": null,
+      "pexelsUrl": "https://images.pexels.com/photos/8424894/pexels-photo-8424894.jpeg?auto=compress&cs=tinysrgb&h=650&w=940"
+    }
+  ],
+  "layout": "widescreen",
+  "generatedAt": "2026-05-17T15:04:13.139Z"
+}

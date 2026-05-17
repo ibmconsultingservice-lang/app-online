@@ -21,8 +21,8 @@ export default function Home() {
             Décris ton profil en quelques mots, notre IA génère un CV professionnel et optimisé pour toi. Plus besoin de passer des heures sur la mise en page.
           </p>
 
-          {/* Two CTA buttons */}
-          <div className="flex flex-col sm:flex-row items-start gap-4">
+          {/* Three CTA buttons */}
+          <div className="flex flex-col sm:flex-row items-start gap-4 flex-wrap">
 
             {/* Primary — classic builder */}
             <a
@@ -30,7 +30,7 @@ export default function Home() {
               className="group relative bg-black text-white px-7 py-4 rounded-full text-sm font-semibold hover:bg-gray-800 transition-all shadow-xl active:scale-95 text-center"
             >
               <span className="flex items-center gap-2">
-                <span></span>
+                <span>📄</span>
                 Générateur Standard
               </span>
               <span className="block text-[10px] font-normal text-gray-400 mt-0.5 text-left pl-6">
@@ -44,7 +44,7 @@ export default function Home() {
               className="group relative bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-7 py-4 rounded-full text-sm font-semibold hover:from-indigo-500 hover:to-purple-500 transition-all shadow-xl active:scale-95 text-center"
             >
               <span className="flex items-center gap-2">
-                <span></span>
+                <span>✨</span>
                 ProBuild
                 <span className="bg-white/20 text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-full">
                   New
@@ -52,6 +52,23 @@ export default function Home() {
               </span>
               <span className="block text-[10px] font-normal text-indigo-200 mt-0.5 text-left pl-6">
                 Design éditorial Pro
+              </span>
+            </a>
+
+            {/* Tertiary — CVmod */}
+            <a
+              href="/cv/cvmod"
+              className="group relative bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-7 py-4 rounded-full text-sm font-semibold hover:from-emerald-400 hover:to-teal-500 transition-all shadow-xl active:scale-95 text-center"
+            >
+              <span className="flex items-center gap-2">
+                <span>🔧</span>
+                CVmod
+                <span className="bg-white/20 text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-full">
+                  Beta
+                </span>
+              </span>
+              <span className="block text-[10px] font-normal text-emerald-100 mt-0.5 text-left pl-6">
+                Modifier &amp; optimiser
               </span>
             </a>
 
@@ -66,7 +83,7 @@ export default function Home() {
           {/* Main card */}
           <div className="relative w-full max-w-md aspect-[4/3] bg-gradient-to-tr from-[#6366f1] to-[#a855f7] rounded-[3rem] p-8 shadow-2xl flex items-center justify-center">
             
-            <div className="w-full bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-2xl space-y-6 transform hover:-rotate-1 transition-transform duration-500">
+            <div className="w-full bg-white/95 backdrop-blur-sm rounded-2xl p-6 shadow-2xl space-y-5 transform hover:-rotate-1 transition-transform duration-500">
               <div className="flex flex-col items-center text-center space-y-3">
                 <div className="w-14 h-14 bg-blue-50 rounded-full flex items-center justify-center shadow-inner">
                   <span className="text-2xl">✨</span>
@@ -88,7 +105,7 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Two mode pills inside the card */}
+              {/* Three mode pills inside the card */}
               <div className="flex gap-2">
                 <a
                   href="/cv/build"
@@ -101,6 +118,12 @@ export default function Home() {
                   className="flex-1 text-center text-[11px] font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-full py-2 hover:opacity-90 transition"
                 >
                   ProBuild ✨
+                </a>
+                <a
+                  href="/cv/cvmod"
+                  className="flex-1 text-center text-[11px] font-semibold bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-full py-2 hover:opacity-90 transition"
+                >
+                  CVmod 🔧
                 </a>
               </div>
 

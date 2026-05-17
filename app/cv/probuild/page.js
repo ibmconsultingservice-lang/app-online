@@ -49,7 +49,7 @@ export default function CVPage() {
           Formation : ${formData.education}, Expériences : ${formData.experience},
           Compétences : ${formData.competences}, Loisirs : ${formData.loisirs}.
           Formate avec des sections claires (titres en majuscules).`
-        : `Génère un CV complet à partir de : ${prompt}. Titres en majuscules, pas de gras.`
+        : `Génère un CV complet à partir de : ${prompt}. N'utilise pas de gras, juste du texte avec les titres en majuscules.`
 
       const response = await fetch('/api/generate-cv', {
         method: 'POST',
