@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { fetchQuizQuestion, loadProgress, saveProgress, GLOBAL_CSS } from '../gameEngine'
+import { fetchQuizQuestion, loadProgress, saveProgress, GLOBAL_CSS } from './gameEngine'
 
 // ── Floating particles for ambiance ──────────────────────────
 function AmbientParticles({ theme }) {
