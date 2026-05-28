@@ -146,8 +146,8 @@ RÉPONSE — JSON STRICT, sans markdown, sans texte autour :
       try {
         // Stream Claude response
         const response = await client.messages.create({
-          model: 'claude-opus-4-5',
-          max_tokens: 8192,
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 8000,
           stream: true,
           messages: [{ role: 'user', content: prompt }],
         })
