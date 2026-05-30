@@ -1,0 +1,216 @@
+{
+  "title": "L'Intelligence Artificielle : Le Pilier du Changement Moderne",
+  "description": "Exploration stratégique de l'IA comme catalyseur de transformation dans l'économie contemporaine",
+  "theme": "obsidian",
+  "totalSlides": 15,
+  "slides": [
+    {
+      "type": "cover",
+      "title": "L'Intelligence Artificielle",
+      "subtitle": "Le pilier incontournable de la transformation moderne",
+      "badge": "Vision 2025",
+      "presenter": "Direction Stratégique",
+      "date": "Janvier 2025",
+      "pexelsKeywords": "futuristic dark neural network technology abstract",
+      "accent": "#c9a84c",
+      "pexelsUrl": "https://images.pexels.com/photos/30547577/pexels-photo-30547577.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+    },
+    {
+      "type": "agenda",
+      "title": "Notre Parcours Aujourd'hui",
+      "sectionTag": "Agenda",
+      "bullets": [
+        "Comprendre l'écosystème IA actuel et ses fondamentaux",
+        "Analyser les cas d'usage transformateurs par secteur",
+        "Évaluer les défis éthiques et réglementaires",
+        "Construire votre feuille de route d'adoption stratégique"
+      ],
+      "pexelsKeywords": "minimal dark geometric lines abstract",
+      "pexelsUrl": "https://images.pexels.com/photos/12623753/pexels-photo-12623753.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+    },
+    {
+      "type": "section",
+      "title": "L'Ère de l'Intelligence",
+      "subtitle": "Comprendre les fondations d'une révolution technologique sans précédent",
+      "sectionNumber": "01",
+      "pexelsKeywords": "cinematic artificial intelligence brain circuits dark",
+      "pexelsUrl": "https://images.pexels.com/photos/17483868/pexels-photo-17483868.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+    },
+    {
+      "type": "bullets",
+      "title": "Les Trois Piliers de l'IA Moderne",
+      "sectionTag": "Fondamentaux",
+      "bullets": [
+        "Machine Learning : algorithmes auto-apprenants qui extraient des patterns de milliards de données",
+        "Deep Learning : réseaux neuronaux mimant le cerveau humain pour des tâches complexes",
+        "IA Générative : création de contenu original redéfinissant la créativité humaine",
+        "Computer Vision : interprétation visuelle permettant l'automatisation industrielle avancée"
+      ],
+      "pexelsKeywords": "dark server room data center technology",
+      "pexelsUrl": "https://images.pexels.com/photos/4508751/pexels-photo-4508751.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+    },
+    {
+      "type": "stats",
+      "title": "L'Impact Économique Global",
+      "stats": [
+        {
+          "value": "$15.7T",
+          "label": "Contribution PIB mondial d'ici 2030"
+        },
+        {
+          "value": "97M",
+          "label": "Nouveaux emplois créés par l'IA"
+        },
+        {
+          "value": "40%",
+          "label": "Gain de productivité moyen"
+        }
+      ],
+      "pexelsKeywords": "financial growth chart dark luxury office",
+      "pexelsUrl": "https://images.pexels.com/photos/7947744/pexels-photo-7947744.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+    },
+    {
+      "type": "section",
+      "title": "Transformation Sectorielle",
+      "subtitle": "Comment l'IA redessine les contours de chaque industrie",
+      "sectionNumber": "02",
+      "pexelsKeywords": "cinematic cityscape night futuristic skyline",
+      "pexelsUrl": "https://images.pexels.com/photos/14586523/pexels-photo-14586523.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+    },
+    {
+      "type": "comparison",
+      "title": "Avant et Après l'IA",
+      "columns": [
+        {
+          "label": "Modèle Traditionnel",
+          "items": [
+            "Décisions basées sur l'intuition et l'expérience limitée",
+            "Processus manuels chronophages et sujets aux erreurs",
+            "Service client réactif avec délais importants",
+            "Maintenance corrective après pannes coûteuses"
+          ]
+        },
+        {
+          "label": "Modèle Augmenté par l'IA",
+          "items": [
+            "Décisions data-driven avec précision prédictive",
+            "Automatisation intelligente libérant le potentiel humain",
+            "Expérience client proactive et personnalisée 24/7",
+            "Maintenance prédictive réduisant les temps d'arrêt de 70%"
+          ]
+        }
+      ],
+      "pexelsKeywords": "contrast transformation technology evolution dark",
+      "pexelsUrl": "https://images.pexels.com/photos/8728291/pexels-photo-8728291.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+    },
+    {
+      "type": "bullets",
+      "title": "Santé : La Révolution Silencieuse",
+      "sectionTag": "Cas d'Usage",
+      "bullets": [
+        "Diagnostic précoce du cancer avec 94% de précision grâce à l'imagerie médicale IA",
+        "Découverte de médicaments accélérée de 10 ans à 18 mois",
+        "Chirurgie assistée par robot réduisant les complications de 50%",
+        "Médecine personnalisée adaptant les traitements au profil génétique unique"
+      ],
+      "pexelsKeywords": "medical technology dark hospital innovation",
+      "pexelsUrl": "https://images.pexels.com/photos/5875565/pexels-photo-5875565.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+    },
+    {
+      "type": "bullets",
+      "title": "Finance : L'Algorithme au Pouvoir",
+      "sectionTag": "Cas d'Usage",
+      "bullets": [
+        "Détection de fraude en temps réel bloquant 2.1 milliards de transactions suspectes annuellement",
+        "Trading algorithmique représentant 70% des volumes sur les marchés",
+        "Scoring crédit équitable analysant 10,000 points de données vs 50 traditionnellement",
+        "Conseil financier automatisé démocratisant la gestion de patrimoine"
+      ],
+      "pexelsKeywords": "dark stock market finance technology abstract",
+      "pexelsUrl": "https://images.pexels.com/photos/16902140/pexels-photo-16902140.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+    },
+    {
+      "type": "timeline",
+      "title": "L'Évolution Accélérée de l'IA",
+      "timeline": [
+        {
+          "date": "2012",
+          "label": "AlexNet révolutionne la vision par ordinateur"
+        },
+        {
+          "date": "2017",
+          "label": "Les Transformers redéfinissent le NLP"
+        },
+        {
+          "date": "2022",
+          "label": "ChatGPT démocratise l'IA générative"
+        },
+        {
+          "date": "2024",
+          "label": "Agents autonomes et IA multimodale"
+        },
+        {
+          "date": "2025",
+          "label": "Intégration massive dans les processus métier"
+        }
+      ],
+      "pexelsKeywords": "timeline evolution technology dark futuristic path",
+      "pexelsUrl": "https://images.pexels.com/photos/695730/pexels-photo-695730.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+    },
+    {
+      "type": "section",
+      "title": "Défis et Responsabilités",
+      "subtitle": "Naviguer les enjeux éthiques d'une technologie transformatrice",
+      "sectionNumber": "03",
+      "pexelsKeywords": "balance scales justice dark moody abstract",
+      "pexelsUrl": "https://images.pexels.com/photos/6077181/pexels-photo-6077181.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+    },
+    {
+      "type": "bullets",
+      "title": "Les Impératifs Éthiques",
+      "sectionTag": "Gouvernance",
+      "bullets": [
+        "Transparence algorithmique : expliquer les décisions IA aux utilisateurs et régulateurs",
+        "Biais et équité : auditer régulièrement les modèles pour prévenir les discriminations",
+        "Protection des données : garantir la confidentialité dans l'ère du big data",
+        "Responsabilité : définir la chaîne de responsabilité pour les décisions autonomes"
+      ],
+      "pexelsKeywords": "ethics governance dark professional meeting",
+      "pexelsUrl": "https://images.pexels.com/photos/8872411/pexels-photo-8872411.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+    },
+    {
+      "type": "quote",
+      "title": "Vision d'Avenir",
+      "quote": "L'intelligence artificielle ne remplacera pas les humains. Mais les humains qui utilisent l'IA remplaceront ceux qui ne l'utilisent pas.",
+      "author": "Karim Lakhani, Harvard Business School",
+      "pexelsKeywords": "inspiring dark minimal elegant spotlight",
+      "pexelsUrl": "https://images.pexels.com/photos/37322966/pexels-photo-37322966.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+    },
+    {
+      "type": "content",
+      "title": "Votre Feuille de Route IA",
+      "subtitle": "Cinq étapes pour une adoption réussie",
+      "sectionTag": "Stratégie",
+      "bullets": [
+        "Audit de maturité digitale : évaluer vos données, infrastructures et compétences actuelles",
+        "Quick wins identifiés : cibler 3 cas d'usage à fort ROI pour des victoires rapides",
+        "Montée en compétences : former 100% de vos équipes aux fondamentaux IA",
+        "Gouvernance robuste : établir un comité éthique et des guidelines d'utilisation",
+        "Scalabilité planifiée : préparer l'infrastructure pour un déploiement à grande échelle"
+      ],
+      "pexelsKeywords": "roadmap strategy planning dark business",
+      "pexelsUrl": "https://images.pexels.com/photos/8828454/pexels-photo-8828454.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+    },
+    {
+      "type": "cta",
+      "title": "Le Futur N'Attend Pas",
+      "subtitle": "Chaque jour sans stratégie IA est une opportunité manquée face à vos concurrents",
+      "cta": "Lancez Votre Transformation",
+      "sectionTag": "Passez à l'Action",
+      "pexelsKeywords": "inspiring future technology dark golden light",
+      "pexelsUrl": "https://images.pexels.com/photos/1073051/pexels-photo-1073051.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+    }
+  ],
+  "layout": "standard",
+  "generatedAt": "2026-05-17T15:15:40.594Z"
+}
