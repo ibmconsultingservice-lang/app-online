@@ -90,7 +90,7 @@ const TOOLS = [
     icon: '◈',
     color: '#6b21a8',
     bg: '#f5e8fe',
-    path: '/management/bc',
+    path: '/management/bsc',
     ready: true,
   },
   {

@@ -116,6 +116,7 @@ const TOOLS = [
   { icon: '🔍', name: 'Document Analyser',  desc: 'Analyse approfondie de document',             path: '/docanalyser',  img: '/images/tools/tool-01-analyser.jpg',      plan: 'pro'     },
   { icon: '⚖️', name: 'Contract Generator', desc: 'Générer tout type de contrat',                path: '/Contract',     img: '/images/tools/tool-01-contract.jpg',      plan: 'pro'     },
   { icon: '🔥', name: 'PPM',               desc: 'Personal Project Mapper Ai',                   path: '/ppm',          img: '/images/tools/tool-01-ppm.jpg',           plan: 'pro'     },
+  { icon: '🔥', name: 'Management',               desc: 'Les Outils gestionnaires & analyses',                   path: '/management',          img: '/images/tools/tool-01-management.jpg',           plan: 'pro'     },
   { icon: '🔥', name: 'Dashboard Ai',       desc: 'Créer un tableau de bord personalisé',        path: '/DashboardAi',  img: '/images/tools/tool-01-dashboard.jpg',     plan: 'premium' },
   { icon: '👩‍🦰', name: 'Image Generator',   desc: "Générateur d'image",                         path: '/Imagegen',     img: '/images/tools/tool-01-image.jpg',         plan: 'premium' },
   { icon: '🤳', name: 'Capture Me',         desc: 'Take your image and make it beautiful',       path: '/Capture',      img: '/images/tools/tool-01-capture.jpg',       plan: 'premium' },

@@ -28,6 +28,7 @@ const TOOLS = [
   { icon: '🔍', name: 'Doc Analyser',      desc: 'Analyse approfondie de document',     path: '/docanalyser',   cost: 2, plan: 'pro',     color: '#1e3a5f' },
   { icon: '⚖️', name: 'Contract Gen.',     desc: 'Générer tout type de contrat',        path: '/Contract',      cost: 3, plan: 'pro',     color: '#2d1b4e' },
   { icon: '🚀', name: 'Personal Project Mapping',     desc: 'Suivez vos projects personnels',        path: '/ppm',      cost: 3, plan: 'pro',     color: '#4e1b43' },
+  { icon: '🐱‍🏍', name: 'Management tools',     desc: 'Suivez vos projects personnels',        path: '/management',      cost: 3, plan: 'pro',     color: '#4e1b43' },
   { icon: '🔥', name: 'Dashboard Ai',      desc: 'Tableau de bord personnalisé',        path: '/DashboardAi',   cost: 0, plan: 'premium', color: '#3a1a2e' },
   { icon: '👩‍🦰', name: 'Image Generator',  desc: "Générateur d'image IA",               path: '/Imagegen',      cost: 2, plan: 'premium', color: '#1a3a2e' },
   { icon: '🤳', name: 'Capture Me',        desc: 'Embellissez vos photos',              path: '/Capture',       cost: 2, plan: 'premium', color: '#2d1b4e' },

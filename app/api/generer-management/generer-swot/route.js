@@ -2,204 +2,232 @@ import Anthropic from '@anthropic-ai/sdk'
 
 const client = new Anthropic()
 
-// ── Quadrant metadata ─────────────────────────────────────────────────────────
-const QUADRANT_META = {
-  strengths:     { label: 'Forces (Strengths)',           internal: true,  positive: true  },
-  weaknesses:    { label: 'Faiblesses (Weaknesses)',      internal: true,  positive: false },
-  opportunities: { label: 'Opportunités (Opportunities)', internal: false, positive: true  },
-  threats:       { label: 'Menaces (Threats)',            internal: false, positive: false },
-}
+const uid = () => `${Date.now()}-${Math.random().toString(36).slice(2,7)}`
 
-// ── TOWS combinations ─────────────────────────────────────────────────────────
-// SO = Strengths + Opportunities  → Attaque / Développement
-// WO = Weaknesses + Opportunities → Amélioration / Conversion
-// ST = Strengths + Threats        → Défense / Protection
-// WT = Weaknesses + Threats       → Survie / Réduction
+// ── TOWS types ────────────────────────────────────────────────
 const TOWS_TYPES = {
-  SO: { label: 'Forces × Opportunités',    strategy: 'Stratégie d\'attaque : exploiter vos forces pour saisir les opportunités',   icon: '↗' },
-  WO: { label: 'Faiblesses × Opportunités',strategy: 'Stratégie d\'amélioration : combler les faiblesses pour saisir les opportunités', icon: '↑' },
-  ST: { label: 'Forces × Menaces',         strategy: 'Stratégie de défense : utiliser vos forces pour contrer les menaces',       icon: '⊡' },
-  WT: { label: 'Faiblesses × Menaces',     strategy: 'Stratégie de survie : minimiser faiblesses et éviter les menaces',          icon: '↙' },
+  SO: { label:'Forces × Opportunités',    strategy:'Exploiter vos forces pour saisir les opportunités',   icon:'↗', color:'#22d3a5' },
+  WO: { label:'Faiblesses × Opportunités',strategy:'Combler vos faiblesses pour saisir les opportunités', icon:'↑', color:'#60a5fa' },
+  ST: { label:'Forces × Menaces',         strategy:'Utiliser vos forces pour contrer les menaces',        icon:'⊡', color:'#f59e0b' },
+  WT: { label:'Faiblesses × Menaces',     strategy:'Minimiser faiblesses et éviter les menaces',          icon:'↙', color:'#f87171' },
 }
 
 export async function POST(request) {
   try {
     const body = await request.json()
-    const { analysisName, context, objective, items, projectName, projectTag } = body
+    const { mode, analysisName, context, objective, items, projectName, projectTag } = body
 
-    // Validate: at least some items
-    const totalItems = Object.values(items || {}).reduce((s, arr) => s + arr.length, 0)
-    if (totalItems === 0) {
-      return Response.json({ error: 'Aucun élément SWOT fourni' }, { status: 400 })
-    }
+    // ═══════════════════════════════════════════════════
+    // MODE 1 — AUTO GENERATE: IA crée les éléments SWOT
+    // ═══════════════════════════════════════════════════
+    if (mode === 'generate') {
+      if (!context?.trim()) {
+        return Response.json({ error: 'Contexte requis pour la génération automatique' }, { status: 400 })
+      }
 
-    // ── Build formatted sections ──────────────────────────────────────────────
-    const formatSection = (key) => {
-      const arr = items[key] || []
-      if (arr.length === 0) return `Aucun élément renseigné`
-      return arr.map((item, i) =>
-        `  ${i+1}. ${item.text}${item.priority === 'high' ? ' [HAUTE PRIORITÉ]' : item.priority === 'low' ? ' [faible priorité]' : ''} — Impact: ${item.impact}/5${item.notes ? ` — Note: ${item.notes}` : ''}`
-      ).join('\n')
-    }
+      const prompt = `Tu es un consultant stratégique expert en analyse SWOT.
+À partir du contexte fourni, génère une analyse SWOT complète et réaliste.
 
-    // ── Compute coverage stats ────────────────────────────────────────────────
-    const counts = Object.fromEntries(
-      Object.keys(QUADRANT_META).map(k => [k, (items[k] || []).length])
-    )
-    const highPriorityItems = Object.entries(items || {}).flatMap(([k, arr]) =>
-      arr.filter(i => i.priority === 'high').map(i => `${QUADRANT_META[k].label}: "${i.text}"`)
-    )
-    const highImpactItems = Object.entries(items || {}).flatMap(([k, arr]) =>
-      arr.filter(i => i.impact >= 4).map(i => `${QUADRANT_META[k].label}: "${i.text}"`)
-    )
+## CONTEXTE
+${projectName ? `Entreprise/Projet : ${projectName}` : ''}
+${projectTag   ? `Secteur : ${projectTag}` : ''}
+Analyse : ${analysisName || 'SWOT Analysis'}
+Description : ${context}
+${objective ? `Objectif : ${objective}` : ''}
 
-    const contextLines = [
-      projectName  && `Entreprise / Projet : ${projectName}`,
-      projectTag   && `Secteur : ${projectTag}`,
-      context      && `Contexte : ${context}`,
-      objective    && `Objectif stratégique : ${objective}`,
-    ].filter(Boolean).join('\n')
-
-    // ── Prompt ───────────────────────────────────────────────────────────────
-    const prompt = `Tu es un consultant stratégique expert en analyse SWOT et en matrices TOWS. 
-Tu fournis des analyses profondes, contextualisées et directement actionnables.
-
-${contextLines ? `## CONTEXTE\n${contextLines}\n` : ''}
-
-## ANALYSE SWOT : "${analysisName}"
-Total : ${totalItems} éléments répartis sur ${Object.values(counts).filter(c => c > 0).length}/4 quadrants
-
-### FORCES (${counts.strengths} éléments)
-${formatSection('strengths')}
-
-### FAIBLESSES (${counts.weaknesses} éléments)
-${formatSection('weaknesses')}
-
-### OPPORTUNITÉS (${counts.opportunities} éléments)
-${formatSection('opportunities')}
-
-### MENACES (${counts.threats} éléments)
-${formatSection('threats')}
-
-${highPriorityItems.length > 0 ? `### Éléments haute priorité identifiés :\n${highPriorityItems.map(i => `- ${i}`).join('\n')}\n` : ''}
-${highImpactItems.length > 0 ? `### Éléments à fort impact (≥4/5) :\n${highImpactItems.map(i => `- ${i}`).join('\n')}\n` : ''}
-
----
-
-Génère une analyse stratégique SWOT complète incluant les stratégies TOWS croisées.
-Réponds UNIQUEMENT en JSON valide avec cette structure exacte :
-
+Génère exactement ce JSON (sans markdown, sans backticks) :
 {
-  "diagnostic": "Paragraphe de 4-6 phrases. Évalue l'équilibre du portefeuille SWOT, l'état stratégique général, les tensions clés entre forces/faiblesses et opportunités/menaces. Sois précis, contextuel, pas générique.",
-
+  "items": {
+    "strengths": [
+      { "text": "Force concrète et spécifique 1", "priority": "high", "impact": 5, "notes": "Explication courte" },
+      { "text": "Force concrète 2", "priority": "high", "impact": 4, "notes": "" },
+      { "text": "Force 3", "priority": "medium", "impact": 3, "notes": "" },
+      { "text": "Force 4", "priority": "medium", "impact": 3, "notes": "" },
+      { "text": "Force 5", "priority": "low", "impact": 2, "notes": "" }
+    ],
+    "weaknesses": [
+      { "text": "Faiblesse concrète 1", "priority": "high", "impact": 4, "notes": "Impact potentiel" },
+      { "text": "Faiblesse 2", "priority": "high", "impact": 4, "notes": "" },
+      { "text": "Faiblesse 3", "priority": "medium", "impact": 3, "notes": "" },
+      { "text": "Faiblesse 4", "priority": "low", "impact": 2, "notes": "" }
+    ],
+    "opportunities": [
+      { "text": "Opportunité de marché 1", "priority": "high", "impact": 5, "notes": "Fenêtre temporelle" },
+      { "text": "Opportunité 2", "priority": "high", "impact": 4, "notes": "" },
+      { "text": "Opportunité 3", "priority": "medium", "impact": 3, "notes": "" },
+      { "text": "Opportunité 4", "priority": "medium", "impact": 3, "notes": "" }
+    ],
+    "threats": [
+      { "text": "Menace externe 1", "priority": "high", "impact": 4, "notes": "Probabilité d'occurrence" },
+      { "text": "Menace 2", "priority": "medium", "impact": 3, "notes": "" },
+      { "text": "Menace 3", "priority": "medium", "impact": 3, "notes": "" },
+      { "text": "Menace 4", "priority": "low", "impact": 2, "notes": "" }
+    ]
+  },
+  "diagnostic": "Paragraphe de 4-6 phrases sur l'état stratégique général basé sur ce contexte spécifique.",
   "strategies": [
-    {
-      "type": "SO",
-      "titre": "Titre court et percutant (max 8 mots)",
-      "description": "Description de 2-3 phrases expliquant comment croiser spécifiquement ces forces avec ces opportunités pour créer de la valeur."
-    },
-    {
-      "type": "WO",
-      "titre": "...",
-      "description": "..."
-    },
-    {
-      "type": "ST",
-      "titre": "...",
-      "description": "..."
-    },
-    {
-      "type": "WT",
-      "titre": "...",
-      "description": "..."
-    }
+    { "type": "SO", "titre": "Titre court percutant", "description": "2-3 phrases sur comment exploiter forces + opportunités" },
+    { "type": "WO", "titre": "Titre court percutant", "description": "2-3 phrases sur comment corriger faiblesses via opportunités" },
+    { "type": "ST", "titre": "Titre court percutant", "description": "2-3 phrases sur comment utiliser forces contre menaces" },
+    { "type": "WT", "titre": "Titre court percutant", "description": "2-3 phrases sur comment minimiser faiblesses face aux menaces" }
   ],
-
   "priorites": [
-    "Action prioritaire #1 : concrète, mesurable, avec horizon temporel si possible",
-    "Action prioritaire #2",
-    "Action prioritaire #3",
-    "Action prioritaire #4 (si pertinent)",
-    "Action prioritaire #5 (si pertinent)"
+    "Action #1 concrète et mesurable avec horizon temporel",
+    "Action #2",
+    "Action #3",
+    "Action #4",
+    "Action #5"
   ],
-
   "risques": [
-    "Risque critique #1 : description et impact potentiel",
-    "Risque critique #2",
-    "Risque critique #3 (si pertinent)"
+    "Risque critique #1 avec impact potentiel",
+    "Risque #2",
+    "Risque #3"
   ],
-
-  "conclusion": "Phrase de synthèse stratégique mémorable sur la trajectoire recommandée."
+  "conclusion": "Phrase de synthèse mémorable sur la trajectoire recommandée.",
+  "healthScore": 72
 }
 
-RÈGLES ESSENTIELLES :
-- Génère EXACTEMENT 4 stratégies TOWS (une SO, une WO, une ST, une WT)
-- Chaque stratégie doit croiser des éléments SPÉCIFIQUES de ta liste, pas des généralités
-- Si un quadrant est vide, adapte ta stratégie en conséquence et note-le
-- Les priorités doivent être ordonnées par urgence × impact
-- Les risques = menaces amplifiées par les faiblesses existantes
-- Adapte le ton au secteur si renseigné
-- Identifie les contradictions ou paradoxes dans la SWOT si présents`
+RÈGLES :
+- Chaque élément SWOT doit être SPÉCIFIQUE au contexte fourni (pas générique)
+- priority: "high" | "medium" | "low"
+- impact: 1-5
+- 4-6 forces, 3-5 faiblesses, 3-5 opportunités, 3-5 menaces
+- Les 4 stratégies TOWS doivent croiser des éléments SPÉCIFIQUES listés
+- healthScore entre 0-100 reflétant l'état stratégique`
 
-    // ── Call Claude ───────────────────────────────────────────────────────────
-    const response = await client.messages.create({
-      model:      'claude-sonnet-4-20250514',
-      max_tokens: 2500,
-      messages: [{ role: 'user', content: prompt }],
-    })
+      const response = await client.messages.create({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 3500,
+        messages: [{ role:'user', content: prompt }],
+      })
 
-    const rawText = response.content
-      .filter(b => b.type === 'text')
-      .map(b => b.text)
-      .join('')
-
-    // ── Parse JSON ────────────────────────────────────────────────────────────
-    let result
-    try {
+      const rawText = response.content.filter(b => b.type==='text').map(b => b.text).join('')
       const jsonMatch = rawText.match(/\{[\s\S]*\}/)
-      if (!jsonMatch) throw new Error('Pas de JSON dans la réponse')
-      result = JSON.parse(jsonMatch[0])
+      if (!jsonMatch) throw new Error('Réponse IA invalide')
 
-      // Ensure all 4 TOWS types present
-      const existingTypes = (result.strategies || []).map(s => s.type)
-      for (const type of ['SO', 'WO', 'ST', 'WT']) {
-        if (!existingTypes.includes(type)) {
-          result.strategies = result.strategies || []
-          result.strategies.push({
-            type,
-            titre: `Stratégie ${type}`,
-            description: TOWS_TYPES[type].strategy,
-          })
+      const result = JSON.parse(jsonMatch[0])
+
+      // Add IDs to each item
+      const itemsWithIds = {}
+      for (const [quadrant, arr] of Object.entries(result.items || {})) {
+        itemsWithIds[quadrant] = (arr || []).map(item => ({ ...item, id: uid() }))
+      }
+
+      return Response.json({
+        success: true,
+        mode: 'generate',
+        items: itemsWithIds,
+        analysis: {
+          diagnostic:  result.diagnostic,
+          strategies:  result.strategies,
+          priorites:   result.priorites,
+          risques:     result.risques,
+          conclusion:  result.conclusion,
+          healthScore: result.healthScore || 70,
         }
-      }
-      // Keep only SO, WO, ST, WT
-      result.strategies = result.strategies.filter(s => ['SO','WO','ST','WT'].includes(s.type))
-      // Sort in canonical order
-      const order = ['SO','WO','ST','WT']
-      result.strategies.sort((a,b) => order.indexOf(a.type) - order.indexOf(b.type))
-
-    } catch {
-      // Fallback minimal
-      result = {
-        diagnostic: rawText.slice(0, 500) || 'Analyse en cours de traitement.',
-        strategies: Object.entries(TOWS_TYPES).map(([type, meta]) => ({
-          type,
-          titre: `Stratégie ${type}`,
-          description: meta.strategy,
-        })),
-        priorites: [
-          'Capitaliser sur les forces identifiées pour saisir les opportunités clés',
-          'Adresser en priorité les faiblesses à fort impact',
-          'Mettre en place un plan de mitigation pour les menaces critiques',
-        ],
-        risques: [
-          'Exposition aux menaces externes non compensées par des forces suffisantes',
-        ],
-        conclusion: 'Une approche équilibrée Forces-Opportunités permettra de maximiser la création de valeur.',
-      }
+      })
     }
 
-    return Response.json({ success: true, result })
+    // ═══════════════════════════════════════════════════
+    // MODE 2 — ANALYSE: IA analyse les éléments existants
+    // ═══════════════════════════════════════════════════
+    if (mode === 'analyse') {
+      const totalItems = Object.values(items || {}).reduce((s, arr) => s + arr.length, 0)
+      if (totalItems === 0) {
+        return Response.json({ error: 'Aucun élément SWOT à analyser' }, { status: 400 })
+      }
+
+      const formatSection = (key, label) => {
+        const arr = items[key] || []
+        if (arr.length === 0) return `### ${label}\nAucun élément.`
+        return `### ${label} (${arr.length})\n` + arr.map((item, i) =>
+          `  ${i+1}. ${item.text}${item.priority==='high' ? ' [PRIORITÉ HAUTE]' : ''} — Impact: ${item.impact}/5${item.notes ? ` — ${item.notes}` : ''}`
+        ).join('\n')
+      }
+
+      const highPrio = Object.entries(items || {}).flatMap(([k, arr]) =>
+        arr.filter(i => i.priority==='high').map(i => `"${i.text}"`)
+      )
+
+      const contextInfo = [
+        projectName  && `Entreprise : ${projectName}`,
+        projectTag   && `Secteur : ${projectTag}`,
+        context      && `Contexte : ${context}`,
+        objective    && `Objectif : ${objective}`,
+      ].filter(Boolean).join('\n')
+
+      const prompt = `Tu es un consultant stratégique expert en analyse SWOT et matrices TOWS.
+Analyse en profondeur cette matrice SWOT et fournis des recommandations actionnables.
+
+## CONTEXTE
+${contextInfo || 'Non renseigné'}
+Analyse : "${analysisName}"
+Total éléments : ${totalItems}
+${highPrio.length > 0 ? `Éléments haute priorité : ${highPrio.join(', ')}` : ''}
+
+## MATRICE SWOT
+${formatSection('strengths',     'FORCES')}
+${formatSection('weaknesses',    'FAIBLESSES')}
+${formatSection('opportunities', 'OPPORTUNITÉS')}
+${formatSection('threats',       'MENACES')}
+
+Génère exactement ce JSON (sans markdown, sans backticks) :
+{
+  "diagnostic": "Paragraphe de 5-7 phrases. Évalue l'équilibre forces/faiblesses, les tensions clés, les paradoxes si présents. Sois précis et contextuel.",
+  "strategies": [
+    { "type": "SO", "titre": "Titre court percutant max 8 mots", "description": "2-3 phrases croisant des éléments SPÉCIFIQUES de ta liste" },
+    { "type": "WO", "titre": "...", "description": "..." },
+    { "type": "ST", "titre": "...", "description": "..." },
+    { "type": "WT", "titre": "...", "description": "..." }
+  ],
+  "priorites": [
+    "Action #1 : concrète, mesurable, avec horizon temporel si possible",
+    "Action #2",
+    "Action #3",
+    "Action #4",
+    "Action #5"
+  ],
+  "risques": [
+    "Risque #1 : menace amplifiée par une faiblesse",
+    "Risque #2",
+    "Risque #3"
+  ],
+  "conclusion": "Phrase de synthèse stratégique mémorable.",
+  "healthScore": 65,
+  "suggestions": [
+    "Suggestion d'amélioration pour compléter la matrice",
+    "Élément manquant qui renforcerait l'analyse"
+  ]
+}`
+
+      const response = await client.messages.create({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 2500,
+        messages: [{ role:'user', content: prompt }],
+      })
+
+      const rawText = response.content.filter(b => b.type==='text').map(b => b.text).join('')
+      const jsonMatch = rawText.match(/\{[\s\S]*\}/)
+      if (!jsonMatch) throw new Error('Réponse IA invalide')
+
+      let result = JSON.parse(jsonMatch[0])
+
+      // Ensure 4 TOWS
+      const existingTypes = (result.strategies || []).map(s => s.type)
+      for (const type of ['SO','WO','ST','WT']) {
+        if (!existingTypes.includes(type)) {
+          result.strategies = result.strategies || []
+          result.strategies.push({ type, titre:`Stratégie ${type}`, description: TOWS_TYPES[type].strategy })
+        }
+      }
+      result.strategies = result.strategies
+        .filter(s => ['SO','WO','ST','WT'].includes(s.type))
+        .sort((a,b) => ['SO','WO','ST','WT'].indexOf(a.type) - ['SO','WO','ST','WT'].indexOf(b.type))
+
+      return Response.json({ success: true, mode: 'analyse', analysis: result })
+    }
+
+    return Response.json({ error: 'Mode invalide (generate|analyse)' }, { status: 400 })
 
   } catch (err) {
     console.error('SWOT API error:', err)

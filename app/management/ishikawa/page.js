@@ -54,11 +54,18 @@ export default function IshikawaPage() {
   const [editWhyIdx,   setEditWhyIdx]   = useState(null)
 
   // AI
-  const [aiLoading,    setAiLoading]    = useState(false)
-  const [aiResult,     setAiResult]     = useState(null)
-  const [showAiPanel,  setShowAiPanel]  = useState(false)
+  const [aiLoading,      setAiLoading]      = useState(false)
+  const [genLoading,     setGenLoading]      = useState(false)  // generate mode spinner
+  const [aiResult,       setAiResult]       = useState(null)
+  const [showAiPanel,    setShowAiPanel]     = useState(false)
+
+  // Generate mode modal
+  const [showGenModal,   setShowGenModal]    = useState(false)
+  const [genContext,     setGenContext]      = useState('')
+  const [genResume,      setGenResume]       = useState('')    // resume returned after generation
 
   const [toast,        setToast]        = useState(null)
+  const importRef = useRef(null)
 
   // ── Load ──
   useEffect(() => {
@@ -240,25 +247,84 @@ export default function IshikawaPage() {
   const totalChains = active?.whyChains?.length || 0
   const completedChains = (active?.whyChains || []).filter(c => c.steps.length >= 5 && c.steps.every(s => s.because.trim())).length
 
-  // ── Export ──
+  // ── Export (single analysis) ──
   const exportAnalysis = () => {
     if (!active) return
-    const blob = new Blob([JSON.stringify(active, null, 2)], { type: 'application/json' })
+    const blob = new Blob([JSON.stringify({ version: 1, type: 'ishikawa', exportedAt: new Date().toISOString(), analysis: active }, null, 2)], { type: 'application/json' })
     const url  = URL.createObjectURL(blob)
     const a    = document.createElement('a')
-    a.href = url; a.download = `Ishikawa_${active.problem.slice(0,30).replace(/\s+/g,'_')}.json`
+    a.href = url; a.download = `Ishikawa_${active.problem.slice(0, 30).replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.json`
     a.click(); URL.revokeObjectURL(url)
+    showToast('Export réussi')
   }
 
-  // ── AI ──
-  const runAI = async () => {
-    if (!totalCauses && !totalChains) { showToast('Ajoutez des causes ou des pourquoi', 'error'); return }
-    setAiLoading(true); setShowAiPanel(true); setAiResult(null)
+  // ── Import ──
+  const importAnalysis = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      try {
+        const raw  = JSON.parse(ev.target.result)
+        // Support both wrapped {analysis:...} and bare analysis object
+        const data = raw.analysis || raw
+        if (!data.problem) throw new Error('Format invalide')
+        // Merge into current project analyses (give a new id to avoid collision)
+        const imported = { ...data, id: uid(), importedAt: new Date().toISOString() }
+        const updated  = [...analyses, imported]
+        setAnalyses(updated); setActiveId(imported.id); persist(updated)
+        setAiResult(imported.aiResult || null)
+        showToast(`Analyse "${imported.problem.slice(0, 30)}" importée`)
+      } catch { showToast('Fichier invalide ou format non reconnu', 'error') }
+    }
+    reader.readAsText(file)
+    e.target.value = ''
+  }
+
+  // ── MODE 1 : Generate — IA peuple tout automatiquement ──
+  const runGenerate = async () => {
+    if (!active) return
+    setGenLoading(true)
+    setShowGenModal(false)
     try {
-      const res = await fetch('/api/generer-management/generer-ishikawa', {
+      const res  = await fetch('/api/generer-management/generer-ishikawa', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          mode:        'generate',
+          problem:     active.problem,
+          context:     genContext.trim() || active.context,
+          impact:      active.impact,
+          projectName: project?.name || '',
+          projectTag:  project?.tag  || '',
+          nbWhyChains: 2,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Erreur serveur')
+      // Populate bones, whyChains, and resume
+      updateActive({
+        bones:     data.data.bones,
+        whyChains: data.data.whyChains,
+        aiGenResume: data.data.resume,
+      })
+      setGenResume(data.data.resume || '')
+      setGenContext('')
+      showToast('Diagramme généré par l\'IA ✦')
+    } catch (err) { showToast(err.message, 'error') }
+    setGenLoading(false)
+  }
+
+  // ── MODE 2 : Analyze — IA analyse l'existant ──
+  const runAI = async () => {
+    if (!totalCauses && !totalChains) { showToast('Ajoutez des causes ou des pourquoi d\'abord', 'error'); return }
+    setAiLoading(true); setShowAiPanel(true); setAiResult(null)
+    try {
+      const res  = await fetch('/api/generer-ishikawa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mode:        'analyze',
           problem:     active.problem,
           context:     active.context,
           impact:      active.impact,
@@ -272,7 +338,7 @@ export default function IshikawaPage() {
       if (!res.ok) throw new Error(data.error || 'Erreur serveur')
       setAiResult(data.result)
       updateActive({ aiResult: data.result })
-      showToast('Analyse IA générée')
+      showToast('Analyse IA terminée')
     } catch (err) { showToast(err.message, 'error') }
     setAiLoading(false)
   }
@@ -651,13 +717,24 @@ export default function IshikawaPage() {
             {project && <div className="topbar-sub">{project.name}</div>}
           </div>
           <div className="topbar-right">
+            <button className="btn" onClick={() => importRef.current?.click()} title="Importer une analyse sauvegardée">↑ Importer</button>
             {active && <>
-              <button className="btn" onClick={exportAnalysis}>↓ Exporter</button>
-              <button className="btn ai" onClick={runAI} disabled={aiLoading || (!totalCauses && !totalChains)}>
-                {aiLoading ? <><span className="spinner"/>Analyse…</> : '✦ Analyse IA'}
+              <button className="btn" onClick={exportAnalysis} title="Exporter l'analyse active en JSON">↓ Exporter</button>
+              <button
+                className="btn"
+                style={{ background: genLoading ? 'rgba(99,102,241,.15)' : 'rgba(99,102,241,.1)', borderColor: 'rgba(99,102,241,.3)', color: 'var(--accent2)' }}
+                onClick={() => setShowGenModal(true)}
+                disabled={genLoading || !active}
+                title="L'IA génère automatiquement toutes les causes et chaînes 5 Pourquoi"
+              >
+                {genLoading ? <><span className="spinner" style={{ borderTopColor: 'var(--accent2)' }}/>Génération…</> : '⚡ Générer'}
+              </button>
+              <button className="btn ai" onClick={runAI} disabled={aiLoading || (!totalCauses && !totalChains)} title="L'IA analyse les données existantes et propose un diagnostic">
+                {aiLoading ? <><span className="spinner"/>Analyse…</> : '✦ Analyser'}
               </button>
             </>}
           </div>
+          <input ref={importRef} type="file" accept=".json" hidden onChange={importAnalysis}/>
         </header>
 
         <div className="body">
@@ -740,6 +817,18 @@ export default function IshikawaPage() {
                   {active.impact  && <div style={{ fontSize: 12, color: 'var(--muted2)' }}>Impact : {active.impact}</div>}
                 </div>
               </div>
+
+              {/* AI generated resume banner */}
+              {(active.aiGenResume || genResume) && (
+                <div style={{ background: 'rgba(99,102,241,.06)', border: '1px solid rgba(99,102,241,.25)', borderRadius: 10, padding: '12px 16px', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                  <span style={{ fontSize: 16, lineHeight: 1, flexShrink: 0 }}>⚡</span>
+                  <div>
+                    <div style={{ fontSize: 10, color: 'var(--accent2)', fontFamily: 'Geist Mono,monospace', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 4 }}>Généré par l'IA</div>
+                    <div style={{ fontSize: 12, color: 'var(--muted2)', lineHeight: 1.6 }}>{active.aiGenResume || genResume}</div>
+                  </div>
+                  <button onClick={() => updateActive({ aiGenResume: '' })} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 13, marginLeft: 'auto', flexShrink: 0 }}>✕</button>
+                </div>
+              )}
 
               {/* Tool tabs */}
               <div className="tool-tabs">
@@ -872,6 +961,36 @@ export default function IshikawaPage() {
           </main>
         </div>
 
+        {/* ── Generate Modal ── */}
+        {showGenModal && (
+          <div className="modal-overlay" onClick={() => setShowGenModal(false)}>
+            <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 480 }}>
+              <div className="modal-title" style={{ color: 'var(--accent2)' }}>⚡ Génération automatique IA</div>
+              <p style={{ fontSize: 13, color: 'var(--muted2)', marginBottom: 16, lineHeight: 1.6 }}>
+                L'IA va analyser le problème <strong style={{ color: 'var(--text)' }}>"{active?.problem}"</strong> et peupler automatiquement toutes les arêtes du diagramme Ishikawa ainsi que {2} chaînes 5 Pourquoi.
+              </p>
+              <div style={{ background: 'rgba(248,113,113,.06)', border: '1px solid rgba(248,113,113,.2)', borderRadius: 8, padding: '10px 14px', marginBottom: 16, fontSize: 12, color: '#f87171' }}>
+                ⚠ Cette action remplacera les causes et chaînes existantes.
+              </div>
+              <div className="form-group">
+                <label className="form-label">Contexte additionnel pour la génération (optionnel)</label>
+                <textarea className="inp" rows={3}
+                  placeholder="Ex: Secteur agroalimentaire, ligne de production automatisée, problème récurrent depuis 3 mois, équipe de 12 personnes…"
+                  value={genContext}
+                  onChange={e => setGenContext(e.target.value)}
+                  autoFocus
+                />
+              </div>
+              <div className="modal-actions">
+                <button className="btn-cancel" onClick={() => setShowGenModal(false)}>Annuler</button>
+                <button className="btn-full" style={{ background: 'var(--accent)' }} onClick={runGenerate}>
+                  ⚡ Générer le diagramme
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Cause form modal */}
         {showCauseForm && (
           <div className="modal-overlay" onClick={() => setShowCauseForm(false)}>
@@ -907,22 +1026,22 @@ export default function IshikawaPage() {
         {/* AI Panel */}
         <div className={`ai-panel ${showAiPanel ? 'open' : ''}`}>
           <div className="ai-panel-hd">
-            <span className="ai-panel-title">Analyse IA ✦</span>
+            <span className="ai-panel-title">Diagnostic IA ✦</span>
             <button className="btn" onClick={() => setShowAiPanel(false)}>✕ Fermer</button>
           </div>
           <div className="ai-content">
-            {aiLoading && <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: 'var(--muted2)', fontSize: 13 }}><span className="spinner"/>Analyse en cours…</div>}
+            {aiLoading && <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: 'var(--muted2)', fontSize: 13 }}><span className="spinner"/>Diagnostic en cours…</div>}
             {!aiLoading && aiResult && <>
-              {aiResult.diagnostic && <div><div className="ai-slbl">Diagnostic</div><div className="ai-block">{aiResult.diagnostic}</div></div>}
+              {aiResult.diagnostic && <div><div className="ai-slbl">Diagnostic global</div><div className="ai-block">{aiResult.diagnostic}</div></div>}
               {aiResult.causes_racines?.length > 0 && (
                 <div>
                   <div className="ai-slbl">Causes racines identifiées</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {aiResult.causes_racines.map((c, i) => {
-                      const bone = BONES.find(b => b.id === c.categorie || b.label.toLowerCase().includes(c.categorie?.toLowerCase()))
+                      const bone = BONES.find(b => b.id === c.categorie || b.label.toLowerCase().includes((c.categorie||'').toLowerCase()))
                       return (
                         <div key={i} className="ai-cause-card" style={{ borderColor: bone?.border || 'var(--border)' }}>
-                          <div style={{ width: 28, height: 28, borderRadius: 6, background: bone?.bg || 'var(--surface3)', color: bone?.color || 'var(--muted2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, fontFamily: 'Geist Mono,monospace', flexShrink: 0 }}>
+                          <div style={{ width: 28, height: 28, borderRadius: 6, background: bone?.bg || 'var(--surface3)', color: bone?.color || 'var(--muted2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, flexShrink: 0 }}>
                             {bone?.icon || '?'}
                           </div>
                           <div style={{ flex: 1 }}>
@@ -936,9 +1055,19 @@ export default function IshikawaPage() {
                   </div>
                 </div>
               )}
+              {aiResult.why_insights?.length > 0 && (
+                <div>
+                  <div className="ai-slbl">Insights 5 Pourquoi</div>
+                  {aiResult.why_insights.map((w, i) => (
+                    <div key={i} style={{ padding: '8px 12px', marginBottom: 5, background: 'rgba(129,140,248,.06)', border: '1px solid rgba(129,140,248,.2)', borderRadius: 6, fontSize: 12, color: 'var(--text)', lineHeight: 1.6 }}>
+                      <span style={{ color: 'var(--accent2)', marginRight: 6 }}>◎</span>{w}
+                    </div>
+                  ))}
+                </div>
+              )}
               {aiResult.manquantes?.length > 0 && (
                 <div>
-                  <div className="ai-slbl">Causes potentiellement manquantes</div>
+                  <div className="ai-slbl">Dimensions à explorer</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                     {aiResult.manquantes.map((m, i) => (
                       <div key={i} style={{ padding: '8px 12px', background: 'rgba(245,158,11,.06)', border: '1px solid rgba(245,158,11,.2)', borderRadius: 6, fontSize: 12, color: 'var(--text)', lineHeight: 1.6 }}>
@@ -957,14 +1086,14 @@ export default function IshikawaPage() {
                         <span className="ai-num">#{i + 1}</span>
                         <div style={{ flex: 1 }}>
                           <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>{p.action}</div>
-                          {p.delai && <div style={{ fontSize: 10, color: 'var(--muted)', fontFamily: 'Geist Mono,monospace', marginTop: 2 }}>Délai : {p.delai}</div>}
+                          {p.delai && <div style={{ fontSize: 10, color: '#22d3a5', fontFamily: 'Geist Mono,monospace', marginTop: 2 }}>⏱ {p.delai}</div>}
                         </div>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
-              {aiResult.conclusion && <div><div className="ai-slbl">Conclusion</div><div className="ai-block" style={{ fontStyle: 'italic', color: 'var(--muted2)' }}>{aiResult.conclusion}</div></div>}
+              {aiResult.conclusion && <div><div className="ai-slbl">Verdict</div><div className="ai-block" style={{ fontStyle: 'italic', color: 'var(--muted2)' }}>{aiResult.conclusion}</div></div>}
             </>}
             {!aiLoading && !aiResult && (
               <div style={{ padding: '40px 24px', textAlign: 'center' }}>

@@ -2,217 +2,170 @@ import Anthropic from '@anthropic-ai/sdk'
 
 const client = new Anthropic()
 
-// ── Strategy metadata ─────────────────────────────────────────────────────────
-const STRATEGIES = {
-  penetration: {
-    key:         'penetration',
-    label:       'Pénétration de marché',
-    market:      'Existant',
-    product:     'Existant',
-    risk:        'Faible',
-    riskScore:   1,
-    description: 'Augmenter les parts de marché avec les produits existants sur les marchés actuels.',
-  },
-  development: {
-    key:         'development',
-    label:       'Développement de marché',
-    market:      'Nouveau',
-    product:     'Existant',
-    risk:        'Modéré',
-    riskScore:   2,
-    description: 'Introduire les produits existants sur de nouveaux marchés géographiques ou segments.',
-  },
-  extension: {
-    key:         'extension',
-    label:       'Extension produit',
-    market:      'Existant',
-    product:     'Nouveau',
-    risk:        'Modéré',
-    riskScore:   2,
-    description: 'Développer de nouveaux produits pour les marchés existants.',
-  },
-  diversification: {
-    key:         'diversification',
-    label:       'Diversification',
-    market:      'Nouveau',
-    product:     'Nouveau',
-    risk:        'Élevé',
-    riskScore:   4,
-    description: 'Lancer de nouveaux produits sur de nouveaux marchés — quadrant le plus risqué.',
-  },
+const getOutcome = (v, r, i, o) => {
+  if (!v)                return { tier: 0, label: 'Désavantage compétitif',         short: 'Désavantage'  }
+  if (v && !r)           return { tier: 1, label: 'Parité compétitive',             short: 'Parité'       }
+  if (v && r && !i)      return { tier: 2, label: 'Avantage compétitif temporaire', short: 'Temporaire'   }
+  if (v && r && i && !o) return { tier: 3, label: 'Avantage non exploité',          short: 'Non exploité' }
+  return                        { tier: 4, label: 'Avantage concurrentiel durable', short: 'Durable'      }
+}
+
+const CATEGORY_LABELS = {
+  physical: 'Physique', financial: 'Financier', human: 'Humain',
+  technology: 'Technologique', reputation: 'Réputation',
+  relational: 'Relationnel', knowledge: 'Connaissance', other: 'Autre',
+}
+
+const TIER_STRATEGY = {
+  4: 'Protéger et capitaliser — cœur de l\'avantage concurrentiel durable.',
+  3: 'Développer les capacités organisationnelles pour exploiter pleinement.',
+  2: 'Renforcer les barrières à l\'imitation avant que les concurrents rattrapent.',
+  1: 'Chercher à différencier, ou accepter la parité comme condition d\'entrée.',
+  0: 'Restructurer, externaliser ou éliminer — crée un handicap compétitif.',
 }
 
 export async function POST(request) {
   try {
     const body = await request.json()
-    const {
-      projectName,
-      projectTag,
-      companyDescription,
-      currentProducts,
-      currentMarkets,
-      objectives,
-      resources,
-      timeHorizon,
-      selectedStrategies, // string[] of strategy keys
-      strategyDetails,    // { [key]: { rationale, constraints, opportunities } }
-    } = body
+    const { analysisName, context, resources, projectName, projectTag } = body
 
-    if (!selectedStrategies || selectedStrategies.length === 0) {
-      return Response.json({ error: 'Aucune stratégie sélectionnée' }, { status: 400 })
+    if (!resources?.length) {
+      return Response.json({ error: 'Aucune ressource fournie' }, { status: 400 })
     }
 
+    const enriched = resources.map(res => {
+      const outcome  = getOutcome(res.valuable, res.rare, res.inimitable, res.organized)
+      const answered = [res.valuable, res.rare, res.inimitable, res.organized].filter(x => x !== null).length
+      const yesCount = [res.valuable, res.rare, res.inimitable, res.organized].filter(x => x === true).length
+      return {
+        ...res, outcome, answered, yesCount,
+        completeness:  Math.round(answered / 4 * 100),
+        categoryLabel: CATEGORY_LABELS[res.category] || res.category,
+        defaultStrategy: TIER_STRATEGY[outcome.tier],
+      }
+    })
+
+    const byTier = [0,1,2,3,4].map(t => ({
+      tier: t, label: getOutcome(t>=1,t>=2,t>=3,t>=4).label,
+      count: enriched.filter(r => r.outcome.tier === t).length,
+      resources: enriched.filter(r => r.outcome.tier === t).map(r => r.name),
+    }))
+
+    const totalRes     = resources.length
+    const durableCount = byTier.find(t=>t.tier===4)?.count || 0
+    const incomplete   = enriched.filter(r => r.answered < 4).length
+    const avgScore     = Math.round(enriched.reduce((s,r) => s + (r.yesCount/4)*100, 0) / totalRes)
+
     const contextLines = [
-      projectName         && `Entreprise / Projet : ${projectName}`,
-      projectTag          && `Secteur : ${projectTag}`,
-      companyDescription  && `Description : ${companyDescription}`,
-      currentProducts     && `Produits / services actuels : ${currentProducts}`,
-      currentMarkets      && `Marchés actuels : ${currentMarkets}`,
-      objectives          && `Objectifs de croissance : ${objectives}`,
-      resources           && `Ressources disponibles : ${resources}`,
-      timeHorizon         && `Horizon temporel : ${timeHorizon}`,
+      projectName && `Entreprise : ${projectName}`,
+      projectTag  && `Secteur : ${projectTag}`,
+      context     && `Contexte : ${context}`,
     ].filter(Boolean).join('\n')
 
-    const strategiesDetail = selectedStrategies.map(k => {
-      const meta    = STRATEGIES[k]
-      const details = strategyDetails?.[k] || {}
-      return `
-### ${meta.label} (Marché ${meta.market} × Produit ${meta.product}) — Risque ${meta.risk}
-${meta.description}
-${details.rationale     ? `Justification utilisateur : ${details.rationale}` : ''}
-${details.constraints   ? `Contraintes identifiées : ${details.constraints}` : ''}
-${details.opportunities ? `Opportunités identifiées : ${details.opportunities}` : ''}
-`.trim()
-    }).join('\n\n')
-
-    const prompt = `Tu es un consultant en stratégie d'entreprise expert de la matrice Ansoff et du développement commercial.
+    const prompt = `Tu es un expert en stratégie d'entreprise, spécialiste du framework VRIO (Barney, 1991).
 
 ${contextLines ? `## CONTEXTE\n${contextLines}\n` : ''}
 
-## STRATÉGIES SÉLECTIONNÉES
+## ANALYSE VRIO : ${analysisName}
 
-${strategiesDetail}
+### Vue d'ensemble
+- Total : ${totalRes} ressource(s)
+- Score VRIO moyen : ${avgScore}%
+- Avantages durables : ${durableCount}/${totalRes}
+- Ressources incomplètes : ${incomplete}
+
+### Répartition par niveau :
+${byTier.filter(t=>t.count>0).map(t => `- ${t.label} (T${t.tier}) : ${t.count} — ${t.resources.join(', ')}`).join('\n')}
+
+### Détail :
+${enriched.map((res,i) => `
+**${i+1}. ${res.name}** [${res.categoryLabel}]
+- V:${res.valuable===null?'?':res.valuable?'✓':'✕'} R:${res.rare===null?'?':res.rare?'✓':'✕'} I:${res.inimitable===null?'?':res.inimitable?'✓':'✕'} O:${res.organized===null?'?':res.organized?'✓':'✕'}
+- Résultat : ${res.outcome.label} (Tier ${res.outcome.tier})
+${res.description ? `- Desc : ${res.description}` : ''}
+${res.notes       ? `- Notes : ${res.notes}` : ''}
+`).join('')}
 
 ---
 
-Génère une analyse stratégique Ansoff complète, personnalisée et immédiatement actionnable.
-Réponds UNIQUEMENT en JSON valide avec cette structure exacte :
+Génère une analyse VRIO stratégique. Réponds UNIQUEMENT en JSON valide :
 
 {
-  "executive_summary": "Synthèse de 3-5 phrases : cohérence des choix stratégiques avec le contexte, équilibre risque/opportunité global, recommandation de priorisation.",
+  "synthese": "4-6 phrases sur la position concurrentielle globale, solidité des avantages, gaps organisationnels, risques d'érosion. Sois direct et analytique.",
 
-  "global_score": {
-    "growth_potential": 3.8,
-    "risk_level": 2.5,
-    "feasibility": 3.2,
-    "recommendation": "Court texte sur la combinaison stratégique recommandée"
-  },
-
-  "strategies": [
+  "ressources": [
     {
-      "key": "penetration|development|extension|diversification",
-      "priority": 1,
-      "headline": "Angle stratégique percutant en une phrase",
-      "analysis": "Analyse de 2-3 phrases : pourquoi cette stratégie est pertinente (ou risquée) dans ce contexte précis. Basée sur le contexte fourni.",
-      "growth_potential": 3.5,
-      "risk_score": 2.0,
-      "timeframe": "0-6 mois | 6-18 mois | 18-36 mois | 3-5 ans",
-      "kpis": [
-        "KPI mesurable #1",
-        "KPI mesurable #2",
-        "KPI mesurable #3"
-      ],
-      "action_steps": [
-        {
-          "phase": "Phase 1 — Nom court",
-          "duration": "ex: Semaines 1-4",
-          "actions": ["Action concrète #1", "Action concrète #2", "Action concrète #3"]
-        },
-        {
-          "phase": "Phase 2 — Nom court",
-          "duration": "ex: Mois 2-6",
-          "actions": ["Action concrète #1", "Action concrète #2"]
-        }
-      ],
-      "resources_needed": ["Ressource humaine / budget / tech #1", "Ressource #2"],
-      "risks": ["Risque #1 avec mitigation suggérée", "Risque #2"],
-      "quick_wins": ["Quick win réalisable en <30 jours #1", "Quick win #2"]
+      "nom": "nom exact",
+      "tier": 4,
+      "analyse": "2-3 phrases spécifiques sur cette ressource et sa dynamique concurrentielle.",
+      "action": "Action concrète immédiate (max 12 mots)"
     }
   ],
 
-  "synergies": [
-    "Synergie entre deux stratégies si plusieurs sélectionnées : comment elles se renforcent"
+  "avantages_cles": [
+    "Avantage durable identifié et pourquoi il est défendable"
   ],
 
-  "prioritization": {
-    "immediate": "Stratégie à activer en premier et pourquoi (1-2 phrases)",
-    "sequence": "Ordre recommandé d'activation des stratégies avec justification"
-  },
-
-  "watchouts": [
-    "Piège ou erreur classique à éviter #1 dans ce contexte",
-    "Piège #2"
+  "vulnerabilites": [
+    "Vulnérabilité stratégique spécifique à adresser"
   ],
 
-  "conclusion": "Phrase de conclusion stratégique sur le positionnement de croissance recommandé."
+  "priorites": [
+    "Recommandation #1 concrète et mesurable",
+    "Recommandation #2",
+    "Recommandation #3",
+    "Recommandation #4",
+    "Recommandation #5"
+  ],
+
+  "conclusion": "Verdict d'une phrase sur la solidité de l'avantage concurrentiel."
 }
 
-RÈGLES IMPÉRATIVES :
-- growth_potential, risk_score, feasibility entre 1.0 et 5.0
-- Chaque analyse doit citer des éléments concrets du contexte fourni
-- Les KPIs doivent être mesurables et spécifiques au secteur
-- Les action_steps doivent être opérationnels (verbe d'action + objet précis)
-- Les quick_wins doivent être réalisables sans ressources supplémentaires majeures
-- Si une seule stratégie est sélectionnée, approfondir massivement son analyse
-- Si plusieurs stratégies, identifier les synergies et l'ordre d'activation optimal
-- La diversification seule sans ressources suffisantes doit déclencher un avertissement dans les watchouts
-- Adapter le timeframe au timeHorizon fourni par l'utilisateur`
+RÈGLES :
+- Couvrir TOUTES les ressources dans ressources[]
+- avantages_cles = Tier 3 et 4 uniquement
+- vulnerabilites = Tier 0-1 ET Tier 3 avec O=false
+- Ressources incomplètes = risque à signaler dans vulnérabilités
+- Priorités ordonnées par impact décroissant
+- Identifier les interdépendances entre ressources`
 
     const response = await client.messages.create({
-      model:      'claude-sonnet-4-20250514',
-      max_tokens: 3000,
+      model: 'claude-sonnet-4-20250514', max_tokens: 2500,
       messages: [{ role: 'user', content: prompt }],
     })
 
-    const rawText = response.content
-      .filter(b => b.type === 'text')
-      .map(b => b.text)
-      .join('')
+    const rawText = response.content.filter(b => b.type === 'text').map(b => b.text).join('')
 
     let result
     try {
-      const jsonMatch = rawText.match(/\{[\s\S]*\}/)
-      if (!jsonMatch) throw new Error('Pas de JSON dans la réponse')
-      result = JSON.parse(jsonMatch[0])
+      const m = rawText.match(/\{[\s\S]*\}/)
+      if (!m) throw new Error('No JSON')
+      result = JSON.parse(m[0])
+      if (!result.ressources || result.ressources.length !== enriched.length) {
+        result.ressources = enriched.map((res,i) => ({
+          nom:     res.name,
+          tier:    res.outcome.tier,
+          analyse: result.ressources?.[i]?.analyse || `${res.outcome.label}. ${res.defaultStrategy}`,
+          action:  result.ressources?.[i]?.action  || TIER_STRATEGY[res.outcome.tier].split('—')[0].trim(),
+        }))
+      }
     } catch {
+      const durableRes = enriched.filter(r => r.outcome.tier === 4)
+      const weakRes    = enriched.filter(r => r.outcome.tier <= 1)
       result = {
-        executive_summary: rawText.slice(0, 600),
-        global_score: { growth_potential: 3, risk_level: 2.5, feasibility: 3, recommendation: 'Analyse en cours.' },
-        strategies: selectedStrategies.map((k, i) => ({
-          key: k,
-          priority: i + 1,
-          headline: STRATEGIES[k]?.label,
-          analysis: STRATEGIES[k]?.description,
-          growth_potential: 3,
-          risk_score: STRATEGIES[k]?.riskScore || 2,
-          timeframe: '6-18 mois',
-          kpis: ['Croissance du chiffre d\'affaires', 'Part de marché', 'Taux de rétention'],
-          action_steps: [{ phase: 'Phase 1 — Lancement', duration: 'Mois 1-3', actions: ['Définir le plan', 'Allouer les ressources'] }],
-          resources_needed: ['Équipe dédiée', 'Budget marketing'],
-          risks: ['Sous-estimation des ressources nécessaires'],
-          quick_wins: ['Audit rapide des opportunités existantes'],
-        })),
-        synergies: [],
-        prioritization: { immediate: 'Commencer par la stratégie la moins risquée.', sequence: 'Progression logique du risque.' },
-        watchouts: ['Ne pas disperser les ressources sur trop de stratégies simultanément.'],
-        conclusion: 'Une exécution disciplinée est la clé du succès.',
+        synthese: `Score VRIO de ${avgScore}% pour ${totalRes} ressource(s). ${durableCount} avantage(s) durable(s) identifié(s). ${incomplete > 0 ? `${incomplete} ressource(s) nécessitent une évaluation complète.` : ''}`,
+        ressources: enriched.map(res => ({ nom: res.name, tier: res.outcome.tier, analyse: `${res.outcome.label}. ${res.defaultStrategy}`, action: TIER_STRATEGY[res.outcome.tier].split('—')[0].trim() })),
+        avantages_cles: durableRes.map(r => `${r.name} — avantage durable à protéger`),
+        vulnerabilites: weakRes.map(r => `${r.name} (${r.outcome.label}) — à restructurer`),
+        priorites: ['Protéger les ressources à avantage durable','Développer l\'organisation sur les T3','Éliminer les désavantages compétitifs','Compléter les évaluations incomplètes','Identifier de nouvelles ressources stratégiques'],
+        conclusion: `${durableCount >= totalRes/2 ? 'Position concurrentielle défendable' : 'Investissements stratégiques nécessaires pour renforcer le portefeuille'}.`,
       }
     }
 
     return Response.json({ success: true, result })
 
   } catch (err) {
-    console.error('Ansoff API error:', err)
+    console.error('VRIO analyse error:', err)
     return Response.json({ error: err.message || 'Erreur serveur' }, { status: 500 })
   }
 }

@@ -1,200 +1,269 @@
 import Anthropic from '@anthropic-ai/sdk'
 
 const client = new Anthropic()
+const uid    = () => `${Date.now()}-${Math.random().toString(36).slice(2,7)}`
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────
 const calcProgress = (current, target) => {
   const c = parseFloat(current), t = parseFloat(target)
   if (!t || isNaN(c) || isNaN(t)) return 0
   return Math.min(100, Math.round((c / t) * 100))
 }
-
 const avgProgress = (krs = []) => {
   if (!krs.length) return 0
   return Math.round(krs.reduce((s, kr) => s + calcProgress(kr.current, kr.target), 0) / krs.length)
 }
-
-const STATUS_LABELS = {
-  on_track:    'On Track',
-  at_risk:     'At Risk',
-  off_track:   'Off Track',
-  completed:   'Complété',
-  not_started: 'Non démarré',
+const inferStatus = (p) => {
+  if (p >= 100) return 'completed'
+  if (p >= 70)  return 'on_track'
+  if (p >= 40)  return 'at_risk'
+  if (p > 0)    return 'off_track'
+  return 'not_started'
 }
 
-const LEVEL_LABELS = {
-  company:  'Entreprise',
-  team:     'Équipe',
-  personal: 'Individuel',
-}
+const PERIODS = ['Q1','Q2','Q3','Q4','H1','H2','Annuel']
+const LEVELS  = { company:'Entreprise', team:'Équipe', personal:'Individuel' }
 
 export async function POST(request) {
   try {
     const body = await request.json()
-    const { analysisName, context, objectives, projectName, projectTag } = body
+    const { mode, cycleName, context, objective: cycleObjective, objectives, projectName, projectTag, year } = body
 
-    if (!objectives || objectives.length === 0) {
-      return Response.json({ error: 'Aucun objectif fourni' }, { status: 400 })
-    }
-
-    // ── Enrich objectives with computed metrics ────────────────────────────
-    const enriched = objectives.map(obj => {
-      const krs         = obj.keyResults || []
-      const progress    = avgProgress(krs)
-      const completedKR = krs.filter(kr => calcProgress(kr.current, kr.target) >= 100).length
-      return {
-        ...obj,
-        computedProgress: progress,
-        completedKR,
-        totalKR: krs.length,
-        levelLabel:  LEVEL_LABELS[obj.level]  || obj.level,
-        statusLabel: STATUS_LABELS[obj.status] || obj.status,
+    // ═══════════════════════════════════════════════════════
+    // MODE 1 — GENERATE: IA crée tout le cycle OKR de zéro
+    // ═══════════════════════════════════════════════════════
+    if (mode === 'generate') {
+      if (!context?.trim()) {
+        return Response.json({ error: 'Contexte requis pour la génération automatique' }, { status: 400 })
       }
-    })
 
-    // ── Global stats ──────────────────────────────────────────────────────
-    const totalObjs      = objectives.length
-    const globalProgress = Math.round(enriched.reduce((s, o) => s + o.computedProgress, 0) / totalObjs)
-    const completedObjs  = enriched.filter(o => o.computedProgress >= 100).length
-    const onTrackObjs    = enriched.filter(o => o.status === 'on_track').length
-    const atRiskObjs     = enriched.filter(o => o.status === 'at_risk').length
-    const offTrackObjs   = enriched.filter(o => o.status === 'off_track' || (o.computedProgress < 40 && o.status !== 'not_started')).length
-    const totalKRs       = enriched.reduce((s, o) => s + o.totalKR, 0)
+      const currentYear = year || new Date().getFullYear()
 
-    const contextLines = [
-      projectName && `Entreprise / Projet : ${projectName}`,
-      projectTag  && `Secteur : ${projectTag}`,
-      context     && `Contexte du cycle : ${context}`,
-    ].filter(Boolean).join('\n')
+      const prompt = `Tu es un expert OKR (Objectives & Key Results) certifié, coach de performance organisationnelle.
+À partir du contexte fourni, génère un cycle OKR complet, ambitieux et réaliste.
 
-    // ── Prompt ────────────────────────────────────────────────────────────
-    const prompt = `Tu es un expert en management par les OKR (Objectives & Key Results), coach de performance organisationnelle.
+## CONTEXTE
+${projectName ? `Organisation : ${projectName}` : ''}
+${projectTag  ? `Secteur : ${projectTag}` : ''}
+Nom du cycle : ${cycleName || 'Cycle OKR'}
+${cycleObjective ? `Vision / Ambition : ${cycleObjective}` : ''}
+Description : ${context}
+Année : ${currentYear}
 
-${contextLines ? `## CONTEXTE\n${contextLines}\n` : ''}
-
-## CYCLE OKR : ${analysisName}
-
-### Vue d'ensemble du cycle
-- ${totalObjs} objectif(s) · ${totalKRs} Key Result(s)
-- Progression globale : ${globalProgress}%
-- Complétés : ${completedObjs} · On Track : ${onTrackObjs} · At Risk : ${atRiskObjs} · Off Track : ${offTrackObjs}
-
-### Détail des objectifs :
-
-${enriched.map((obj, i) => `
-**OBJECTIF ${i+1} — ${obj.title}** [${obj.levelLabel}]
-- Période : ${obj.period} ${obj.year || ''}
-- Statut : ${obj.statusLabel}
-- Progression calculée : ${obj.computedProgress}%
-- Key Results : ${obj.totalKR} total · ${obj.completedKR} complété(s)
-${obj.description ? `- Description : ${obj.description}` : ''}
-
-${(obj.keyResults || []).length > 0 ? `Key Results :\n${(obj.keyResults || []).map((kr, j) => {
-  const kprog = calcProgress(kr.current, kr.target)
-  return `  KR${j+1}: ${kr.title}
-  → Actuel: ${kr.current || 0}${kr.unit || ''} / Cible: ${kr.target || '?'}${kr.unit || ''} (${kprog}%)${kr.metric ? ` — Métrique: ${kr.metric}` : ''}${kr.notes ? `\n  Note: ${kr.notes}` : ''}`
-}).join('\n')}` : '  Aucun Key Result défini.'}
-`).join('\n---\n')}
-
----
-
-Génère une analyse OKR stratégique et actionnable. Réponds UNIQUEMENT en JSON valide avec cette structure exacte :
-
+Génère exactement ce JSON (sans markdown, sans backticks) :
 {
-  "synthese": "Paragraphe de 4-6 phrases sur la santé globale du cycle OKR. Évalue l'ambition des objectifs, la qualité des KRs (SMART ?), l'alignement entre niveaux (entreprise/équipe/individuel), les risques principaux, et la trajectoire globale. Sois direct et précis.",
-
-  "objectifs": [
+  "objectives": [
     {
-      "titre": "titre exact de l'objectif",
-      "score": 0-100,
-      "analyse": "Analyse de 2-3 phrases : qualité de la formulation, réalisme des KRs, risques spécifiques, points forts.",
-      "suggestion": "Suggestion concrète et immédiatement applicable pour améliorer cet objectif ou ses KRs (max 30 mots)"
+      "title": "Objectif ambitieux et inspirant (commence par un verbe)",
+      "description": "Contexte et raison d'être de cet objectif en 1-2 phrases",
+      "level": "company",
+      "period": "Q1",
+      "year": "${currentYear}",
+      "status": "not_started",
+      "keyResults": [
+        {
+          "title": "KR mesurable et spécifique",
+          "metric": "Nom de la métrique",
+          "target": "100",
+          "current": "0",
+          "unit": "%",
+          "status": "not_started",
+          "notes": "Comment mesurer ce KR"
+        }
+      ]
     }
   ],
-
-  "krs_suggeres": [
-    {
-      "objectif": "titre de l'objectif concerné",
-      "kr": "Nouveau KR suggéré par l'IA car manquant ou faible",
-      "cible": "valeur cible suggérée avec unité"
-    }
-  ],
-
+  "synthese": "Paragraphe de 3-5 phrases sur la logique du cycle OKR généré, l'ambition globale et la cohérence entre objectifs.",
   "priorites": [
-    "Action prioritaire #1 concrète, urgente et mesurable",
-    "Action prioritaire #2",
-    "Action prioritaire #3",
-    "Action prioritaire #4",
-    "Action prioritaire #5"
+    "Priorité #1 pour réussir ce cycle",
+    "Priorité #2",
+    "Priorité #3",
+    "Priorité #4",
+    "Priorité #5"
   ],
-
-  "conclusion": "Phrase de conclusion percutante sur la trajectoire du cycle et l'ajustement principal à opérer."
+  "conclusion": "Phrase d'encouragement et de cadrage sur la trajectoire recommandée.",
+  "healthScore": 75
 }
 
 RÈGLES IMPÉRATIVES :
-- Évalue chaque objectif individuellement avec son vrai score (basé sur la progression des KRs et leur qualité)
-- Les KRs suggérés ne concernent que les objectifs ayant 0 KR ou des KRs mal formulés (non mesurables)
-- Les priorités doivent être ordonnées par impact décroissant
-- Tiens compte du niveau (Entreprise > Équipe > Individuel) pour évaluer la cohérence verticale
-- Si des objectifs n'ont pas de KRs, signale-le explicitement comme risque majeur
-- Un bon OKR a 3-5 KRs mesurables avec baseline et cible claires
-- Identifie les dépendances et conflits potentiels entre objectifs`
+- Génère 3 à 5 objectifs RÉALISTES et AMBITIEUX, adaptés au contexte
+- Répartis les niveaux : au moins 1 "company", 1 "team", 1 "personal"
+- Chaque objectif doit avoir 3 à 5 Key Results MESURABLES (cible numérique obligatoire)
+- Les KRs doivent avoir target > 0, current = 0, et une unité claire (%, k€, users, pts, etc.)
+- Les objectifs commencent par un verbe d'action fort (Atteindre, Lancer, Accroître, Construire…)
+- period: répartis entre Q1, Q2, Q3, Q4 selon la logique temporelle
+- level: "company" | "team" | "personal"
+- status: "not_started" pour tous (cycle démarrant)
+- Adapte TOUT au secteur et contexte fourni — PAS de contenu générique
+- healthScore: entre 60-85 (nouveau cycle)
+- La "metric" du KR = le nom court de l'indicateur (NPS, MAU, CA, Taux, Score…)`
 
-    // ── Call Claude ────────────────────────────────────────────────────────
-    const response = await client.messages.create({
-      model:      'claude-sonnet-4-20250514',
-      max_tokens: 2500,
-      messages: [{ role: 'user', content: prompt }],
-    })
+      const response = await client.messages.create({
+        model:      'claude-sonnet-4-20250514',
+        max_tokens: 3500,
+        messages:   [{ role:'user', content: prompt }],
+      })
 
-    // ── Parse ──────────────────────────────────────────────────────────────
-    const rawText = response.content
-      .filter(b => b.type === 'text')
-      .map(b => b.text)
-      .join('')
+      const rawText  = response.content.filter(b => b.type==='text').map(b => b.text).join('')
+      const match    = rawText.match(/\{[\s\S]*\}/)
+      if (!match) throw new Error('Réponse IA invalide — pas de JSON')
 
-    let result
-    try {
-      const match = rawText.match(/\{[\s\S]*\}/)
-      if (!match) throw new Error('Pas de JSON')
-      result = JSON.parse(match[0])
+      const result = JSON.parse(match[0])
 
-      // Ensure objectifs array matches input order
+      // Add IDs + compute status from KRs
+      const objectivesWithIds = (result.objectives || []).map(obj => ({
+        ...obj,
+        id:         uid(),
+        createdAt:  new Date().toISOString(),
+        keyResults: (obj.keyResults || []).map(kr => ({
+          ...kr,
+          id:     uid(),
+          status: inferStatus(calcProgress(kr.current, kr.target)),
+        })),
+        status: 'not_started',
+      }))
+
+      return Response.json({
+        success:    true,
+        mode:       'generate',
+        objectives: objectivesWithIds,
+        analysis: {
+          synthese:    result.synthese,
+          priorites:   result.priorites,
+          conclusion:  result.conclusion,
+          healthScore: result.healthScore || 72,
+          objectifs:   objectivesWithIds.map(obj => ({
+            titre:      obj.title,
+            score:      0,
+            analyse:    `Objectif généré avec ${obj.keyResults.length} Key Result(s). Démarrez le suivi en mettant à jour les valeurs actuelles.`,
+            suggestion: `Vérifiez que la cible de chaque KR est réaliste et que les données de mesure sont disponibles.`,
+          })),
+          krs_suggeres: [],
+        }
+      })
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // MODE 2 — ANALYSE: IA analyse les objectifs existants
+    // ═══════════════════════════════════════════════════════
+    if (mode === 'analyse') {
+      if (!objectives?.length) {
+        return Response.json({ error: 'Aucun objectif à analyser' }, { status: 400 })
+      }
+
+      const enriched = objectives.map(obj => ({
+        ...obj,
+        computedProgress: avgProgress(obj.keyResults || []),
+        completedKR:     (obj.keyResults||[]).filter(kr => calcProgress(kr.current,kr.target) >= 100).length,
+        totalKR:         (obj.keyResults||[]).length,
+        levelLabel:      LEVELS[obj.level] || obj.level,
+      }))
+
+      const totalObjs      = objectives.length
+      const globalProgress = Math.round(enriched.reduce((s,o) => s + o.computedProgress, 0) / totalObjs)
+      const completedObjs  = enriched.filter(o => o.computedProgress >= 100).length
+      const onTrackObjs    = enriched.filter(o => o.status === 'on_track').length
+      const atRiskObjs     = enriched.filter(o => o.status === 'at_risk').length
+      const offTrackObjs   = enriched.filter(o => ['off_track'].includes(o.status)).length
+      const totalKRs       = enriched.reduce((s,o) => s + o.totalKR, 0)
+      const noKR           = enriched.filter(o => o.totalKR === 0).length
+
+      const ctxLines = [
+        projectName     && `Organisation : ${projectName}`,
+        projectTag      && `Secteur : ${projectTag}`,
+        context         && `Contexte : ${context}`,
+        cycleObjective  && `Ambition : ${cycleObjective}`,
+      ].filter(Boolean).join('\n')
+
+      const prompt = `Tu es un expert OKR certifié, coach de performance organisationnelle.
+Analyse ce cycle OKR et fournis des recommandations stratégiques actionnables.
+
+## CONTEXTE
+${ctxLines || 'Non renseigné'}
+Cycle : "${cycleName}"
+
+## SYNTHÈSE DU CYCLE
+- ${totalObjs} objectif(s) · ${totalKRs} Key Result(s)
+- Progression globale : ${globalProgress}%
+- On Track : ${onTrackObjs} · At Risk : ${atRiskObjs} · Off Track : ${offTrackObjs} · Complétés : ${completedObjs}
+${noKR > 0 ? `⚠ ${noKR} objectif(s) SANS Key Result défini` : ''}
+
+## DÉTAIL DES OBJECTIFS
+
+${enriched.map((obj, i) => `
+**OBJ ${i+1} — ${obj.title}** [${obj.levelLabel} · ${obj.period} ${obj.year || ''}]
+- Statut : ${obj.status} · Progression : ${obj.computedProgress}%
+- KRs : ${obj.totalKR} total · ${obj.completedKR} complété(s)
+${obj.description ? `- Description : ${obj.description}` : ''}
+${(obj.keyResults||[]).length > 0 ? `\nKey Results :\n${(obj.keyResults||[]).map((kr,j) => {
+  const p = calcProgress(kr.current, kr.target)
+  return `  KR${j+1}: ${kr.title}\n  → ${kr.current||0}${kr.unit||''} / ${kr.target||'?'}${kr.unit||''} (${p}%)${kr.metric ? ` — ${kr.metric}` : ''}${kr.notes ? `\n  Note: ${kr.notes}` : ''}`
+}).join('\n')}` : '\n  ⚠ Aucun Key Result défini'}`
+).join('\n---\n')}
+
+Génère exactement ce JSON (sans markdown, sans backticks) :
+{
+  "synthese": "Paragraphe de 4-6 phrases sur la santé du cycle. Évalue ambition, qualité des KRs, alignement vertical, risques, trajectoire. Sois direct.",
+  "objectifs": [
+    {
+      "titre": "titre exact de l'objectif",
+      "score": 0,
+      "analyse": "Analyse de 2-3 phrases : qualité formulation, réalisme KRs, risques, points forts.",
+      "suggestion": "Suggestion concrète et immédiate (max 25 mots)"
+    }
+  ],
+  "krs_suggeres": [
+    {
+      "objectif": "titre objectif concerné",
+      "kr": "Nouveau KR suggéré car manquant ou faible",
+      "cible": "valeur cible avec unité"
+    }
+  ],
+  "priorites": [
+    "Action urgente #1 avec horizon temporel si possible",
+    "Action #2",
+    "Action #3",
+    "Action #4",
+    "Action #5"
+  ],
+  "conclusion": "Phrase de synthèse mémorable sur la trajectoire et l'ajustement principal.",
+  "healthScore": 65
+}
+
+RÈGLES :
+- objectifs array = EXACTEMENT ${totalObjs} éléments dans le même ordre
+- score par objectif = 0-100 basé sur progression KRs + qualité formulation
+- krs_suggeres uniquement pour objectifs sans KR ou KRs non mesurables
+- priorites ordonnées par impact × urgence décroissant
+- healthScore reflète l'état réel du cycle (pas forcément positif)
+- Identifie les dépendances et conflits potentiels`
+
+      const response = await client.messages.create({
+        model:      'claude-sonnet-4-20250514',
+        max_tokens: 2500,
+        messages:   [{ role:'user', content: prompt }],
+      })
+
+      const rawText = response.content.filter(b => b.type==='text').map(b => b.text).join('')
+      const match   = rawText.match(/\{[\s\S]*\}/)
+      if (!match) throw new Error('Réponse IA invalide')
+
+      let result = JSON.parse(match[0])
+
+      // Ensure objectifs length matches
       if (!result.objectifs || result.objectifs.length !== enriched.length) {
         result.objectifs = enriched.map((obj, i) => ({
           titre:      obj.title,
           score:      obj.computedProgress,
-          analyse:    result.objectifs?.[i]?.analyse || `Progression : ${obj.computedProgress}%. ${obj.totalKR} KR(s) défini(s).`,
-          suggestion: result.objectifs?.[i]?.suggestion || (obj.totalKR === 0 ? 'Ajoutez des Key Results mesurables pour cet objectif.' : ''),
+          analyse:    result.objectifs?.[i]?.analyse || `Progression : ${obj.computedProgress}%. ${obj.totalKR} KR(s).`,
+          suggestion: result.objectifs?.[i]?.suggestion || (obj.totalKR === 0 ? 'Ajoutez des Key Results mesurables.' : ''),
         }))
       }
-    } catch {
-      // Fallback
-      result = {
-        synthese: `Cycle OKR "${analysisName}" avec ${totalObjs} objectifs à ${globalProgress}% de progression globale. ${atRiskObjs + offTrackObjs > 0 ? `${atRiskObjs + offTrackObjs} objectif(s) nécessitent une attention urgente.` : 'La trajectoire globale est satisfaisante.'}`,
-        objectifs: enriched.map(obj => ({
-          titre:      obj.title,
-          score:      obj.computedProgress,
-          analyse:    `Progression de ${obj.computedProgress}% avec ${obj.totalKR} Key Result(s). Statut : ${obj.statusLabel}.`,
-          suggestion: obj.totalKR === 0 ? 'Définissez des Key Results mesurables pour suivre la progression.' : '',
-        })),
-        krs_suggeres: enriched.filter(o => o.totalKR === 0).map(o => ({
-          objectif: o.title,
-          kr:       'Définir un indicateur de succès mesurable',
-          cible:    'À définir selon contexte',
-        })),
-        priorites: [
-          'Définir des KRs pour tous les objectifs sans métriques',
-          'Mettre à jour les valeurs actuelles des KRs en retard',
-          'Réviser les objectifs Off Track avec les équipes concernées',
-          'Aligner les OKRs individuels sur les priorités entreprise',
-          'Planifier une revue hebdomadaire de la progression',
-        ],
-        conclusion: 'La rigueur dans le suivi des Key Results est la clé du succès de ce cycle OKR.',
-      }
+
+      return Response.json({ success: true, mode: 'analyse', analysis: result })
     }
 
-    return Response.json({ success: true, result })
+    return Response.json({ error: 'Mode invalide (generate|analyse)' }, { status: 400 })
 
   } catch (err) {
     console.error('OKR API error:', err)
