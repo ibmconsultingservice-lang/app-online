@@ -99,7 +99,7 @@ RÈGLES IMPÉRATIVES :
 - La "metric" du KR = le nom court de l'indicateur (NPS, MAU, CA, Taux, Score…)`
 
       const response = await client.messages.create({
-        model:      'claude-sonnet-4-20250514',
+        model:      'claude-sonnet-4-6',
         max_tokens: 3500,
         messages:   [{ role:'user', content: prompt }],
       })
@@ -239,7 +239,7 @@ RÈGLES :
 - Identifie les dépendances et conflits potentiels`
 
       const response = await client.messages.create({
-        model:      'claude-sonnet-4-20250514',
+        model:      'claude-sonnet-4-6',
         max_tokens: 2500,
         messages:   [{ role:'user', content: prompt }],
       })

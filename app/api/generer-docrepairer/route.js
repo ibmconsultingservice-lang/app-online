@@ -34,7 +34,7 @@ export async function POST(request) {
     }
 
     const message = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 2000,
       system: `Tu es un expert en correction et réparation de documents professionnels.
 Tu corriges les fautes d'orthographe, de grammaire, de syntaxe et améliores la cohérence du texte.

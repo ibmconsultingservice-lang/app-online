@@ -72,7 +72,7 @@ ${projectName ? `NOM DU PROJET : ${projectName}` : ''}
 Analyse le contexte, identifie toutes les tâches clés, classe-les dans les 4 quadrants Eisenhower avec des scores précis d'urgence et d'importance, et fournis des insights stratégiques concrets.`
 
     const response = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 3000,
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: prompt }],

@@ -12,7 +12,7 @@ export async function POST(request) {
       const { prompt } = body
 
       const message = await client.messages.create({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-6',
         max_tokens: 2000,
         system: `Tu es un expert en création de présentations PowerPoint professionnelles.
 Tu réponds UNIQUEMENT avec un tableau JSON valide, sans texte avant ni après, sans markdown, sans backticks.`,

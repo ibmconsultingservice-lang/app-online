@@ -18,7 +18,7 @@ Ton style : ${tone === 'persuasive' ? 'percutant et orienté vente' :
 Réponds toujours en français. Structure ta réponse avec des sections claires.`
 
     const message = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 2000,
       system: systemPrompt,
       messages: history,   // history is already [{role, content}] array

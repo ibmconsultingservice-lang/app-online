@@ -32,7 +32,7 @@ export async function POST(request) {
     if (!prompt) return NextResponse.json({ error: 'Prompt requis' }, { status: 400 })
 
     const message = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 3000,
       system: `Tu es un expert en création de mind maps structurées.
 Tu génères UNIQUEMENT du JSON valide et COMPLET selon le format exact spécifié.

@@ -53,7 +53,7 @@ export async function POST(request) {
     }
 
     const message = await client.messages.create({
-      model:      'claude-sonnet-4-20250514',
+      model:      'claude-sonnet-4-6',
       max_tokens: 3000,
       system: `Tu es un expert en analyse documentaire professionnelle.
 Tu analyses des documents business, financiers, juridiques et techniques.

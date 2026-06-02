@@ -127,7 +127,7 @@ RÈGLES IMPÉRATIVES :
 6. Génère au minimum 12 objectifs répartis équitablement sur les 4 perspectives`
 
   const response = await client.messages.create({
-    model:      'claude-sonnet-4-20250514',
+    model:      'claude-sonnet-4-6',
     max_tokens: 3000,
     messages:   [{ role: 'user', content: prompt }],
   })
@@ -263,7 +263,7 @@ RÈGLES IMPÉRATIVES :
 6. Les priorités doivent être ordonnées par urgence × impact, avec des actions concrètes`
 
   const response = await client.messages.create({
-    model:      'claude-sonnet-4-20250514',
+    model:      'claude-sonnet-4-6',
     max_tokens: 2500,
     messages:   [{ role: 'user', content: prompt }],
   })

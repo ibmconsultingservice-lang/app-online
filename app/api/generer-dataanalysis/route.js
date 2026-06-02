@@ -90,7 +90,7 @@ Explique comment importer le fichier dans Power BI Desktop, créer le modèle de
       : `Voici les données à analyser :\n\n${dataPreview}\n\nGénère une analyse complète et pertinente en respectant exactement la structure demandée. Identifie les patterns, anomalies et insights les plus importants.`
 
     const response = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 4000,
       system: systemPrompt,
       messages: [{ role: 'user', content: userMessage }],

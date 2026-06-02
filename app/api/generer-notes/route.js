@@ -92,7 +92,7 @@ Directives:
   const history = buildHistory(messages)
 
   const message = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-4-6',
     max_tokens: 1024,
     system,
     messages: [
@@ -165,7 +165,7 @@ Directives strictes:
   const history = buildHistory(messages)
 
   const message = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-4-6',
     max_tokens: 1024,
     system,
     messages: [
@@ -254,7 +254,7 @@ Sois synthetique mais complet. Utilise des listes a puces pour la clarte.`
     : `Fais-moi un resume complet et structure de toutes mes notes.`
 
   const message = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-4-6',
     max_tokens: 2048,
     system,
     messages: [{ role: 'user', content: promptContent }]

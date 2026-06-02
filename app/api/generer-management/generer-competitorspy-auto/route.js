@@ -108,7 +108,7 @@ RÈGLES IMPÉRATIVES :
 - Si peu d'informations sont disponibles sur un concurrent, l'indiquer dans notes mais générer quand même des estimations plausibles`
 
     const response = await client.messages.create({
-      model:      'claude-sonnet-4-20250514',
+      model:      'claude-sonnet-4-6',
       max_tokens: 4000,
       messages: [{ role: 'user', content: prompt }],
     })

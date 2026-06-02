@@ -96,7 +96,7 @@ RÈGLES :
 - healthScore entre 0-100 reflétant l'état stratégique`
 
       const response = await client.messages.create({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-6',
         max_tokens: 3500,
         messages: [{ role:'user', content: prompt }],
       })
@@ -201,7 +201,7 @@ Génère exactement ce JSON (sans markdown, sans backticks) :
 }`
 
       const response = await client.messages.create({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-6',
         max_tokens: 2500,
         messages: [{ role:'user', content: prompt }],
       })

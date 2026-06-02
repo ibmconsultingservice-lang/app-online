@@ -147,7 +147,7 @@ RÈGLES :
 4. Les scores doivent être réellement différenciés entre DAS`
 
   const response = await client.messages.create({
-    model:      'claude-sonnet-4-20250514',
+    model:      'claude-sonnet-4-6',
     max_tokens: 2500,
     messages:   [{ role: 'user', content: prompt }],
   })
@@ -260,7 +260,7 @@ Réponds UNIQUEMENT en JSON valide :
 RÈGLES : portfolio_health.score entre 1.0 et 5.0 | strategic_priority = rang (1=plus prioritaire) | analyses spécifiques aux scores fournis | DAS invest=offensif, selective=arbitrage, harvest=sortie`
 
   const response = await client.messages.create({
-    model:      'claude-sonnet-4-20250514',
+    model:      'claude-sonnet-4-6',
     max_tokens: 3500,
     messages:   [{ role: 'user', content: prompt }],
   })

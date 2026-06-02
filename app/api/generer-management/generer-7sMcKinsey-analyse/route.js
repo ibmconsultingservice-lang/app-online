@@ -127,7 +127,7 @@ des phases logiques (ex: Analyse, Design, Développement, Tests, Déploiement se
 et des durées cohérentes. Les tâches du début peuvent avoir un progress > 0 si elles sont en cours ou terminées.`;
 
       const response = await client.messages.create({
-        model: "claude-sonnet-4-20250514",
+        model: "claude-sonnet-4-6",
         max_tokens: 4000,
         system: SYSTEM_GENERATE,
         messages: [{ role: "user", content: userPrompt }],

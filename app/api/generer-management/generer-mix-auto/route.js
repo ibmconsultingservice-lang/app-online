@@ -94,7 +94,7 @@ Définitions des 7P pour guider ta génération :
 Adapte les scores à la réalité du projet décrit. Sois critique et précis.`
 
     const response = await client.messages.create({
-      model:   'claude-sonnet-4-20250514',
+      model:   'claude-sonnet-4-6',
       max_tokens: 3000,
       system:  systemPrompt,
       messages: [{ role: 'user', content: userPrompt }],

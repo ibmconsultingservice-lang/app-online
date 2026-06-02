@@ -81,7 +81,7 @@ RÈGLES IMPÉRATIVES :
 - Si la description est générale, inférer des produits typiques du secteur`
 
     const response = await client.messages.create({
-      model:      'claude-sonnet-4-20250514',
+      model:      'claude-sonnet-4-6',
       max_tokens: 2500,
       messages: [{ role: 'user', content: prompt }],
     })

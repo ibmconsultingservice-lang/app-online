@@ -56,7 +56,7 @@ export async function POST(request) {
     const hasDocument = documentContent.trim().length > 0
 
     const message = await client.messages.create({
-      model:      'claude-sonnet-4-20250514',
+      model:      'claude-sonnet-4-6',
       max_tokens: 3000,
       system: `Tu es un expert en investigation documentaire approfondie.
 Tu réponds à des questions précises sur des documents professionnels.

@@ -28,7 +28,7 @@ export async function POST(req) {
 
     // ── AI Processing ──
     // (Note: Using the correct model name for Claude 3.5 Sonnet)
-    const modelId = 'claude-sonnet-4-20250514';
+    const modelId = 'claude-sonnet-4-6';
     
     let aiPrompt = "";
     if (format === 'word') {

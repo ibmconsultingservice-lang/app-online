@@ -14,7 +14,7 @@ export async function POST(request) {
     }
 
     const message = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 1500,
       system: `Tu es un expert en analyse de réunions et de discours.
 Tu produis des résumés stratégiques structurés, clairs et actionnables.

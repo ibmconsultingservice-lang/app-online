@@ -149,7 +149,7 @@ et fournis des descriptions spécifiques et pertinentes basées sur le contexte 
 Sois concret et actionnable, pas générique.`;
 
       const response = await client.messages.create({
-        model: "claude-sonnet-4-20250514",
+        model: "claude-sonnet-4-6",
         max_tokens: 3000,
         system: SYSTEM_GENERATE,
         messages: [{ role: "user", content: prompt }],

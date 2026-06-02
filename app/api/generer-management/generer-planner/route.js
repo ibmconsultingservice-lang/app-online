@@ -127,7 +127,7 @@ des phases logiques (ex: Analyse, Design, Développement, Tests, Déploiement se
 et des durées cohérentes. Les tâches du début peuvent avoir un progress > 0 si elles sont en cours ou terminées.`;
 
       const response = await client.messages.create({
-        model: "claude-sonnet-4-20250514",
+        model: "claude-sonnet-4-6",
         max_tokens: 4000,
         system: SYSTEM_GENERATE,
         messages: [{ role: "user", content: userPrompt }],
@@ -239,7 +239,7 @@ ${JSON.stringify(projectData, null, 2)}
 les dépendances implicites, et propose des améliorations concrètes.`;
 
       const response = await client.messages.create({
-        model: "claude-sonnet-4-20250514",
+        model: "claude-sonnet-4-6",
         max_tokens: 3000,
         system: SYSTEM_ANALYZE,
         messages: [{ role: "user", content: userPrompt }],
@@ -302,7 +302,7 @@ export async function GET() {
     status: "ok",
     endpoint: "generer-planner",
     modes: ["generate", "analyze"],
-    model: "claude-sonnet-4-20250514",
+    model: "claude-sonnet-4-6",
     version: "1.0.0",
   });
 }

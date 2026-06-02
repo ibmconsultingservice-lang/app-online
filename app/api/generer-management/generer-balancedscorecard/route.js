@@ -80,7 +80,7 @@ Règles :
 - Adapte le ton au secteur et au contexte si détectés`
 
     const response = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 3000,
       messages: [{ role: 'user', content: userPrompt }],
       system: systemPrompt,

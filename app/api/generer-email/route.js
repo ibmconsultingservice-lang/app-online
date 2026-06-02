@@ -29,7 +29,7 @@ export async function POST(request) {
     const toneLabel     = TONES[tone]         || 'strict et professionnel'
 
     const message = await client.messages.create({
-      model:      'claude-sonnet-4-20250514',
+      model:      'claude-sonnet-4-6',
       max_tokens: 800,
       system: `Tu es un expert en communication professionnelle et business development.
 Tu rédiges des messages optimisés pour ${platformLabel}.

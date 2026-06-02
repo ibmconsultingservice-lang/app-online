@@ -50,7 +50,7 @@ Règles importantes:
 - La date doit être au format français : ex "Dakar, le 16 avril 2026"`
 
     const message = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 1500,
       system: systemPrompt,
       messages: [

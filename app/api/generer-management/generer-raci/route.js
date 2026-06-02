@@ -86,7 +86,7 @@ RÈGLES STRICTES :
 5. Génère un minimum de 6 acteurs et 10 tâches`
 
   const response = await client.messages.create({
-    model:      'claude-sonnet-4-20250514',
+    model:      'claude-sonnet-4-6',
     max_tokens: 3000,
     messages:   [{ role: 'user', content: prompt }],
   })
@@ -242,7 +242,7 @@ Génère une analyse RACI stratégique. Réponds UNIQUEMENT en JSON valide :
 RÈGLES : Un seul A par tâche | Signale les confusions R=A sur même personne | Évalue les acteurs passifs (uniquement C/I)`
 
   const response = await client.messages.create({
-    model:      'claude-sonnet-4-20250514',
+    model:      'claude-sonnet-4-6',
     max_tokens: 2000,
     messages:   [{ role: 'user', content: prompt }],
   })

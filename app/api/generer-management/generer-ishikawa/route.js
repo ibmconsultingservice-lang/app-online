@@ -136,7 +136,7 @@ RÈGLES CRITIQUES :
 - Sois très spécifique au secteur et contexte fournis — évite tout langage vague`
 
   const response = await client.messages.create({
-    model:      'claude-sonnet-4-20250514',
+    model:      'claude-sonnet-4-6',
     max_tokens: 3000,
     messages: [{ role: 'user', content: prompt }],
   })
@@ -297,7 +297,7 @@ RÈGLES :
 - Tiens compte du secteur (${projectTag || 'non spécifié'}) pour contextualiser`
 
   const response = await client.messages.create({
-    model:      'claude-sonnet-4-20250514',
+    model:      'claude-sonnet-4-6',
     max_tokens: 2500,
     messages: [{ role: 'user', content: prompt }],
   })

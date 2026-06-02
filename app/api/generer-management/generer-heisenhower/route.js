@@ -104,7 +104,7 @@ ${tasksDetail}
 Évalue la qualité de la priorisation, identifie les déséquilibres, les tâches mal classifiées, les risques de surcharge, et propose un plan d'action concret pour optimiser la productivité.`
 
     const response = await client.messages.create({
-      model:      'claude-sonnet-4-20250514',
+      model:      'claude-sonnet-4-6',
       max_tokens: 3500,
       system:     SYSTEM_PROMPT,
       messages:   [{ role: 'user', content: prompt }],
